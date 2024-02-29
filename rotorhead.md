@@ -55,22 +55,38 @@ three points Paf, Pap, and Pas.  This plane is manipulated around the Y axis by 
 of the cyclic, and around the x axis by the roll input of the cyclic.
 
 #### Table of Variables
+
+#####invariants
 P_O: Origin of XYZ system
-P_coll: height of collective above origin
 R_sw: radius of swashplate arms from P_coll
+C_min: cylinder minimum length
+C_max: cylinder maximum length
+A_cyl: separation of cylinders, 120∘
+F_f, F_s, F_p, F_n: Foot vectors
+V_mast: Vector of mast
+P_f_f, P_f_0: End of front swashplate foot
+P_f_p, P_f_1: End of port swashplate foot
+P_f_s, P_f_2: End of starboard swashplate foot
+V_cN: normal vector plane of cylinder foot and mast
+#####inputs
+P_coll: height of collective above origin
+A_p, A_r: Pitch and Roll angle derived from collective
+
+#####outputs
 C_f, C_0: Front linear actuator, vector representing length
 C_p, C_1: Port linear actuator
 C_s, C_2: Starboard linear actuator
 P_a_f, P_a_0: End of front swashplate arm
 P_a_p, P_a_1: End of port swashplate arm
 P_a_s, P_a_2: End of starboard swashplate arm
-P_f_f, P_f_0: End of front swashplate foot
-P_f_p, P_f_1: End of port swashplate foot
-P_f_s, P_f_2: End of starboard swashplate foot
-C_min: cylinder minimum length
-C_max: cylinder maximum length
-Vp: Pitch vector from cyclic
-Vr: Roll vector from cyclic
+
+#####calculations
+Vp, V^p: Pitch vector from cyclic, normalized
+Vr, V^p: Roll vector from cyclic, normalized
+Vdisk: Normal vector of rotor plane, Vp X Vr
+Visectn, hat: intersection of rotor plane and cylinder plane, Vdisk X V_cN
+Van: vector of arm N, Rsw*Visctn+ Vvmast
+Cn: Cylinder Vector: Van-Vf
 
 
 
