@@ -15,7 +15,7 @@ def vlen(v):
 def mag(a):
     return m.sqrt(dot(a, a))
 
-# sin is ugly        
+# sin is ugly, what this does is normalizes       
 class linalg(object):
     def norm(x):
         return x/mag(x)

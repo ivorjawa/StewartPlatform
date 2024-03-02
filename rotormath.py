@@ -24,7 +24,7 @@ from gamepads import decode_taranis as decode_report
 
 gamepad.set_nonblocking(True)
 
-import interference as igraph
+import igraph
 
 # convert from 3-space to 2-space
 twod = lambda p: np.array([p[0], p[1]])

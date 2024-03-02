@@ -21,6 +21,12 @@ from the helicopter's transmission.
 ### System Description
 
 For the purposes of this demonstration, a rotorhead consists of:
+
+A swashplate is a device that allows a rotating element to be inclined with two degrees of freedom,
+pitch and roll, and also move vertically.  The bottom half is attached to three linear actuators,
+which provide all degrees of freedom.  The rotating top half is linked to the drive shaft through
+the "scissor-link".
+
 A two-part rotating swashplate, the bottom half of which is represented as a Y-shaped frame
 rotating around a spherical bearing, which in turn surrounds a bushing through which the
 drive shaft runs.  This allows the swashplate to pitch and roll around the spherical bearing, 

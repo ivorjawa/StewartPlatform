@@ -36,7 +36,7 @@ def rmat(axis, theta):
     """
     #axis = np.asarray(axis)
     #axis = axis / m.sqrt(np.dot(axis, axis))
-    axis = np.linalg.norm(axis)
+    axis = np.linalg.norm(axis) # this is wrong, should be normalize as above
     a = m.cos(theta / 2.0)
     b, c, d = -axis * m.sin(theta / 2.0)
     aa, bb, cc, dd = a * a, b * b, c * c, d * d
