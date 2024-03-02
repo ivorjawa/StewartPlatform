@@ -29,30 +29,7 @@ import igraph
 # convert from 3-space to 2-space
 twod = lambda p: np.array([p[0], p[1]])
 
-# https://stackoverflow.com/questions/6802577/rotation-of-3d-vector
-xaxis = np.array([1, 0, 0])
-yaxis = np.array([0, 1, 0])
-zaxis = np.array([0, 0, 1])
-def rmat(axis, theta):
-    """
-    Return the rotation matrix associated with counterclockwise rotation about
-    the given axis by theta radians.
-    """
-    axis = np.asarray(axis)
-    axis = axis / m.sqrt(np.dot(axis, axis))
-    a = m.cos(theta / 2.0)
-    b, c, d = -axis * m.sin(theta / 2.0)
-    aa, bb, cc, dd = a * a, b * b, c * c, d * d
-    bc, ad, ac, ab, bd, cd = b * c, a * d, a * c, a * b, b * d, c * d
-    return np.array([[aa + bb - cc - dd, 2 * (bc + ad), 2 * (bd - ac)],
-                     [2 * (bc - ad), aa + cc - bb - dd, 2 * (cd + ab)],
-                     [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
-
-def rotate(axis, theta, point):
-    rm = rmat(axis, theta)
-    #print(f"rotation matrix axis: {axis} theta: {theta}\nrmat: {rm}")
-    return (np.dot(rm, point)) # in numpy you use dot
-    #return rm * point
+from linear import xaxis, yaxis, zaxis, rotate
     
 def testrot():
     point1 = np.array([0, 1, 0])
