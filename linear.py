@@ -43,7 +43,6 @@ try:
     print("Numpy detected")
     def vector_(args):
         return np.array(args)
-    #vlen_ = lambda v: len(v)
     vlen_ = lambda v: v.shape[0] # len also works, shape is (3,) on np and (3,1) on pybricks
     Matrix = np.array
     cross = np.cross
@@ -58,7 +57,6 @@ try:
     #def testprec_():
     #    np.set_printoptions(precision = 3, floatmode="fixed")
 except Exception as e:
-    #print(f"Numpy not detected: {e}")
     try:
         from pybricks.tools import vector as pbvector
         from pybricks.tools import Matrix as pbmatrix
@@ -81,7 +79,6 @@ except Exception as e:
             core = [fv(v) for v in rows] 
             nl = '\n'
             return f"[{nl.join(core)}]"
-            #return fv(m)
     except Exception as e:
         print(f"linear algebra not detected: {e}")
         raise
@@ -94,6 +91,12 @@ def rmat(axis, theta):
     """
     Return the rotation matrix associated with counterclockwise rotation about
     the given axis by theta radians.
+    
+    >>> print(fm(rmat(xaxis, m.radians(50))))
+    [[1.000 0.000 0.000]
+    [0.000 0.643 -0.766]
+    [0.000 0.766 0.643]]
+    
     """
     axis = normalize(axis)
     a = m.cos(theta / 2.0)
@@ -109,6 +112,16 @@ def rotate(axis, theta, point):
     return np.matmul(rm, point)
      
 def test():
+    """Test everything in the module.
+    
+    >>> test()
+    fv: [1.000 2.000 3.000] v.shape[0]: 3, v[0]: 1.0 vlen(v): 3
+    vmag(v): 3.742 fw: [3.000 -2.000 9.000] fu: [24.000 0.000 -8.000] normalize(u): [0.949 0.000 -0.316]
+    xaxis45: [[1.000 0.000 0.000]
+    [0.000 0.707 -0.707]
+    [0.000 0.707 0.707]] fv(rotv): [1.000 -0.707 3.536]
+    """
+    
     v = vector(1.0, 2.0, 3.0)
     w = vector(3, -2, 9)
     u = cross(v, w)
@@ -119,6 +132,8 @@ def test():
     print(f"xaxis45: {fm(xaxis45)} fv(rotv): {fv(rotv)}")
            
 if __name__ == "__main__":
+    # python -m doctest linear.py
+    # python -m doctest -v linear.py
     if(vector):
         test()
         
