@@ -206,14 +206,13 @@ class Rotor(Swashplate):
         return offset * self.angle_mul # angle in degrees, can be > 360
     
     def actuate(self):
-        pass
         front.track_target(self.pos_ang(self.cfc))  
         port.track_target(self.pos_ang(self.cpc))  
         star.track_target(self.pos_ang(self.csc))  
           
     def calculate(self, pitch, roll, collpct):
         try:
-            (cf, cp, cs, coll) = self.solve(pitch, roll, collpct)
+            self.solve(pitch, roll, collpct)
             print(self.cfc, self.cpc, self.csc)
             #print(f"front: {self.pos_ang(self.cfc)}  port: {self.pos_ang(self.cpc)}  star: {self.pos_ang(self.csc)}")
         except ValueError as e:

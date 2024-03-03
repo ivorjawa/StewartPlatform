@@ -53,18 +53,14 @@ class Rotor(Swashplate):
         screen_r = m.radians(-90)
         try:
             (cf, cp, cs, coll) = self.solve(pitch, roll, collpct)
-            self.old_Cf = cf
-            self.old_Cp = cp
-            self.old_Cs = cs
-            self.old_Vmast = coll
         except ValueError as e:
             label = f"Range Error P: {pitch:{4}.{3}}, R: {roll:{4}.{3}}, C%: {collpct:{3}.{3}} {e}"
             print(label)
             igraph.draw_button(grid.canvas, label, 100, 70, .5)
-            cf = self.old_Cf
-            cp = self.old_Cp
-            cs = self.old_Cs
-            coll = self.old_Vmast
+            cf = self.s_Cf
+            cp = self.s_Cp
+            cs = self.s_Cs
+            coll = self.s_Vmast
         
 
         label = f"P: {pitch:{4}.{3}}, R: {roll:{4}.{3}}, C%: {collpct:{3}.{3}} CF: {self.cfc:{4}.{4}} CP: {self.cpc:{4}.{4}} CS: {self.csc:{4}.{4}}"

@@ -30,10 +30,10 @@ class Swashplate(object):
         self.cpc = defcoll
         self.csc = defcoll
         
-        self.old_Vmast = tmat
-        self.old_Cf = self.Ff + tmat
-        self.old_Cp = self.Fp + tmat
-        self.old_Cs = self.Fs + tmat
+        self.s_Vmast = tmat
+        self.s_Cf = self.Ff + tmat
+        self.s_Cp = self.Fp + tmat
+        self.s_Cs = self.Fs + tmat
 
     def solve(self, pitch, roll, collpct):
         Vp = lin.vector(m.cos(m.radians(pitch)), 0, m.sin(m.radians(pitch)))
@@ -43,7 +43,8 @@ class Swashplate(object):
         Vdisk = lin.cross(Vp, Vr) 
         Vdisk_n = lin.normalize(Vdisk)
         
-        Vmast = lin.vector(0, 0, self.Cmin + collpct*self.Crange) # top of mast at collective setting
+        # top of mast at collective setting
+        Vmast = lin.vector(0, 0, self.Cmin + collpct*self.Crange) 
         arms = []
         for i, Fn in enumerate(self.feet):
             # Vcn is the plane the cylinder rotates on its foot in, Foot X Mast
@@ -54,7 +55,7 @@ class Swashplate(object):
             Visect = lin.cross(Vdisk_n, Vcn_n) # should be plane intersection
             Visect_n = lin.normalize(Visect)
             
-            # Va is the arm lin.vector as rotated in the cylinder rotation plane
+            # Va is the arm vector as rotated in the cylinder rotation plane
             Va = (self.Rsw * Visect_n) + Vmast
             
             arms.append(Va)
@@ -65,13 +66,15 @@ class Swashplate(object):
                 raise ValueError(f"too long! Cyl: {cyl_len:{4}.{4}} max: {self.Cmax:{4}}")
         
         (Cf, Cp, Cs) = arms
+        
+        #old validation code, cyl_len test above is sufficient
         #self.validate(Cf, Cp, Cs, Vmast, pitch, roll, collpct)
         
-        #successfully validated, save old valuse and calculate cylinder lengths
-        self.old_Cf = Cf
-        self.old_Cp = Cp
-        self.old_Cs = Cs
-        self.old_Vmast = Vmast 
+        #successfully validated, save old values and calculate cylinder lengths
+        self.s_Cf = Cf
+        self.s_Cp = Cp
+        self.s_Cs = Cs
+        self.s_Vmast = Vmast 
 
         #cylinder lengths in mm    
         self.cfc = lin.vmag(Cf - self.Ff)
