@@ -22,7 +22,13 @@ class Swashplate(object):
         self.feet = [self.Ff, self.Fp, self.Fs]
         
         # default 50% collective, position after calibration
-        tmat = lin.vector(0, 0, .5*self.Crange + self.Cmin)
+        defcoll = .5*self.Crange + self.Cmin
+        tmat = lin.vector(0, 0, defcoll)
+        
+        #calculated cylinder lengths in mm
+        self.cfc = defcoll
+        self.cpc = defcoll
+        self.csc = defcoll
         
         self.old_Vmast = tmat
         self.old_Cf = self.Ff + tmat
@@ -37,17 +43,17 @@ class Swashplate(object):
         Vdisk = lin.cross(Vp, Vr) 
         Vdisk_n = lin.normalize(Vdisk)
         
-        Vmast = [0, 0, self.Cmin + collpct*self.Crange] # top of mast at collective setting
+        Vmast = lin.vector(0, 0, self.Cmin + collpct*self.Crange) # top of mast at collective setting
         arms = []
         for i, Fn in enumerate(self.feet):
             # Vcn is the plane the cylinder rotates on its foot in, Foot X Mast
             Vcn = lin.cross(Fn, Vmast)
             Vcn_n = lin.normalize(Vcn)
-
+            
             # Visect is the intersection of the Rotor Disk plane and the Cylinder rotation plane
             Visect = lin.cross(Vdisk_n, Vcn_n) # should be plane intersection
             Visect_n = lin.normalize(Visect)
-
+            
             # Va is the arm lin.vector as rotated in the cylinder rotation plane
             Va = (self.Rsw * Visect_n) + Vmast
             
@@ -58,6 +64,17 @@ class Swashplate(object):
             elif cyl_len > self.Cmax:
                 raise ValueError(f"too long! Cyl: {cyl_len:{4}.{4}} max: {self.Cmax:{4}}")
         
-        (Cf, Cp, Cs) = arms        
+        (Cf, Cp, Cs) = arms
         #self.validate(Cf, Cp, Cs, Vmast, pitch, roll, collpct)
+        
+        #successfully validated, save old valuse and calculate cylinder lengths
+        self.old_Cf = Cf
+        self.old_Cp = Cp
+        self.old_Cs = Cs
+        self.old_Vmast = Vmast 
+
+        #cylinder lengths in mm    
+        self.cfc = lin.vmag(Cf - self.Ff)
+        self.cpc = lin.vmag(Cp - self.Fp)
+        self.csc = lin.vmag(Cs - self.Fs)
         return (Cf, Cp, Cs, Vmast)

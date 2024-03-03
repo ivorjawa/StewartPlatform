@@ -35,7 +35,13 @@ def matmul(a, b):
     return matmul_(a, b)  
       
 Matrix = None
-cross = None
+
+def cross(a, b):
+    try:
+        return cross_(a, b)
+    except Exception as e:
+        print(f"cross {a}, {b} failed as {e}")
+        raise
        
 try:
     import numpy as np
@@ -45,7 +51,7 @@ try:
         return np.array(args)
     vlen_ = lambda v: v.shape[0] # len also works, shape is (3,) on np and (3,1) on pybricks
     Matrix = np.array
-    cross = np.cross
+    cross_ = np.cross
     dot_ = lambda a, b: np.dot(a, b)
     vmag_ = lambda v: np.linalg.norm(v)
     normalize_ = lambda v: v/np.linalg.norm(v)
@@ -67,7 +73,7 @@ except Exception as e:
         print("PyBricks detected")
         vlen_ = lambda v: v.shape[0]
         Matrix = pbmatrix
-        cross = pbcross
+        cross_ = pbcross
         def dot_(a, b):
             return sum( [ a[i]*b[i] for i in range(vlen(a)) ] )
         def vmag_(v):
@@ -120,6 +126,7 @@ def test():
     xaxis45: [[1.000 0.000 0.000]
     [0.000 0.707 -0.707]
     [0.000 0.707 0.707]] fv(rotv): [1.000 -0.707 3.536]
+    Fn: [60.000 0.000 0.000], Vmast: [0.000 0.000 180.000], Vcn: [0.000 -10800.000 0.000]
     """
     
     v = vector(1.0, 2.0, 3.0)
@@ -130,6 +137,10 @@ def test():
     xaxis45 = rmat(xaxis, m.radians(45))
     rotv = matmul(xaxis45, v)
     print(f"xaxis45: {fm(xaxis45)} fv(rotv): {fv(rotv)}")
+    Fn = vector(60.000, 0.000, 0.000)
+    Vmast = vector(0.000, 0.000, 180.000)
+    Vcn = cross(Fn, Vmast)
+    print(f"Fn: {fv(Fn)}, Vmast: {fv(Vmast)}, Vcn: {fv(Vcn)}")
            
 if __name__ == "__main__":
     # python -m doctest linear.py

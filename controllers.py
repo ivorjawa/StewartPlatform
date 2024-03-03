@@ -38,7 +38,7 @@ def dword(arr, off):
 # for mechanum: spin, crab, forward-back, unused
 def decode_taranis(report):
     yaw = dword(report,9) # spin / lx / yaw
-    roll = dword(report,3) # crab / rx / roll
+    roll = 2047-dword(report,3) # crab / rx / roll
     pitch = dword(report,5) # fwdback / ry / pitch
     coll = dword(report,7) # collective, ly
     

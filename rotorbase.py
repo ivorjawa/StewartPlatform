@@ -8,26 +8,12 @@ import sys
 import datetime, time
 import logging
 
+import controllers as ctrl
+
 logging.basicConfig(level=logging.INFO)
 
-import hid
-#https://blog.thea.codes/talking-to-gamepads-without-pygame/
-# decoding ps4
-# https://web.archive.org/web/20210301230721/https://www.psdevwiki.com/ps4/DS4-USB
-
-for device in hid.enumerate():
-    print(f"0x{device['vendor_id']:04x}:0x{device['product_id']:04x} {device['product_string']}")
-
-gamepad = hid.device()
-
-#gamepad.open(0x054c, 0x09cc) # crappy PS4 controller
-#from gamepads import decode_ps4 as decode_report
-
-gamepad.open(0x1209, 0x4f54) # Taranis
-from gamepads import decode_taranis as decode_report
-
-gamepad.set_nonblocking(True)
-
+decode_report = ctrl.decode_taranis
+gamepad = ctrl.open_taranis()
 
 flogfile = None    
 class  MybricksHub(PybricksHub):

@@ -66,11 +66,8 @@ class Rotor(Swashplate):
             cs = self.old_Cs
             coll = self.old_Vmast
         
-        #cylinder lengths in mm    
-        cfc = lin.vmag(cf - self.Ff)
-        cpc = lin.vmag(cp - self.Fp)
-        csc = lin.vmag(cs - self.Fs)
-        label = f"P: {pitch:{4}.{3}}, R: {roll:{4}.{3}}, C%: {collpct:{3}.{3}} CF: {cfc:{4}.{4}} CP: {cpc:{4}.{4}} CS: {csc:{4}.{4}}"
+
+        label = f"P: {pitch:{4}.{3}}, R: {roll:{4}.{3}}, C%: {collpct:{3}.{3}} CF: {self.cfc:{4}.{4}} CP: {self.cpc:{4}.{4}} CS: {self.csc:{4}.{4}}"
 
         # rotate arms for animation
         cf_r = rotate(zaxis, zrr, cf)

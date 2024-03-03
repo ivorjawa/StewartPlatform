@@ -9,9 +9,12 @@ from pybricks.parameters import Port
 from pybricks.tools import wait, StopWatch
 from pybricks.tools import Matrix, vector, cross
 
-import unumpy as np
-
 hub = TechnicHub()
+
+from linear import xaxis, yaxis, zaxis, rotate
+import linear as lin
+
+from swashplate import Swashplate
 
 millis = StopWatch().time
 
@@ -26,40 +29,17 @@ front = Motor(Port.A)
 speed = 1000
 step = 530
 
-xaxis = vector(1, 0, 0)
-yaxis = vector(0, 1, 0)
-zaxis = vector(0, 0, 1)
-def rmat(axis, theta):
-    """
-    Return the rotation matrix associated with counterclockwise rotation about
-    the given axis by theta radians.
-    """
-    #axis = np.asarray(axis)
-    #axis = axis / m.sqrt(np.dot(axis, axis))
-    axis = np.linalg.norm(axis) # this is wrong, should be normalize as above
-    a = m.cos(theta / 2.0)
-    b, c, d = -axis * m.sin(theta / 2.0)
-    aa, bb, cc, dd = a * a, b * b, c * c, d * d
-    bc, ad, ac, ab, bd, cd = b * c, a * d, a * c, a * b, b * d, c * d
-    return np.array([[aa + bb - cc - dd, 2 * (bc + ad), 2 * (bd - ac)],
-                     [2 * (bc - ad), aa + cc - bb - dd, 2 * (cd + ab)],
-                     [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
-
-def rotate(axis, theta, point):
-    rm = rmat(axis, theta)
-    #print(f"rotation matrix axis: {axis} theta: {theta}\nrmat: {rm}")
-    return rm * point # in pybricks you multiply instead of dot
-    #return (np.dot(rm, point))
-    
-
+# encode 16-bit int for system storage
 def enc16(i):
     lb = i & 255
     hb = i >> 8
     return bytes([hb, lb])
 
+# decode 16-bit int from system storage
 def dec16(b):
     return b[0]*256+b[1]
 
+# read maximum cylinder position from storage
 def readthresh():
     thresh = hub.system.storage(0, read=2)  
     return dec16(thresh)
@@ -168,11 +148,11 @@ class JSMan(object):
     
         
     def decode_js(self, js_uint12):
-        # scale 12-bit unsigned into range [-1.0,1.0]
+        # scale 8-bit unsigned into range [-1.0,1.0]
         # both axes reversed logically, so going up and right decrease
-        jsf = js_uint12/1024.0 - 1
+        jsf = js_uint12/256.0 - 1
         
-        if(abs(jsf)<(5.0/1024)): # control the dead zone
+        if(abs(jsf)<(5.0/256)): # control the dead zone
             jsf = 0
             
         #jsf = -jsf
@@ -210,90 +190,34 @@ class JSMan(object):
             raw = -raw
         return raw # may not need the sigmoid with control algorithm.
 
-class Rotor(object):
-    # coordinate system is +z-up +x-forward
+class Rotor(Swashplate):
     def __init__(self, rotor_rad, c_min, c_max, threshang):
-        self.c_min = c_min
-        self.c_max = c_max
-        self.c_range = c_max - c_min
+        super().__init__(rotor_rad, c_min, c_max)
         self.threshang = threshang # top of cylinder, degrees
-        self.angle_mul = self.threshang / self.c_range # mm to degree
-        self.rotor_rad = rotor_rad
-        self.coll = vector(0, 0, 0)
-        self.cyl_front = vector(-rotor_rad, 0, 0)
-        #print(f"front: {self.cyl_front}")
-        self.cyl_port = rotate(zaxis, m.radians(120), self.cyl_front)
-        #print(f"port: {self.cyl_port}")
-        self.cyl_star = rotate(zaxis, m.radians(-120), self.cyl_front)
-        #print(f"star: {self.cyl_star}")
-        self.cyls = [self.cyl_front, self.cyl_port, self.cyl_star]
-        tmat = vector(0, 0, .5*self.c_range + self.c_min)
-        #print(f"translation matrix: {tmat}")
+        self.angle_mul = self.threshang / self.Crange # mm to degree
         
-        self.old_coll = self.coll + tmat
-        self.old_cf = self.cyl_front + tmat
-        self.old_cs = self.cyl_star + tmat
-        self.old_cp = self.cyl_port + tmat
-        
-        #print(f"front: {self.cyl_front}, port: {self.cyl_port}, startboard: {self.cyl_star}")
     def pos_ang(self, position):
+        # decode desired cylinder length into rotations
         # threshold max angle, degrees
         # mincyl, maxcyl, position mm
-        if (position < self.c_min) or (position > self.c_max):
+        if (position < self.Cmin) or (position > self.Cmax):
             raise ValueError(f"{position} is not in {self.c_min}...{self.c_max}")
-        offset = position - self.c_min
+        offset = position - self.Cmin
         return offset * self.angle_mul # angle in degrees, can be > 360
-        
-    def solve(self, pitch, roll, collpct):
-        pitch_v = rotate(yaxis, m.radians(pitch), vector(1, 0, 0))
-        roll_v = rotate(xaxis, m.radians(roll), vector(0, 1, 0))
-        cyclic_norm = np.cross(pitch_v, roll_v)
-        cyclic_norm_n = np.linalg.norm(cyclic_norm)
-        #print(f"pitch_v: {pitch_v}, roll_v: {roll_v}, cyclic_norm_n: {cyclic_norm_n}")
-        coll_v = vector(0, 0, self.c_min + collpct*self.c_range) # top of mast at collective setting
-        arms = []
-        for i, cyl in enumerate(self.cyls):
-            #print(f"i: {i}, cyl: {cyl}")
-            cyl_norm = np.cross(cyl, coll_v)
-            cyl_norm_n = np.linalg.norm(cyl_norm)
-            isect = np.cross(cyclic_norm, cyl_norm) # should be plane intersection
-            isect_n = np.linalg.norm(isect)
-            #print(f"cylinder: {i}, cyl_norm_n: {cyl_norm_n}, intersection_n: {isect_n}")
-            arm_v = (self.rotor_rad * isect_n) + coll_v
-            arms.append(arm_v)
-            cyl_len = np.mag(arm_v - cyl)
-            if cyl_len < self.c_min:
-                raise ValueError(f"too short! Cyl: {cyl_len:{4}.{4}} min: {self.c_min:{4}}")
-            elif cyl_len > self.c_max:
-                raise ValueError(f"too long! Cyl: {cyl_len:{4}.{4}} max: {self.c_max:{4}}")
-        (cf, cp, cs) = arms
-        coll = coll_v        
-        #self.validate(cf, cp, cs, coll, pitch, roll, collpct)
-        return (cf, cp, cs, coll)
     
     def actuate(self):
-          front.track_target(self.pos_ang(self.cfc))  
-          port.track_target(self.pos_ang(self.cpc))  
-          star.track_target(self.pos_ang(self.csc))  
+        pass
+        front.track_target(self.pos_ang(self.cfc))  
+        port.track_target(self.pos_ang(self.cpc))  
+        star.track_target(self.pos_ang(self.csc))  
           
     def calculate(self, pitch, roll, collpct):
         try:
             (cf, cp, cs, coll) = self.solve(pitch, roll, collpct)
-            self.old_cf = cf
-            self.old_cp = cp
-            self.old_cs = cs
-            self.old_coll = coll
-            self.cfc = np.mag(cf - self.cyl_front)
-            self.cpc = np.mag(cp - self.cyl_port)
-            self.csc = np.mag(cs - self.cyl_star)
             print(f"front: {self.pos_ang(self.cfc)}  port: {self.pos_ang(self.cpc)}  star: {self.pos_ang(self.csc)}")
         except ValueError as e:
             label = f"Range Error P: {pitch:{4}.{3}}, R: {roll:{4}.{3}}, C%: {collpct:{3}.{3}} {e}"
             print(label)
-            cf = self.old_cf
-            cp = self.old_cp
-            cs = self.old_cs
-            coll = self.old_coll
             
                        
 def run_remote():
@@ -329,13 +253,13 @@ def run_remote():
                 
                 rot.calculate(pitch, roll, coll)
                 
-                if(glyph == 40): # X '0b0101000' SB
+                if((glyph and 40) == 40): # X '0b0101000' SB
                     print("goodbye.")
                     #return None
                     break
-                elif(glyph == 72): #sc
+                elif((glyph and 72) == 72): #sc
                     rotor.run(60)
-                elif(glyph == 68): #sd
+                elif((glyph and 68) == 68): #sd
                     rotor.stop()
                     
             except Exception as e:
@@ -356,38 +280,6 @@ def identify():
     print(f"Implementation: {usys.implementation}")      
     print(f"Version Info: {usys.version_info}")
     print(f"Battery Voltage: {hub.battery.voltage()}mv") 
-
-def testlinalg():
-    a = vector(2, 2, 2)
-    b = vector(3, 3, 3)
-    print(f"b shape: {b.shape}")
-    print(f"b magnitude: {np.mag(b)}")
-    print(f"b norm: {np.linalg.norm(b)}")
-    print(f"mag(norm(b): {np.mag(np.linalg.norm(b))}")
-    print(f"{a} dot {b}: {np.dot(a, b)}")
-     
-    twerk = Matrix([[1, 0, 0]])
-    print(f"twerk: {twerk} shape: {twerk.shape}")
-       
-    twox = 2*xaxis
-    axis1 = twox / m.sqrt(np.dot(twox, twox))
-    axis2 = np.linalg.norm(twox)
-    print(f"twox: {twox}")
-    print(f"axis1: {axis1}")
-    print(f"axis2: {axis2}")
-
-    zrot = rmat(zaxis, m.radians(50))
-    print(f"zrot 50 degrees: {zrot}")
-
-
-    
-    rot = Rotor(60, 160, 200, 1900) # real robot
-    identify()  
-    
-def test_rmat():
-    cyl_front = vector(-100, 0, 0)
-    cyl_port = rotate(zaxis, m.radians(120), cyl_front)  
-    print(f"front: {cyl_front}, port: {cyl_port}")
         
 if __name__ == "__main__":
     # pybricksdev run ble -n rotor rotor.py
@@ -395,9 +287,11 @@ if __name__ == "__main__":
     #testwritestore()
     #testlinalg()
     #test_rmat()
+    #run_remote()
     try:
         #pass # when running above tests
         run_remote() # full talks to remote run under ./rotorbase.py
         #calibrate() # should be done with rotors detached
     except Exception as e:
-        print("General failure: ", e)     
+        print("General failure: ", e)
+    identify()     
