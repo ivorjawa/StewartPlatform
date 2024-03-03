@@ -4,7 +4,6 @@
 
 import linear as lin
 m = lin.m
-from linear import vector
 
 class Swashplate(object):
     # coordinate system is +z:up +x:forward +y:port
@@ -13,17 +12,17 @@ class Swashplate(object):
         self.Cmax = c_max
         self.Crange = c_max - c_min
         self.Rsw = rotor_rad
-        self.P0 = vector(0, 0, 0)
+        self.P0 = lin.vector(0, 0, 0)
         
         # Feet 
-        self.Ff = vector(rotor_rad, 0, 0) # Front 
-        self.Fp = vector(rotor_rad*m.cos(m.radians(120)), rotor_rad*m.sin(m.radians(120)), 0)
-        self.Fs = vector(rotor_rad*m.cos(m.radians(-120)), rotor_rad*m.sin(m.radians(-120)), 0)
+        self.Ff = lin.vector(rotor_rad, 0, 0) # Front 
+        self.Fp = lin.vector(rotor_rad*m.cos(m.radians(120)), rotor_rad*m.sin(m.radians(120)), 0)
+        self.Fs = lin.vector(rotor_rad*m.cos(m.radians(-120)), rotor_rad*m.sin(m.radians(-120)), 0)
         
         self.feet = [self.Ff, self.Fp, self.Fs]
         
         # default 50% collective, position after calibration
-        tmat = vector(0, 0, .5*self.Crange + self.Cmin)
+        tmat = lin.vector(0, 0, .5*self.Crange + self.Cmin)
         
         self.old_Vmast = tmat
         self.old_Cf = self.Ff + tmat
@@ -31,8 +30,8 @@ class Swashplate(object):
         self.old_Cs = self.Fs + tmat
 
     def solve(self, pitch, roll, collpct):
-        Vp = vector(m.cos(m.radians(pitch)), 0, m.sin(m.radians(pitch)))
-        Vr = vector(0, m.cos(m.radians(roll)), m.sin(m.radians(roll)))
+        Vp = lin.vector(m.cos(m.radians(pitch)), 0, m.sin(m.radians(pitch)))
+        Vr = lin.vector(0, m.cos(m.radians(roll)), m.sin(m.radians(roll)))
         
         # Normal of rotor disk
         Vdisk = lin.cross(Vp, Vr) 
@@ -49,7 +48,7 @@ class Swashplate(object):
             Visect = lin.cross(Vdisk_n, Vcn_n) # should be plane intersection
             Visect_n = lin.normalize(Visect)
 
-            # Va is the arm vector as rotated in the cylinder rotation plane
+            # Va is the arm lin.vector as rotated in the cylinder rotation plane
             Va = (self.Rsw * Visect_n) + Vmast
             
             arms.append(Va)
