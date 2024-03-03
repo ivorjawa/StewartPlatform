@@ -286,8 +286,6 @@ if __name__ == "__main__":
     # pybricksdev run ble -n rotor rotor.py
     #teststorage()
     #testwritestore()
-    #testlinalg()
-    #test_rmat()
     #run_remote()
     try:
         #pass # when running above tests
