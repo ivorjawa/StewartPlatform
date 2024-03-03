@@ -150,9 +150,9 @@ class JSMan(object):
     def decode_js(self, js_uint12):
         # scale 8-bit unsigned into range [-1.0,1.0]
         # both axes reversed logically, so going up and right decrease
-        jsf = js_uint12/256.0 - 1
+        jsf = js_uint12/128.0 - 1
         
-        if(abs(jsf)<(5.0/256)): # control the dead zone
+        if(abs(jsf)<(5.0/128)): # control the dead zone
             jsf = 0
             
         #jsf = -jsf
@@ -214,7 +214,8 @@ class Rotor(Swashplate):
     def calculate(self, pitch, roll, collpct):
         try:
             (cf, cp, cs, coll) = self.solve(pitch, roll, collpct)
-            print(f"front: {self.pos_ang(self.cfc)}  port: {self.pos_ang(self.cpc)}  star: {self.pos_ang(self.csc)}")
+            print(self.cfc, self.cpc, self.csc)
+            #print(f"front: {self.pos_ang(self.cfc)}  port: {self.pos_ang(self.cpc)}  star: {self.pos_ang(self.csc)}")
         except ValueError as e:
             label = f"Range Error P: {pitch:{4}.{3}}, R: {roll:{4}.{3}}, C%: {collpct:{3}.{3}} {e}"
             print(label)
@@ -224,8 +225,8 @@ def run_remote():
     jsman = JSMan()
     last_input = 0 # last input from base station
     
-    disk_def = 5 # degrees +-
-    coll_range = .1 # % +-
+    disk_def = 8 # degrees +-
+    coll_range = .15 # % +-
     
     threshold = memory_calibrate() # max travel of cylinders, degrees
     # arm radius, min cylinder, max cylinder
@@ -241,8 +242,8 @@ def run_remote():
                 #   ^   ^   ^   ^   ^
                 #   2   6   10  14  18
                 coll = .6+jsman.decode(2)*coll_range # offset so bottom collective is neutral
-                roll = jsman.decode(6)*disk_def
-                pitch = jsman.decode(10)*disk_def
+                roll = -1*jsman.decode(6)*disk_def
+                pitch = -1*jsman.decode(10)*disk_def
                 yaw = jsman.decode(14)
                 #glyph = jsman.decode(18)
                 glyph = jsman.hbyte(jsman.buf, 18)
@@ -253,13 +254,13 @@ def run_remote():
                 
                 rot.calculate(pitch, roll, coll)
                 
-                if((glyph and 40) == 40): # X '0b0101000' SB
-                    print("goodbye.")
-                    #return None
-                    break
-                elif((glyph and 72) == 72): #sc
+                if((glyph & 40) == 40): # X '0b0101000' SB
+                    print(f"goodbye.")
+                    return None
+                    #break
+                if((glyph & 72) == 72): #sc
                     rotor.run(60)
-                elif((glyph and 68) == 68): #sd
+                if((glyph & 68) == 68): #sd
                     rotor.stop()
                     
             except Exception as e:

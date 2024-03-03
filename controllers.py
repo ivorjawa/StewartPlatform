@@ -48,19 +48,16 @@ def decode_taranis(report):
     SC = dword(report, 15)
     SD = dword(report, 17)
     
-    # x = 24|40|72|68
-    # >>> x&24
-    # 24
     
     #print(f"SA:{SA}, SB:{SB}, SC:{SC}, SD{SD}")
     glyph = 0 # 24: Square, 40: X, 72: O, 68: Triangle
-    if(SA!=2047):
+    if(SA==1024):
         glyph |= 24 # square
-    if(SB!=2047):
+    if(SB==1024):
         glyph |= 40 # X
-    if(SC!=2047):
+    if(SC==1024):
         glyph |= 72 # O
-    if(SD!=2047):
+    if(SD==1024):
         glyph |= 68 # Triangle
 
     
