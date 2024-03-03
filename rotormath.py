@@ -229,10 +229,11 @@ def testrot5():
         if report:
             # Taranis major axes 3 5 7 9 lx = 9, ly = 7, rx = 3, ry = 5 
             rd = decode_report(report)
-            coll_in = rd['coll']/2048.0 
-            roll_in = rd['roll']/2048.0          
-            pitch_in = rd['pitch']/2048.0
-            yaw_in = rd['yaw']/2048.0
+            scale = 256.0
+            coll_in = rd['coll']/scale
+            roll_in = rd['roll']/scale          
+            pitch_in = rd['pitch']/scale
+            yaw_in = rd['yaw']/scale
             coll = coll_in
             roll = (roll_in - 0.5) * 40
             pitch = (-pitch_in + .5) * 40
