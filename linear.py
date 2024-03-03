@@ -109,7 +109,7 @@ def rmat(axis, theta):
 
 def rotate(axis, theta, point):
     rm = rmat(axis, theta)
-    return np.matmul(rm, point)
+    return matmul(rm, point)
      
 def test():
     """Test everything in the module.

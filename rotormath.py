@@ -8,7 +8,9 @@ import cv2
 
 import controllers as ctrl
 import igraph
-from linear import xaxis, yaxis, zaxis, rotate
+
+from linear import xaxis, yaxis, zaxis, rotate, vector
+import linear as lin
 
 decode_report = ctrl.decode_taranis
 gamepad = ctrl.open_taranis()
@@ -18,49 +20,47 @@ gamepad = ctrl.open_taranis()
 twod = lambda p: np.array([p[0], p[1]])
 
     
-def testrot():
-    point1 = np.array([0, 1, 0])
-    point2 = np.array([1, 0, 0])
-    theta = np.radians(45)
-    #point1_r = np.dot(rotation_matrix(zaxis, theta), point1)
-    point1_r = rotate(zaxis, theta, point1)
-    print(f"point1: {point1}, point_r: {point1_r}")
-    #points = np.array([point1, point2])
-    #points_r = np.dot(rotation_matrix(zaxis, theta), points)
-    #print(f"point2: {point2}, points_r: {points_r}")
-    
 class Rotor(object):
-    # coordinate system is +z-up +x-forward
+    # coordinate system is +z:up +x:forward +y:port
     def __init__(self, rotor_rad, c_min, c_max):
-        self.c_min = c_min
-        self.c_max = c_max
-        self.c_range = c_max - c_min
-        self.rotor_rad = rotor_rad
-        self.coll = np.array([0, 0, 0])
-        self.cyl_front = np.array([-rotor_rad, 0, 0])
-        self.cyl_port = rotate(zaxis, m.radians(120), self.cyl_front)
-        self.cyl_star = rotate(zaxis, m.radians(-120), self.cyl_front)
-        self.cyls = [self.cyl_front, self.cyl_port, self.cyl_star]
-        tmat = np.array([0, 0, .5*self.c_range + self.c_min])
-        self.old_coll = self.coll + tmat
-        self.old_cf = self.cyl_front + tmat
-        self.old_cs = self.cyl_star + tmat
-        self.old_cp = self.cyl_port + tmat
-        print(f"front: {self.cyl_front}, port: {self.cyl_port}, startboard: {self.cyl_star}")
+        self.Cmin = c_min
+        self.Cmax = c_max
+        self.Crange = c_max - c_min
+        self.Rsw = rotor_rad
+        self.P0 = vector(0, 0, 0)
+        print(f"Rotor Cmin: {self.Cmin} Cmax: {self.Cmax} Crange: {self.Crange} Rsw: {self.Rsw} ")
+        
+        # Feet 
+        self.Ff = vector(rotor_rad, 0, 0) # Front 
+        self.Fp = rotate(zaxis, m.radians(120), self.Ff)
+        #self.Fp = vector(rotor_rad*m.sin(m.radians(120)), rotor_rad*m.cos(m.radians(120)), 0)
+        self.Fs = rotate(zaxis, m.radians(-120), self.Ff)
+        #self.Fs = vector(rotor_rad*m.sin(m.radians(-120)), rotor_rad*m.cos(m.radians(120)), 0)
+        
+        self.feet = [self.Ff, self.Fp, self.Fs]
+        
+        # default 50% collective, position after calibration
+        tmat = np.array([0, 0, .5*self.Crange + self.Cmin])
+        
+        self.old_Vmast = tmat
+        self.old_Cf = self.Ff + tmat
+        self.old_Cp = self.Fp + tmat
+        self.old_Cs = self.Fs + tmat
+        print(f"front: {self.old_Cf}, port: {self.old_Cp}, startboard: {self.old_Cs}")
     def validate(self, cf, cp, cs, coll, pitch, roll, collpct):
         # validate
-        cfcp = igraph.vlen(cp-cf)
-        cfcs = igraph.vlen(cs-cf)
-        cpcs = igraph.vlen(cp-cs)
+        cfcp = lin.vmag(cp-cf)
+        cfcs = lin.vmag(cs-cf)
+        cpcs = lin.vmag(cp-cs)
     
-        front = igraph.vlen(cf - self.cyl_front)
-        port = igraph.vlen(cp - self.cyl_port)
-        star = igraph.vlen(cs - self.cyl_star)
-        col_l = igraph.vlen(coll - self.coll)
+        front = lin.vmag(cf - self.old_Cf)
+        port = lin.vmag(cp - self.old_Cp)
+        star = lin.vmag(cs - self.old_Cs)
+        col_l = lin.vmag(coll - self.old_Vmast)
     
-        cfc = igraph.vlen(cf - coll)
-        cpc = igraph.vlen(cp - coll)
-        csc = igraph.vlen(cs - coll)
+        cfc = lin.vmag(cf - coll)
+        cpc = lin.vmag(cp - coll)
+        csc = lin.vmag(cs - coll)
     
         print(f"pitch: {pitch}, roll: {roll}, collpct: {collpct}")
         print("dist betweeen points:")
@@ -69,34 +69,44 @@ class Rotor(object):
         print(f"cfc: {cfc}, cpc: {cpc}, csc: {csc}")
         print(f"front: {front}, port: {port}, starboard: {star}, collective: {col_l}")
     def newsolve(self, pitch, roll, collpct):
-        pitch_v = rotate(yaxis, m.radians(pitch), np.array([1, 0, 0]))
-        roll_v = rotate(xaxis, m.radians(roll), np.array([0, 1, 0]))
-        cyclic_norm = np.cross(pitch_v, roll_v)
-        cyclic_norm_n = cyclic_norm/np.linalg.norm(cyclic_norm)
-        #print(f"pitch_v: {pitch_v}, roll_v: {roll_v}, cyclic_norm_n: {cyclic_norm_n}")
-        coll_v = [0, 0, self.c_min + collpct*self.c_range] # top of mast at collective setting
+        print(f"newsolve pitch: {pitch} roll: {roll}, coll%: {collpct}")
+        Vp = rotate(yaxis, m.radians(pitch), vector(1, 0, 0))
+        #Vp = vector(m.cos(m.radians(pitch)), 0, m.sin(m.radians(pitch)))
+        Vr = rotate(xaxis, m.radians(roll), vector(0, 1, 0))
+        #Vr = vector(0, m.cos(m.radians(roll)), m.sin(m.radians(roll)))
+        Vdisk = np.cross(Vp, Vr) 
+        Vdisk_n = lin.normalize(Vdisk)
+        
+        print(f"Vp: {lin.fv(Vp)}, Vr: {lin.fv(Vr)}, Vdisk_n: {lin.fv(Vdisk_n)}")
+        Vmast = [0, 0, self.Cmin + collpct*self.Crange] # top of mast at collective setting
         arms = []
-        for i, cyl in enumerate(self.cyls):
+        for i, Fn in enumerate(self.feet):
             #print(f"i: {i}, cyl: {cyl}")
-            cyl_norm = np.cross(cyl, coll_v)
-            cyl_norm_n = cyl_norm / np.linalg.norm(cyl_norm)
-            isect = np.cross(cyclic_norm, cyl_norm) # should be plane intersection
-            isect_n = isect / np.linalg.norm(isect)
+            # Vcn is the plane the cylinder rotates on its foot in, Foot X Mast
+            Vcn = np.cross(Fn, Vmast)
+            #cyl_norm_n = cyl_norm / np.linalg.norm(cyl_norm)
+            Vcn_n = lin.normalize(Vcn)
+            print(f"Cylinder: {i} Vcn_n: {lin.fv(Vcn_n)}")
+            # Visect is the intersection of the Rotor Disk plane and the Cylinder rotation plane
+            Visect = lin.cross(Vdisk_n, Vcn_n) # should be plane intersection
+            Visect_n = lin.normalize(Visect)
+            print(f"Visect_n: {lin.fv(Visect_n)}")
             #print(f"cylinder: {i}, cyl_norm_n: {cyl_norm_n}, intersection_n: {isect_n}")
-            arm_v = (self.rotor_rad * isect_n) + coll_v
-            arms.append(arm_v)
-            cyl_len = igraph.vlen(arm_v - cyl)
-            if cyl_len < self.c_min:
-                raise ValueError(f"too short! Cyl: {cyl_len:{4}.{4}} min: {self.c_min:{4}}")
-            elif cyl_len > self.c_max:
-                raise ValueError(f"too long! Cyl: {cyl_len:{4}.{4}} max: {self.c_max:{4}}")
-        (cf, cp, cs) = arms
-        coll = coll_v
+            # Va is the arm vector as rotated in the cylinder rotation plane
+            Va = (self.Rsw * Visect_n) + Vmast
+            print(f"Va: {lin.fv(Va)}")
+            
+            arms.append(Va)
+            cyl_len = lin.vmag(Va - Fn)
+            print(f"Cyl len: {cyl_len}")
+            if cyl_len < self.Cmin:
+                raise ValueError(f"too short! Cyl: {cyl_len:{4}.{4}} min: {self.Cmin:{4}}")
+            elif cyl_len > self.Cmax:
+                raise ValueError(f"too long! Cyl: {cyl_len:{4}.{4}} max: {self.Cmax:{4}}")
         
-        #self.validate(cf, cp, cs, coll, pitch, roll, collpct)
-        
-        
-        return (cf, cp, cs, coll)
+        (Cf, Cp, Cs) = arms        
+        #self.validate(Cf, Cp, Cs, Vmast, pitch, roll, collpct)
+        return (Cf, Cp, Cs, Vmast)
             
         
     def draw2(self, grid, p1, p2, color, width):
@@ -107,41 +117,45 @@ class Rotor(object):
         screen_r = m.radians(-90)
         try:
             (cf, cp, cs, coll) = self.newsolve(pitch, roll, collpct)
-            self.old_cf = cf
-            self.old_cp = cp
-            self.old_cs = cs
-            self.old_coll = coll
+            self.old_Cf = cf
+            self.old_Cp = cp
+            self.old_Cs = cs
+            self.old_Vmast = coll
         except ValueError as e:
             label = f"Range Error P: {pitch:{4}.{3}}, R: {roll:{4}.{3}}, C%: {collpct:{3}.{3}} {e}"
             print(label)
             igraph.draw_button(grid.canvas, label, 100, 70, .5)
-            cf = self.old_cf
-            cp = self.old_cp
-            cs = self.old_cs
-            coll = self.old_coll
-            
-        cfc = igraph.vlen(cf - self.cyl_front)
-        cpc = igraph.vlen(cp - self.cyl_port)
-        csc = igraph.vlen(cs - self.cyl_star)
+            cf = self.old_Cf
+            cp = self.old_Cp
+            cs = self.old_Cs
+            coll = self.old_Vmast
+        
+        #cylinder lengths in mm    
+        cfc = lin.vmag(cf - self.Ff)
+        cpc = lin.vmag(cp - self.Fp)
+        csc = lin.vmag(cs - self.Fs)
         label = f"P: {pitch:{4}.{3}}, R: {roll:{4}.{3}}, C%: {collpct:{3}.{3}} CF: {cfc:{4}.{4}} CP: {cpc:{4}.{4}} CS: {csc:{4}.{4}}"
+
+        # rotate cylinders for animation
         cf_r = rotate(zaxis, zrr, cf)
         cs_r = rotate(zaxis, zrr, cs)
         cp_r = rotate(zaxis, zrr, cp)
         
+        # rotate cylinders to screen
         cf_r = rotate(xaxis, screen_r, cf_r)
         cs_r = rotate(xaxis, screen_r, cs_r)
         cp_r = rotate(xaxis, screen_r, cp_r)
         
         # don't need to rotate center point/coll about itself
-        cyl_front_r = rotate(zaxis, zrr, self.cyl_front)
-        cyl_port_r = rotate(zaxis, zrr, self.cyl_port)
-        cyl_star_r = rotate(zaxis, zrr, self.cyl_star)
+        cyl_front_r = rotate(zaxis, zrr, self.Ff)
+        cyl_port_r = rotate(zaxis, zrr, self.Fp)
+        cyl_star_r = rotate(zaxis, zrr, self.Fs)
         
         cyl_front_r = rotate(xaxis, screen_r, cyl_front_r)
         cyl_port_r = rotate(xaxis, screen_r, cyl_port_r)
         cyl_star_r = rotate(xaxis, screen_r, cyl_star_r)
         
-        scoll_s = rotate(xaxis, screen_r, self.coll)
+        scoll_s = rotate(xaxis, screen_r, self.P0)
         coll_s = rotate(xaxis, screen_r, coll)
         
         self.draw2(grid, scoll_s, coll_s, igraph.white, 1)
@@ -160,17 +174,6 @@ class Rotor(object):
         
         igraph.draw_button(grid.canvas, label, 100, 40, .5)
         
-        
-def testrot2():
-    print("\ntestrot2()")
-    print("rotor with blade r = 70, coll_min = 100, coll_max = 130")
-    rot = Rotor(70, 100, 130)
-    rot.solve(-5, 5, .5)
-
-def testrot4():
-    print("\ntestrot4()")
-    rot = Rotor(70, 100, 130)
-    rot.newsolve(-5, -5, .5)
     
 def testrot3():
     divs = 50
@@ -221,6 +224,8 @@ def testrot5():
             roll_in = rd['roll']/scale          
             pitch_in = rd['pitch']/scale
             yaw_in = rd['yaw']/scale
+            print(f"c: {coll_in:{3.3}}, r: {roll_in:{3.3}}, p: {pitch_in:{3.3}}")
+            
             coll = coll_in
             roll = (roll_in - 0.5) * 40
             pitch = (-pitch_in + .5) * 40
@@ -229,64 +234,15 @@ def testrot5():
         
             grid.display()
             inkey = cv2.waitKey(1)
+            #break
             #inkey  = cv2.waitKey( 30)
             if inkey == 27:
                 sys.exit(0)
             
-# https://stackoverflow.com/questions/3252194/numpy-and-line-intersections
-def perp( a ) :
-    b = np.empty_like(a)
-    b[0] = -a[1]
-    b[1] = a[0]
-    return b
-
-# line segment a given by endpoints a1, a2
-# line segment b given by endpoints b1, b2
-# return 
-def seg_intersect(a1,a2, b1,b2) :
-    da = a2-a1
-    db = b2-b1
-    dp = a1-b1
-    dap = perp(da)
-    denom = np.dot( dap, db)
-    num = np.dot( dap, dp )
-    return (num / denom.astype(float))*db + b1
-    
-def intersect(p1, r1, p2, r2):
-    R = igraph.vlen(p2-p1) # also "d"
-    l = (r1**2 - r2**2 + R**2) / (2*R)
-    h = m.sqrt(r1**2 - l**2)
-    
-    xa1 = (l/R)*(p2[0]-p1[0])
-    xa2 = (h/R)*(p2[1]-p1[1])
-    x1 = xa1 + xa2 + p1[0]
-    x2 = xa1 - xa2 + p1[0]
-    
-    ya1 = (l/R)*(p2[1]-p1[1])
-    ya2 = (h/R)*(p2[0]-p1[0])
-    y1 = ya1 + ya2 + p1[1]
-    y2 = ya1 - ya2 + p1[1]
-    print(f"x1: {x1}, x2: {x2}, y1: {y1} y2: {y2}")
-    
-    # I think this will work
-    pgx = max(x1, x2)
-    pgy = max(y1, y2)
-    pg = np.array([pgx, pgy])
-    return pg
-    #print(f"pg: {pg}")
-
-def test_rmat():
-   cyl_front = np.array([-100, 0, 0])
-   cyl_port = rotate(zaxis, m.radians(120), cyl_front)  
-   print(f"front: {cyl_front}, port: {cyl_port}")  
-    
+   
 def run():
-    #testrot()
-    #testrot2()
     #testrot3()
-    #testrot4()
     testrot5()
-    #test_rmat()
     sys.exit()
 
             
