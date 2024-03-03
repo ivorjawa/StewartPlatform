@@ -12,6 +12,8 @@ import igraph
 from linear import xaxis, yaxis, zaxis, rotate, vector
 import linear as lin
 
+from swashplate import Swashplate
+
 decode_report = ctrl.decode_taranis
 gamepad = ctrl.open_taranis()
 
@@ -19,64 +21,7 @@ gamepad = ctrl.open_taranis()
 # convert from 3-space to 2-space
 twod = lambda p: np.array([p[0], p[1]])
    
-class Rotor(object):
-    # coordinate system is +z:up +x:forward +y:port
-    def __init__(self, rotor_rad, c_min, c_max):
-        self.Cmin = c_min
-        self.Cmax = c_max
-        self.Crange = c_max - c_min
-        self.Rsw = rotor_rad
-        self.P0 = vector(0, 0, 0)
-        
-        # Feet 
-        self.Ff = vector(rotor_rad, 0, 0) # Front 
-        self.Fp = vector(rotor_rad*m.cos(m.radians(120)), rotor_rad*m.sin(m.radians(120)), 0)
-        self.Fs = vector(rotor_rad*m.cos(m.radians(-120)), rotor_rad*m.sin(m.radians(-120)), 0)
-        
-        self.feet = [self.Ff, self.Fp, self.Fs]
-        
-        # default 50% collective, position after calibration
-        tmat = vector(0, 0, .5*self.Crange + self.Cmin)
-        
-        self.old_Vmast = tmat
-        self.old_Cf = self.Ff + tmat
-        self.old_Cp = self.Fp + tmat
-        self.old_Cs = self.Fs + tmat
-
-    def solve(self, pitch, roll, collpct):
-        #Vp = rotate(yaxis, m.radians(pitch), vector(1, 0, 0))
-        Vp = vector(m.cos(m.radians(pitch)), 0, m.sin(m.radians(pitch)))
-        #Vr = rotate(xaxis, m.radians(roll), vector(0, 1, 0))
-        Vr = vector(0, m.cos(m.radians(roll)), m.sin(m.radians(roll)))
-        
-        # Normal of rotor disk
-        Vdisk = lin.cross(Vp, Vr) 
-        Vdisk_n = lin.normalize(Vdisk)
-        
-        Vmast = [0, 0, self.Cmin + collpct*self.Crange] # top of mast at collective setting
-        arms = []
-        for i, Fn in enumerate(self.feet):
-            # Vcn is the plane the cylinder rotates on its foot in, Foot X Mast
-            Vcn = lin.cross(Fn, Vmast)
-            Vcn_n = lin.normalize(Vcn)
-
-            # Visect is the intersection of the Rotor Disk plane and the Cylinder rotation plane
-            Visect = lin.cross(Vdisk_n, Vcn_n) # should be plane intersection
-            Visect_n = lin.normalize(Visect)
-
-            # Va is the arm vector as rotated in the cylinder rotation plane
-            Va = (self.Rsw * Visect_n) + Vmast
-            
-            arms.append(Va)
-            cyl_len = lin.vmag(Va - Fn)
-            if cyl_len < self.Cmin:
-                raise ValueError(f"too short! Cyl: {cyl_len:{4}.{4}} min: {self.Cmin:{4}}")
-            elif cyl_len > self.Cmax:
-                raise ValueError(f"too long! Cyl: {cyl_len:{4}.{4}} max: {self.Cmax:{4}}")
-        
-        (Cf, Cp, Cs) = arms        
-        #self.validate(Cf, Cp, Cs, Vmast, pitch, roll, collpct)
-        return (Cf, Cp, Cs, Vmast)
+class Rotor(Swashplate):
             
     def validate(self, cf, cp, cs, coll, pitch, roll, collpct):
         # validate
@@ -127,38 +72,47 @@ class Rotor(object):
         csc = lin.vmag(cs - self.Fs)
         label = f"P: {pitch:{4}.{3}}, R: {roll:{4}.{3}}, C%: {collpct:{3}.{3}} CF: {cfc:{4}.{4}} CP: {cpc:{4}.{4}} CS: {csc:{4}.{4}}"
 
-        # rotate cylinders for animation
+        # rotate arms for animation
         cf_r = rotate(zaxis, zrr, cf)
         cs_r = rotate(zaxis, zrr, cs)
         cp_r = rotate(zaxis, zrr, cp)
         
-        # rotate cylinders to screen
+        # rotate arms to screen
         cf_r = rotate(xaxis, screen_r, cf_r)
         cs_r = rotate(xaxis, screen_r, cs_r)
         cp_r = rotate(xaxis, screen_r, cp_r)
         
-        # don't need to rotate center point/coll about itself
+        
+        #rotate feet for animation
         cyl_front_r = rotate(zaxis, zrr, self.Ff)
         cyl_port_r = rotate(zaxis, zrr, self.Fp)
         cyl_star_r = rotate(zaxis, zrr, self.Fs)
         
+        #rotate feet for screen
         cyl_front_r = rotate(xaxis, screen_r, cyl_front_r)
         cyl_port_r = rotate(xaxis, screen_r, cyl_port_r)
         cyl_star_r = rotate(xaxis, screen_r, cyl_star_r)
         
+        # don't need to rotate center point/coll about itself for animation
+
+        # rotate collective for screen
         scoll_s = rotate(xaxis, screen_r, self.P0)
         coll_s = rotate(xaxis, screen_r, coll)
         
+        # draw collective
         self.drawline(grid, scoll_s, coll_s, igraph.white, 1)
         
+        # draw feet
         self.drawline(grid, scoll_s, cyl_front_r, igraph.red, 2)
         self.drawline(grid, scoll_s, cyl_port_r, igraph.green, 2)
         self.drawline(grid, scoll_s, cyl_star_r, igraph.blue, 2)
         
+        # draw arms
         self.drawline(grid, coll_s, cf_r, igraph.red, 2)
         self.drawline(grid, coll_s, cp_r, igraph.green, 2)
         self.drawline(grid, coll_s, cs_r, igraph.blue, 2)
         
+        # draw cylinders
         self.drawline(grid, cyl_front_r, cf_r, igraph.red, 1)
         self.drawline(grid, cyl_port_r, cp_r, igraph.green, 1)
         self.drawline(grid, cyl_star_r, cs_r, igraph.blue, 1)
