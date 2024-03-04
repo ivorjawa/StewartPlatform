@@ -240,7 +240,7 @@ def run_remote():
                 #   ^   ^   ^   ^   ^
                 #   2   6   10  14  18
                 coll = .6+jsman.decode(2)*coll_range # offset so bottom collective is neutral
-                roll = -1*jsman.decode(6)*disk_def
+                roll = 1*jsman.decode(6)*disk_def
                 pitch = -1*jsman.decode(10)*disk_def
                 yaw = jsman.decode(14)
                 #glyph = jsman.decode(18)
@@ -266,11 +266,7 @@ def run_remote():
                 print(e)
             
             rot.actuate()
-            
-            # all below are millimiters
-            #self.cfc = np.mag(cf - self.cyl_front)
-            #self.cpc = np.mag(cp - self.cyl_port)
-            #self.csc = np.mag(cs - self.cyl_star)
+
 
 
 def identify():

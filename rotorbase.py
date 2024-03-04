@@ -52,8 +52,8 @@ class BaseStation(object):
     def __init__(self):
         self.last_sent = time.time()
         self.gamepad = ctrl.TaranisX9d()
+    
     async def send_data(self, hub):
-        global last_sent 
         lastout = ""
 
         logging.info("starting main loop")
