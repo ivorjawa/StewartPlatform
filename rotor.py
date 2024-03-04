@@ -14,6 +14,7 @@ hub = TechnicHub()
 from linear import xaxis, yaxis, zaxis, rotate
 import linear as lin
 
+from joycode import JoyProtocol
 from swashplate import Swashplate
 
 millis = StopWatch().time
@@ -130,64 +131,7 @@ def calibrate():
     else: 
         print(f"Big angle too small: {big_angle}")
 
-    
-# joystick input stuff
-class JSMan(object):
-    def __init__(self):
-        self.buf = list("x" * 22) # control input buffer
-        self.pos = 0              # control input buffer pointer
-        self.pint = 0
-        # Register the standard input so we can read keyboard presses.
-        self.keyboard = poll()
-        self.keyboard.register(stdin)
-    
-    def hbyte(self,arr, off):
-        i = 256*int(arr[off+0],16) +16*int(arr[off+1],16) + int(arr[off+2],16)
-        return i    
-    
-        
-    def decode_js(self, js_uint12):
-        # scale 8-bit unsigned into range [-1.0,1.0]
-        # both axes reversed logically, so going up and right decrease
-        jsf = js_uint12/128.0 - 1
-        
-        if(abs(jsf)<(5.0/128)): # control the dead zone
-            jsf = 0
-            
-        #jsf = -jsf
-        return jsf
-    
-    def poll(self):
-      if(self.pint > 255):
-          #print("Memory info")
-          #micropython.mem_info()
-          #print("poll buf:  ", self.pos, self.buf)
-          self.pint = 0
-      else: 
-          self.pint += 1
-      if self.keyboard.poll(0):
-          # Read the key and print it.
-          key = stdin.read(1)
-          #print("key: ", key)
-          if key == '>':
-              self.pos = 0
-          self.buf[self.pos] = key
-          self.pos += 1
-          if (self.pos==22):
-              self.pos = 0
-              if (key == '<'):
-                  return True 
-              else:
-                  print("buffer bad")
-      return False
-      
-    def decode(self, offset, inverted=False):
-        inp = self.hbyte(self.buf, offset)
-        raw = self.decode_js(inp)
-        #raw = inp # just int-decode it for now
-        if inverted:
-            raw = -raw
-        return raw # may not need the sigmoid with control algorithm.
+
 
 class Rotor(Swashplate):
     def __init__(self, rotor_rad, c_min, c_max, threshang):
@@ -220,7 +164,14 @@ class Rotor(Swashplate):
             
                        
 def run_remote():
-    jsman = JSMan()
+    poller = poll()
+    # Register the standard input so we can read keyboard presses.
+    poller.register(stdin)
+    
+    wvars = ['coll', 'roll', 'pitch', 'yaw', 'glyph']
+    wirep = JoyProtocol(wvars, 2, poller, stdin)
+    
+    #jsman = JSMan()
     last_input = 0 # last input from base station
     
     disk_def = 8 # degrees +-
@@ -231,20 +182,16 @@ def run_remote():
     rot = Rotor(60, 160, 200, threshold) # real robot
     
     while True:
-        if jsman.poll():
+        if wirep.poll():
             try:    
                 last_input = millis() 
-                #output = ">c%03xr%03xp%03xy%03xg%03x<" % (coll, roll, pitch, yaw, glyph)       
-                # >c000r3e7p3f4y3fcg000<
-                # 0123456789ABCDEFGHIJKL
-                #   ^   ^   ^   ^   ^
-                #   2   6   10  14  18
-                coll = .6+jsman.decode(2)*coll_range # offset so bottom collective is neutral
-                roll = 1*jsman.decode(6)*disk_def
-                pitch = -1*jsman.decode(10)*disk_def
-                yaw = jsman.decode(14)
-                #glyph = jsman.decode(18)
-                glyph = jsman.hbyte(jsman.buf, 18)
+
+                wirep.decode_wire()
+                coll = .6+wirep.vals['coll']*coll_range # offset so bottom collective is neutral
+                roll = 1*wirep.vals['roll']*disk_def
+                pitch = -1*wirep.vals['pitch']*disk_def
+                yaw = wirep.vals['yaw']
+                glyph = wirep.decode_raw('glyph')
                 
                 #print("c: %0.2f, r: %0.2f, p: %0.2f, y: %0.2f:  g: %d" % 
                 #print("c: %d, r: %d, p: %d, y: %d:  g: %d" % 
@@ -266,7 +213,6 @@ def run_remote():
                 print(e)
             
             rot.actuate()
-
 
 
 def identify():

@@ -10,6 +10,7 @@ from pybricksdev.ble import find_device, nus
 import bleak
 
 import controllers as ctrl
+from joycode import JoyProtocol
 
 logging.basicConfig(level=logging.INFO, format='%(message)s [%(levelname)s:%(name)s]')
 
@@ -55,19 +56,14 @@ class BaseStation(object):
     
     async def send_data(self, hub):
         lastout = ""
-
+        wvars = ['coll', 'roll', 'pitch', 'yaw', 'glyph']
+        wirep = JoyProtocol(wvars, 2, None, sys.stdin)
         logging.info("starting main loop")
         while 1:
         
             report = self.gamepad.report()
             if report:            
-                coll = report['coll'] 
-                roll = report['roll']          
-                pitch = report['pitch']
-                yaw = report['yaw']
-                glyph = report['glyph']
-            
-                output = ">c%03xr%03xp%03xy%03xg%03x<" % (coll, roll, pitch, yaw, glyph)
+                output = wirep.encode(report)
                 if (output != lastout) or (((time.time()-self.last_sent)*1000) > 16):
                     lastout = output
                     logging.info(output)
