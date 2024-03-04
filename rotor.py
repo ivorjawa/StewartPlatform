@@ -54,6 +54,20 @@ def testwritestore():
     hub.system.storage(0, write=enc16(1701))
     identify()
 
+def runtostall(cmots, spd):
+    fin = [False, False, False]
+    done = False
+    for cm in cmots:
+        cm.run(spd)
+    while not done:
+        for i, cm in enumerate(cmots):
+            if cm.stalled():
+                cm.dc(0)
+                cm.reset_angle(0)
+                fin[i] = True
+        if fin[0] and fin[1] and fin[2]:
+            done = True
+    
 def calib_core(cmots):
     # runs motors until stalled at fully retracted, resets zero
     
@@ -65,19 +79,7 @@ def calib_core(cmots):
     print(f"Current threshold: {readthresh()} degrees")
     print(f"Starting motor test, stall tolerances: {front.control.stall_tolerances()}")
     
-    # FIXME duplicate code, could factor this better
-    fin = [False, False, False]
-    done = False
-    for cm in cmots:
-        cm.run(-speed/3)
-    while not done:
-        for i, cm in enumerate(cmots):
-            if cm.stalled():
-                cm.dc(0)
-                cm.reset_angle(0)
-                fin[i] = True
-        if fin[0] and fin[1] and fin[2]:
-            done = True
+    runtostall(cmots, -speed/3)
         
 def neutral_coll(cmots, angle):
     for cm in cmots:
@@ -103,17 +105,8 @@ def calibrate():
     calib_core(cmots)
    
     print("Stop detected, reversing")
-    done = False
-    fin = [False, False, False]
-    for cm in cmots:
-        cm.run(speed/3)
-    while not done:
-        for i, cm in enumerate(cmots):
-            if cm.stalled():
-                cm.dc(0)
-                fin[i] = True
-        if fin[0] and fin[1] and fin[2]:
-            done = True
+    runtostall(cmots, speed/3)
+
     print(f"Star: {star.angle()}, Port: {port.angle()}, Rear: {front.angle()}")
     big_angle = min([star.angle(), port.angle(), front.angle()])
     if big_angle > 1500:
