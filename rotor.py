@@ -253,7 +253,7 @@ def run_remote():
                 rot.calculate(pitch, roll, coll)
                 
                 if((glyph & 40) == 40): # X '0b0101000' SB
-                    print(f"goodbye.")
+                    print(f"<goodbye/>")
                     return None
                     #break
                 if((glyph & 72) == 72): #sc
