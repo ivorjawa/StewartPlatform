@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
 
+# convenience wrapper around opencv drawing functions.
+
 import sys
 import numpy as np
 A = np.array
 import math as m
 import cv2
-#import cv2.cv as cv
 
 
-def proj(r, theta):
-    return A([r*m.cos(theta), r*m.sin(theta)])
-
-vlen = lambda v: np.linalg.norm(v)
-nmz = lambda a: np.array(a) / vlen(a) #np.linalg.norm(a) # normalize wactor
 ituple = lambda t: tuple([int(x) for x in t])
 
 def vline(img, p1, p2, c, width):
@@ -21,12 +17,6 @@ def vline(img, p1, p2, c, width):
 pt = lambda x, y: A([x, y])
 c = lambda b, g, r: A([b, g, r], dtype='int32')
 bgr = c
-
-def rmat(degs):
-    theta = m.radians(degs)
-    rotMatrix = np.array([[np.cos(theta), -np.sin(theta)],
-                             [np.sin(theta),  np.cos(theta)]])
-    return rotMatrix
 
 
 red = c(0, 0, 255)

@@ -143,6 +143,7 @@ def test():
     print(f"Fn: {fv(Fn)}, Vmast: {fv(Vmast)}, Vcn: {fv(Vcn)}")
            
 if __name__ == "__main__":
+    # pybricksdev run ble -n rotor linear.py 
     # python -m doctest linear.py
     # python -m doctest -v linear.py
     if(vector):

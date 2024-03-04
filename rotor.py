@@ -27,7 +27,6 @@ port = Motor(Port.B)
 front = Motor(Port.A)
 
 speed = 1000
-step = 530
 
 # encode 16-bit int for system storage
 def enc16(i):

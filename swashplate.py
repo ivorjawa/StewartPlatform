@@ -30,6 +30,7 @@ class Swashplate(object):
         self.cpc = defcoll
         self.csc = defcoll
         
+        # saved previous values
         self.s_Vmast = tmat
         self.s_Cf = self.Ff + tmat
         self.s_Cp = self.Fp + tmat

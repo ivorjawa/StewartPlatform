@@ -7,7 +7,7 @@ import numpy as np
 import cv2
 
 import controllers as ctrl
-import igraph
+import cvgraph
 
 from linear import xaxis, yaxis, zaxis, rotate, vector
 import linear as lin
@@ -56,7 +56,7 @@ class Rotor(Swashplate):
         except ValueError as e:
             label = f"Range Error P: {pitch:{4}.{3}}, R: {roll:{4}.{3}}, C%: {collpct:{3}.{3}} {e}"
             print(label)
-            igraph.draw_button(grid.canvas, label, 100, 70, .5)
+            cvgraph.draw_button(grid.canvas, label, 100, 70, .5)
             cf = self.s_Cf
             cp = self.s_Cp
             cs = self.s_Cs
@@ -93,24 +93,24 @@ class Rotor(Swashplate):
         coll_s = rotate(xaxis, screen_r, coll)
         
         # draw collective
-        self.drawline(grid, scoll_s, coll_s, igraph.white, 1)
+        self.drawline(grid, scoll_s, coll_s, cvgraph.white, 1)
         
         # draw feet
-        self.drawline(grid, scoll_s, cyl_front_r, igraph.red, 2)
-        self.drawline(grid, scoll_s, cyl_port_r, igraph.green, 2)
-        self.drawline(grid, scoll_s, cyl_star_r, igraph.blue, 2)
+        self.drawline(grid, scoll_s, cyl_front_r, cvgraph.red, 2)
+        self.drawline(grid, scoll_s, cyl_port_r, cvgraph.green, 2)
+        self.drawline(grid, scoll_s, cyl_star_r, cvgraph.blue, 2)
         
         # draw arms
-        self.drawline(grid, coll_s, cf_r, igraph.red, 2)
-        self.drawline(grid, coll_s, cp_r, igraph.green, 2)
-        self.drawline(grid, coll_s, cs_r, igraph.blue, 2)
+        self.drawline(grid, coll_s, cf_r, cvgraph.red, 2)
+        self.drawline(grid, coll_s, cp_r, cvgraph.green, 2)
+        self.drawline(grid, coll_s, cs_r, cvgraph.blue, 2)
         
         # draw cylinders
-        self.drawline(grid, cyl_front_r, cf_r, igraph.red, 1)
-        self.drawline(grid, cyl_port_r, cp_r, igraph.green, 1)
-        self.drawline(grid, cyl_star_r, cs_r, igraph.blue, 1)
+        self.drawline(grid, cyl_front_r, cf_r, cvgraph.red, 1)
+        self.drawline(grid, cyl_port_r, cp_r, cvgraph.green, 1)
+        self.drawline(grid, cyl_star_r, cs_r, cvgraph.blue, 1)
         
-        igraph.draw_button(grid.canvas, label, 100, 40, .5)
+        cvgraph.draw_button(grid.canvas, label, 100, 40, .5)
         
     
 def test_recorded():
@@ -134,7 +134,7 @@ def test_recorded():
     print(f"len(rolls): {len(rolls)}, len(pitches): {len(pitches)}")
     while 1:
         for scenerot in range(0, 360):
-            grid = igraph.SimGrid(800, 800, 1.5)
+            grid = cvgraph.SimGrid(800, 800, 1.5)
             pitch = pitches[statec]
             roll = rolls[statec]
             coll = .5 # todo, vary collective
@@ -155,7 +155,7 @@ def test_controller():
     while 1:
         scenerot = (time.time()*30)% 360
         #for scenerot in range(0, 360):
-        grid = igraph.SimGrid(800, 800, 1.5)
+        grid = cvgraph.SimGrid(800, 800, 1.5)
         report = gamepad.read(64)
         if report:
             # Taranis major axes 3 5 7 9 lx = 9, ly = 7, rx = 3, ry = 5 
