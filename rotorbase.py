@@ -14,11 +14,15 @@ import controllers as ctrl
 
 logging.basicConfig(level=logging.INFO, format='%(message)s [%(levelname)s:%(name)s]')
 
-
-decode_report = ctrl.decode_taranis
-gamepad = ctrl.open_taranis()
+gamepad = ctrl.TaranisX9d()
 
 class  LoggingBricksHub(PybricksHub):
+    """
+        A PybricksHub that can act on things received by _line_handler.
+        <report> (lines) </report> will create a log file from 
+        logfilename, ideally comma-separated values.
+        <goodbye/> is the disconnect single from the hub.
+    """
     def __init__(self, logfilename):
         super().__init__()
         self.csvfile = None
@@ -55,15 +59,13 @@ async def send_data(hub):
     logging.info("starting main loop")
     while 1:
         
-        report = gamepad.read(64)
+        report = gamepad.report()
         if report:            
-            rd = decode_report(report)
-
-            coll = rd['coll'] 
-            roll = rd['roll']          
-            pitch = rd['pitch']
-            yaw = rd['yaw']
-            glyph = rd['glyph']
+            coll = report['coll'] 
+            roll = report['roll']          
+            pitch = report['pitch']
+            yaw = report['yaw']
+            glyph = report['glyph']
             
             output = ">c%03xr%03xp%03xy%03xg%03x<" % (coll, roll, pitch, yaw, glyph)
             if (output != lastout) or (((time.time()-last_sent)*1000) > 16):

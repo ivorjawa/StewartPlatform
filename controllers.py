@@ -5,7 +5,24 @@
 # if you want to use a PS4 controller, the code should be 
 # easy to adapt back
 
+from abc import ABC,abstractmethod 
+  
+
 import hid
+
+class Controller(ABC): 
+    @abstractmethod
+    def report(self): pass
+    
+class TaranisX9d(Controller):
+    def __init__(self):
+        self.controller = open_taranis()
+    def report(self):
+        report = self.controller.read(64)
+        if report:            
+            return decode_taranis(report)
+        else:
+            return None
 
 def open_taranis(debug=False):
     #https://blog.thea.codes/talking-to-gamepads-without-pygame/
