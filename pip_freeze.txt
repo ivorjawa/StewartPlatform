@@ -1,0 +1,225 @@
+aioserial @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/41/2d/59/fce504557e1990f3c213a35b46007ec03228f0343f46c40148a353c689/aioserial-1.3.0-py3-none-any.whl
+anyio==4.3.0
+appdirs==1.4.4
+appnope @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/6a/d5/26/d2bf050e734aea43543da49431e9a43e72b1016a8692280d1f623f2fca/appnope-0.1.0-py2.py3-none-any.whl
+argcomplete @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/96/70/57/5875e2d640c712de1319caa20ce7168ed5a211a3c87554b04e123b347b/argcomplete-1.12.3-py2.py3-none-any.whl
+argon2-cffi @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/eb/24/17/c70b29863cf49b789d8130e1aa090887c5ff1c5e691618a11eb5111dfa/argon2_cffi-20.1.0-cp37-abi3-macosx_10_6_intel.whl
+arrow==1.3.0
+asttokens==2.4.1
+async-generator @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/60/d6/35/e25389ca9cdf584a7a41be4eab45a490150210296ca82c7eb696a7e21b/async_generator-1.10-py3-none-any.whl
+async-timeout==4.0.3
+asyncssh @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/29/28/75/7f8d9bd73fcf20068144b3cfac67de86618b25995b7ff6c3fe55220709/asyncssh-2.8.1-py3-none-any.whl
+attrs==23.2.0
+audioread==3.0.0
+azure-common @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/ec/60/80/6e6d2b5062d713dc046753fd473d57d51fb284a855bcd9251ce7395880/azure_common-1.1.27-py2.py3-none-any.whl
+azure-cosmosdb-nspkg @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/8b/7f/c6/0d71758469a816a50cbd8a5b4cb33593d5eb03ca7e0933ae77fcad3d5e/azure_cosmosdb_nspkg-2.0.2-py2.py3-none-any.whl
+azure-cosmosdb-table @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/aa/2b/ee/edf222c77a96eed49f23e34b50694ad40605e4491b12aebc88c5265c8b/azure_cosmosdb_table-1.0.6-py2.py3-none-any.whl
+azure-nspkg @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/45/3c/d1/fb0921844fdda5ec572a87b5ae7f3c9e9fbb5d6695c1259b9e31105b59/azure_nspkg-3.0.2-py3-none-any.whl
+backcall @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/62/2c/f2/bf9c43ca0bcfca41150901227b0d023dc854851b710f82a72f5beaa09b/backcall-0.2.0-py2.py3-none-any.whl
+beautifulsoup4==4.12.3
+black @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/28/85/b6/8780c94136b83b86eb92c216e3b7680b2e7ff41d953cb4315894c12f74/black-21.12b0-py3-none-any.whl
+bleach @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/50/10/08/2418e45f83f9f6538283b4889dfe95f638b059a3b1171361964a942443/bleach-3.2.1-py2.py3-none-any.whl
+bleak==0.20.2
+CacheControl==0.12.6
+cachy==0.3.0
+certifi @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/77/74/3e/daf57610ff13227e3b3f50a78487055f6ac94cc9363abd2463be34c5e9/certifi-2021.10.8-py2.py3-none-any.whl
+cffi @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/e6/3a/ed/211634ffd1f9ed0a6957a6981ef59f3af9934e62dc2ee15819d9623196/cffi-1.15.0-cp38-cp38-macosx_10_9_x86_64.whl
+chardet==4.0.0
+charset-normalizer @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/99/22/e5/b5eac4f2acf7661dde8c8696353398c9c351c2ac103e9028675346d57f/charset_normalizer-2.0.9-py3-none-any.whl
+cleo==0.8.1
+click @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/3c/f6/a3/2262df8f5a6f3de5bbc78cc13803c60524c8384dce76661fdfe3df975f/click-8.0.3-py3-none-any.whl
+clikit==0.6.2
+comm==0.1.4
+control==0.9.4
+crashtest==0.3.1
+cryptography @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/86/b8/16/99958ae248a22621064a32bbfe61bed94aeb361096f4b1b085dc487e01/cryptography-36.0.1-cp36-abi3-macosx_10_10_x86_64.whl
+cycler @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/37/9c/25/cbaf98f95cc74b0a7617cef17520e3f063dbabd9f0f8a04f93a15f6632/cycler-0.11.0-py3-none-any.whl
+debugpy==1.8.1
+decorator @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/34/17/0e/2b47ba09c969bda1d9eaefda2d9ccee318289f9e57d361761be4f3ab90/decorator-5.1.0-py3-none-any.whl
+defusedxml @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/8b/b9/f6/56ba9b58f3a759ce345d18bad38edfc12a9f60420962a17a2084202e0e/defusedxml-0.6.0-py2.py3-none-any.whl
+Deprecated @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/a1/54/60/4388a99c14cd296d410c6caa1d625df8f20eabdff83d77e46c3bb305cd/Deprecated-1.2.13-py2.py3-none-any.whl
+distlib==0.3.1
+ElPeriodic==1.2
+entrypoints @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/27/67/42/5ca7438658f76c8700ff6c44ea1cf9dc128cf0862adb7de53d3a35266c/entrypoints-0.3-py2.py3-none-any.whl
+exceptiongroup==1.2.0
+executing==2.0.1
+fastjsonschema==2.19.1
+filelock==3.0.12
+flake8 @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/93/78/ae/ee75d1b46827f8892defc2a710979cc71803d2da75a049bdabd3adad70/flake8-3.9.2-py2.py3-none-any.whl
+fonttools @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/63/34/b9/1fa0886e3ae9f187ad2155a0aab08d1e769240cc90e8f5873c2d08f346/fonttools-4.28.5-py3-none-any.whl
+fqdn==1.5.1
+gitdb @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/2f/1b/c6/e19d782b5981117a4bd0a9874a94aeab968aea4df14fffb4826191727e/gitdb-4.0.9-py3-none-any.whl
+GitPython @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/65/50/fc/efadf2a96d18ae3443681e0d98d082d735e62ebb53f1f46312a4e6ca57/GitPython-3.1.24-py3-none-any.whl
+gql==3.0.0b0
+graphql-core @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/52/f1/de/6a87690ff05d0fa5e209e7f63166424c4f22827eb5e9b5345e04f2f97d/graphql_core-3.1.7-py3-none-any.whl
+hidapi==0.13.1
+hide-code==0.7.0
+html5lib==1.1
+idisplay==0.1.2
+idna @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/f7/09/c9/8e80952436ff87855ddff4891a35ecf913b2b5dc97911f02a070ff2b1f/idna-3.3-py3-none-any.whl
+importlib-metadata==6.8.0
+importlib_resources==6.1.2
+ipykernel==6.29.3
+ipympl==0.9.3
+ipython==8.12.3
+ipython-genutils @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/e6/8e/a3/8f37e14310c0072b3fcc4240490bcb42630aa695d069aee89953ebd9f8/ipython_genutils-0.2.0-py2.py3-none-any.whl
+ipywidgets==7.8.1
+isoduration==20.11.0
+jedi @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/ce/2e/ee/4ef6ff749cd3e9580ef93bd301cece06bf4d86072c8695b60e5fccf93b/jedi-0.17.2-py2.py3-none-any.whl
+Jinja2==3.1.3
+joblib==1.3.2
+jsonpointer==2.4
+jsonschema==4.21.1
+jsonschema-specifications==2023.12.1
+jupyter==1.0.0
+jupyter-console==6.6.3
+jupyter-events==0.9.0
+jupyter-highlight-selected-word==0.2.0
+jupyter-nbextensions-configurator==0.6.3
+jupyter_client==7.4.9
+jupyter_contrib_core==0.4.2
+jupyter_contrib_nbextensions==0.7.0
+jupyter_core==5.7.1
+jupyter_server==2.12.5
+jupyter_server_terminals==0.5.2
+jupyterlab-pygments @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/c8/b0/10/ad75ecf240424057a12f5b4320da2c9f380541cdf830a39e7e8437c2c0/jupyterlab_pygments-0.1.2-py2.py3-none-any.whl
+jupyterlab-widgets==1.1.7
+keyring==21.8.0
+kiwisolver @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/5d/53/e3/9504bfb9356c9cd1ad57f7d54f0735e23ac15b05f4ee0e82e1ab71460c/kiwisolver-1.3.2-cp38-cp38-macosx_10_9_x86_64.whl
+lazy_loader==0.3
+librosa==0.10.1
+llvmlite==0.40.1
+lockfile==0.12.2
+lxml==5.1.0
+MarkupSafe==2.1.5
+matplotlib @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/af/ad/23/50157053cd521cb77c030e914d5eaac8399ce758a77c2f9c34a9ce2457/matplotlib-3.5.1-cp38-cp38-macosx_10_9_x86_64.whl
+matplotlib-inline==0.1.6
+mccabe @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/37/6e/69/4a33a4d6c80c775b1ee205face2c6e07b762c8602bb0f0d236ebe790c5/mccabe-0.6.1-py2.py3-none-any.whl
+mistune==3.0.2
+more-itertools @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/4c/fd/53/9097cf42a8d83ecf946d50073db7b87b71c5ed02df4a5bdb8b6b546c8e/more_itertools-8.5.0-py3-none-any.whl
+mpmath==1.3.0
+mpy-cross==1.14
+mpy-cross-v5==1.0.1
+mpy-cross-v6==1.0.1
+msgpack==1.0.2
+multidict @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/ce/07/97/96c8c0778bcefb790a0e0509f8f3114fc02f75a074477cac59c5174797/multidict-5.2.0-cp38-cp38-macosx_10_9_x86_64.whl
+mypy-extensions @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/b6/a0/b0/a5dc9acd6fd12aba308634f21bb7cf0571448f20848797d7ecb327aa12/mypy_extensions-0.4.3-py2.py3-none-any.whl
+nbclassic==1.0.0
+nbclient @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/ca/75/28/4f846efe867484804f4e1e3ed8735ab8c75a0a186cf3742fc5381a08fc/nbclient-0.5.1-py3-none-any.whl
+nbconvert==7.16.1
+nbformat==5.9.2
+nbstripout @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/4b/74/0d/417604709fd863f39b9d3fb88aeea6cb94677b267287fa277c74e9464a/nbstripout-0.3.9-py2.py3-none-any.whl
+nest-asyncio==1.6.0
+notebook==6.5.6
+notebook_shim==0.2.4
+numba==0.57.1
+numpy @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/b9/be/16/2d60bad327a4c16ffa95aba355d98c7ae17ac53f35fe9ddcbbb0e2ee8c/numpy-1.21.5-cp38-cp38-macosx_10_9_x86_64.whl
+opencv-python==4.8.0.76
+overrides==7.7.0
+packaging==22.0
+pandas==2.0.3
+pandoc==2.3
+pandocfilters==1.4.3
+parso @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/68/b7/ab/104272f01420d39035467c3910fd1e927d05b020948799cbfebd116405/parso-0.7.1-py2.py3-none-any.whl
+pastel==0.2.1
+pathspec @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/04/91/14/294ed2ee6c852b0d466bdd15d393127eff4168b35ae81cedf5a03fe348/pathspec-0.9.0-py2.py3-none-any.whl
+pdfkit==1.0.0
+pexpect==4.8.0
+pickleshare @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/27/b2/0a/93a92c700a1993b2923519262ddf76a629bd459a0597c0ae28bf80c7a6/pickleshare-0.7.5-py2.py3-none-any.whl
+Pillow @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/49/91/43/d832b07992d20d700db34fb40f0bf50304bd171ebdfe386b5e61c5c4b4/Pillow-9.0.0-cp38-cp38-macosx_10_10_x86_64.whl
+pkginfo==1.6.1
+pkgutil_resolve_name==1.3.10
+platformdirs==3.10.0
+plotly @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/a0/23/a4/d394e9c59ce8c4534916c8083bf28cef65d7212e6fcd31507aac2f91e3/plotly-4.14.3-py2.py3-none-any.whl
+pluggy @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/9c/e5/0b/2d64d03361a081edeb5d2ec5f286ccf9719587781fbf6822e1b6384c27/pluggy-0.13.1-py2.py3-none-any.whl
+plumbum==1.8.2
+ply==3.11
+poetry==1.1.4
+poetry-core==1.0.0
+pooch==1.7.0
+prometheus-client @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/d0/c3/47/75f3e2e1a613c920838a5c3f03bb72429c418b191fcd0f5f030f913e5d/prometheus_client-0.8.0-py2.py3-none-any.whl
+prompt-toolkit==3.0.43
+psutil==5.9.8
+ptyprocess @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/2c/6a/98/a555fa30b04faf75866656b49dfd32457704fbd3811c6ae29eecfc2715/ptyprocess-0.6.0-py2.py3-none-any.whl
+pure-eval==0.2.2
+py @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/f5/51/7d/d8aec03f59299351465053794c7b1f0e0e7a918e4a67911664f83929af/py-1.9.0-py2.py3-none-any.whl
+pybricks @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/96/e1/19/194bd706a9ea7d111376c31ca5943b436793ba0994d827ecd42e2dcac6/pybricks-3.1.0-py3-none-any.whl
+pybricksdev @ file:///Users/kujawa/Projects/chs/Hotshot/spike/PyBricks3/pybricksdev
+pycodestyle @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/ea/27/4a/ce8e18f033aae28e47dc2895901dce76e10e7c9efc48bcd95ab4443c47/pycodestyle-2.7.0-py2.py3-none-any.whl
+pycparser @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/7a/f7/3b/fd50e9d7e1c02d2d2e8631fca716f6b6ffe3742f322e4a170eb3f2f41b/pycparser-2.21-py2.py3-none-any.whl
+pycryptodome==3.18.0
+pycryptodomex @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/34/23/dd/ec2eacf4aede5bcef375bb35cd8bba24ca69a65458d720c9f381eeb0b9/pycryptodomex-3.12.0-cp35-abi3-macosx_10_9_x86_64.whl
+pyflakes @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/b0/73/41/34d4d02987e40ffa6ee0292425303a75b4178476bf134ceaf0585a9faf/pyflakes-2.3.1-py2.py3-none-any.whl
+pygame==2.1.2
+PyGithub @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/29/ea/4b/cc4235b928370aa6c1b02e7862f03dc09bc4424b36f1720987eea93ab5/PyGithub-1.55-py3-none-any.whl
+Pygments @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/b3/cd/91/ef6cd57d0ac8ee5336256c864ef4f224f78f612d6ad51e8757da94488e/Pygments-2.7.1-py3-none-any.whl
+PyJWT @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/7c/13/04/3e4aa78f6ee3ee721315e24346fe7226d1fc7330485447a1ce5d1151c7/PyJWT-2.3.0-py3-none-any.whl
+pylev==1.3.0
+PyNaCl @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/b8/69/cb/05692838c24c4def2104569028c64f988a4fbf8eed9ec1297d8cff319f/PyNaCl-1.4.0-cp35-abi3-macosx_10_10_x86_64.whl
+pyobjc-core==9.2
+pyobjc-framework-Cocoa==9.2
+pyobjc-framework-CoreBluetooth==9.2
+pyobjc-framework-libdispatch==9.2
+PyOpenGL==3.1.7
+PyOpenGL-accelerate==3.1.7
+pyparsing @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/8c/3a/ef/db68cdef4bc63d57a0426cef4374b97eda2364692fde8d5e7d775d0b72/pyparsing-3.0.6-py3-none-any.whl
+pyrsistent==0.17.3
+pyserial @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/12/99/43/9edfb1a31ba0ed8d91e2f9d01879209be6840b7ba67c61464e3f5fcbf8/pyserial-3.5-py2.py3-none-any.whl
+pytest @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/9d/40/6b/50d2cb06df545acea43c65379c5456f4fbc703115a703bc7cd433ddf70/pytest-5.4.3-py3-none-any.whl
+python-dateutil @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/0f/f1/e2/e1d3399cea26388e2ed5b93ea3e7c137d2b4027c5ba14c64ab839294ed/python_dateutil-2.8.2-py2.py3-none-any.whl
+python-dotenv @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/bf/e2/32/a8162049eb27a891919d21d76446fd01711014b43c809ceef66925e85b/python_dotenv-0.15.0-py2.py3-none-any.whl
+python-json-logger==2.0.7
+pytz==2023.3
+pyusb @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/f5/26/d2/ff1d3b7d8d1f9b5e217a3affc55683bc229da5894efa608fbbbe95f835/pyusb-1.2.1-py3-none-any.whl
+PyYAML==6.0.1
+pyzmq==24.0.1
+qgrid==1.3.1
+qtconsole==5.5.1
+QtPy==2.4.1
+reactivex==4.0.4
+referencing==0.33.0
+requests @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/97/12/e1/3c2e2b7f315a912e2da1b1465a23c3f14d51a3bd4696e14e0f2796adde/requests-2.26.0-py2.py3-none-any.whl
+requests-toolbelt==0.9.1
+retrying==1.3.3
+rfc3339-validator==0.1.4
+rfc3986-validator==0.1.1
+rpds-py==0.18.0
+scikit-learn==1.3.0
+scipy==1.10.1
+semver==2.13.0
+Send2Trash==1.8.2
+setuptools-scm @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/63/06/3a/cd166073be24746d3e9bd7d64572d6bb9a99aad89add57816fd0f7f52b/setuptools_scm-6.3.2-py3-none-any.whl
+shellingham==1.3.2
+sippy==2.0.2
+six @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/48/e6/04/8118155ae3ec3a16dd2a213bbf7a7d8a62c596b2e90f73a22c896269f1/six-1.16.0-py2.py3-none-any.whl
+smmap @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/34/fa/bc/0bc422588046236494cd142256f75a2c2b4c0c5c5c9500cce5e886b75b/smmap-5.0.0-py3-none-any.whl
+sniffio==1.3.1
+soundfile==0.12.1
+soupsieve==2.5
+soxr==0.3.6
+stack-data==0.6.3
+sympy==1.12
+terminado @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/16/26/98/8a096ebe53cf81cf3b1d1c57cd613f3c8195d48c42d45aa07df7a3bdb5/terminado-0.9.1-py3-none-any.whl
+testpath @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/71/31/06/e1366905608d747ada47997b3406776c1f88e2628e47674e40b9ae2b0b/testpath-0.4.4-py2.py3-none-any.whl
+threadpoolctl==3.2.0
+tinycss2==1.2.1
+tomli @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/38/41/fa/c09cd1998f0cdff74a8fca97bb38366ae7e43f5e38e5939a4871eecc84/tomli-1.2.3-py3-none-any.whl
+tomlkit==0.7.0
+tornado==6.4
+tqdm==4.62.3
+traitlets==5.14.1
+types-python-dateutil==2.8.19.20240106
+typing_extensions==4.7.1
+tzdata==2023.3
+uri-template==1.3.0
+urllib3 @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/d8/12/e2/1b499db5e41e88fd0f31d0e056a4dc7b53824f63f027fffc1702969c57/urllib3-1.26.7-py2.py3-none-any.whl
+validators @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/9b/76/01/4344dc10a31836ed299d8699acd5da84d5bf170de6953be4e58cce86c8/validators-0.18.2-py3-none-any.whl
+virtualenv==20.2.2
+wcwidth @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/36/68/e2/7232f431072d5e8aeec124120b9a1d095d45da10311d271fac10982473/wcwidth-0.2.5-py2.py3-none-any.whl
+webcolors==1.13
+webencodings==0.5.1
+websocket-client==1.7.0
+widgetsnbextension==3.6.6
+wrapt @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/49/f7/2f/34b9abccd4a810c1f87cf4e399da97ba17b78aba9bb703236c32653135/wrapt-1.13.3-cp38-cp38-macosx_10_9_x86_64.whl
+yarl @ file:///Users/kujawa/Library/Caches/pypoetry/artifacts/f1/71/2d/1439e8877c108b7d845e8e4199efa1fc8c8f30c3d25cdaa912722eba93/yarl-1.7.2-cp38-cp38-macosx_10_9_x86_64.whl
+zipp==3.16.2
