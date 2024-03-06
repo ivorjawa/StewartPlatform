@@ -28,7 +28,7 @@ Put the toolchain binary in your path and it should build without issue.
 export PATH="/Users/kujawa/Projects/chs/gcc-arm-none-eabi-5_3-2016q1/bin/:$PATH"
 
 (needs GNU ARM Embedded Toolchain v10-2020-q4
- for 3.xhttps://github.com/pybricks/pybricks-micropython/blob/master/CONTRIBUTING.md)
+ for 3.x https://github.com/pybricks/pybricks-micropython/blob/master/CONTRIBUTING.md)
  
 ### Code Manifest
  - RotorHead.ipynb: a jupyter notebook describing the project
