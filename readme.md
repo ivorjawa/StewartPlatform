@@ -6,9 +6,31 @@ For more detailed information, see RotorHead.ipynb
 
 ![Helicopter](helidiag.jpg)
 
-This project is dependent on PyBricks for rotor.py and OpenCV for rotormath.py.  For a full
+This project is dependent on PyBricks 3.4.0 for rotor.py and OpenCV for rotormath.py.  For a full
 list of packages installed as I type this, see pip_freeze.txt.
 
+### PyBricks links
+* [PyBricks Main Site](https://pybricks.com)
+* [Install PyBricks on Boost/SPIKE](https://pybricks.com/install/spike-mindstorms/)
+* [PyBricks Documentation Root](https://docs.pybricks.com/en/latest/)
+* [PyBricks Powered Up Hub](https://docs.pybricks.com/en/latest/hubs/technichub.html)
+* [Beta PyBricks SPIKE Hub](https://github.com/pybricks/support/issues/591)
+* [PyBricksDev Command Line](https://github.com/pybricks/pybricksdev)
+* [MicroPython main github](https://github.com/micropython/micropython)
+* [PrimeHub class documentation](https://docs.pybricks.com/en/latest/hubs/primehub.html)
+
+### Building
+* [Building for Mac](https://github.com/pybricks/pybricks-micropython/blob/work/CONTRIBUTING.md)
+
+I used the 5.3 release of the [GNU ARM Embedded Toolchain](https://launchpad.net/gcc-arm-embedded/5.0/5-2016-q1-update)
+
+Put the toolchain binary in your path and it should build without issue.
+export PATH="/Users/kujawa/Projects/chs/gcc-arm-none-eabi-5_3-2016q1/bin/:$PATH"
+
+(needs GNU ARM Embedded Toolchain v10-2020-q4
+ for 3.xhttps://github.com/pybricks/pybricks-micropython/blob/master/CONTRIBUTING.md)
+ 
+### Code Manifest
  - RotorHead.ipynb: a jupyter notebook describing the project
  - controllers.py: game controller interface
  - cvgraph.py: opencv-based animation convenience funcetions

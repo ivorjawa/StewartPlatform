@@ -75,13 +75,13 @@ def calib_core(cmots):
     for cm in cmots:
         cm.control.stall_tolerances(*st)
     
-    print("Calibration of actuator ranges, rotors should be detatched")
-    print(f"Current threshold: {readthresh()} degrees")
+
     print(f"Starting motor test, stall tolerances: {front.control.stall_tolerances()}")
     
     runtostall(cmots, -speed/3)
         
 def neutral_coll(cmots, angle):
+    "set all three cylinders to one position"
     for cm in cmots:
         cm.track_target(angle)
 
@@ -100,7 +100,9 @@ def memory_calibrate():
     
 # for the actual actuation, we'll use track_target(degrees) command
 # make safe operating limit smaller than max so it doesn't stick.
-def calibrate():
+def full_calibrate():
+    print("Calibration of actuator ranges, rotors and scissor-link should be detatched")
+    print(f"Current threshold: {readthresh()} degrees")
     cmots = [front, star, port]
     calib_core(cmots)
    
@@ -223,7 +225,7 @@ if __name__ == "__main__":
     try:
         #pass # when running above tests
         run_remote() # full talks to remote run under ./rotorbase.py
-        #calibrate() # should be done with rotors detached
+        #full_calibrate() # should be done with rotors and scissor link detached
     except Exception as e:
         print("General failure: ", e)
     identify()     
