@@ -197,7 +197,7 @@ def run_remote():
                     return None
                     #break
                 if((glyph & 72) == 72): #sc
-                    rotor.run(60)
+                    rotor.run(-75)
                 if((glyph & 68) == 68): #sd
                     rotor.stop()
                     
