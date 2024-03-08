@@ -37,6 +37,8 @@ class Swashplate(object):
         self.s_Cs = self.Fs + tmat
 
     def solve(self, pitch, roll, collpct):
+        """Implements collective-cyclic pitch mixing algorithm.
+        roll and pitch are degrees and collective is 0..1.0"""
         Vp = lin.vector(m.cos(m.radians(pitch)), 0, m.sin(m.radians(pitch)))
         Vr = lin.vector(0, m.cos(m.radians(roll)), m.sin(m.radians(roll)))
         
@@ -69,8 +71,6 @@ class Swashplate(object):
         
         (Cf, Cp, Cs) = arms
         
-        #old validation code, cyl_len test above is sufficient
-        #self.validate(Cf, Cp, Cs, Vmast, pitch, roll, collpct)
         
         #successfully validated, save old values and calculate cylinder lengths
         self.s_Cf = Cf
