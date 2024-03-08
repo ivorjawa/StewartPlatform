@@ -45,7 +45,8 @@ class Swashplate(object):
         Vdisk_n = lin.normalize(Vdisk)
         
         # top of mast at collective setting
-        Vmast = lin.vector(0, 0, self.Cmin + collpct*self.Crange) 
+        Pcoll = self.Cmin + collpct*self.Crange
+        Vmast = lin.vector(0, 0, Pcoll) 
         arms = []
         for i, Fn in enumerate(self.feet):
             # Vcn is the plane the cylinder rotates on its foot in, Foot X Mast
