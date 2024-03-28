@@ -6,6 +6,7 @@ import sys
 import numpy as np
 A = np.array
 import math as m
+import colorsys
 import cv2
 
 
@@ -17,7 +18,9 @@ def vline(img, p1, p2, c, width):
 pt = lambda x, y: A([x, y])
 c = lambda b, g, r: A([b, g, r], dtype='int32')
 bgr = c
-
+def hsv82bgr(h, s, v):
+    (r, g, b) = colorsys.hsv_to_rgb(h/255.0, s/255.0, v/255.0)
+    return bgr(b*255, g*255, r*255)
 
 red = c(0, 0, 255)
 red1 = red/2
