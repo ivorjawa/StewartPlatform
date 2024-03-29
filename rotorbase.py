@@ -62,11 +62,12 @@ class BaseStation(object):
         while 1:
         
             report = self.gamepad.report()
+            #report = None
             if report:            
                 output = wirep.encode(report)
                 if (output != lastout) or (((time.time()-self.last_sent)*1000) > 16):
                     lastout = output
-                    logging.info(output)
+                    logging.debug(output)
                     try:
                         await hub.write(bytearray(output, 'ascii'))
                         self.last_sent = time.time()
@@ -76,13 +77,13 @@ class BaseStation(object):
                         logging.error(f"Other error in hub.write(): {e}")
                         #sys.exit(0)
     
-    async def go(self):
-        hub = LoggingBricksHub('rotorbase')
-        address = await find_device('rotor')
+    async def go(self, hubname, brickaddress, pyprog):
+        hub = LoggingBricksHub(hubname)
+        address = await find_device(brickaddress)
         await hub.connect(address)   
 
         try:
-            await hub.run('rotor.py', wait=False)
+            await hub.run(pyprog, wait=False)
             await gather(self.send_data(hub))
 
         except Exception as e:
@@ -90,10 +91,12 @@ class BaseStation(object):
 
         await hub.disconnect()
     
-    def engage(self):
-        run(self.go())
+    def engage(self, hubname, brickaddress, pyprog):
+        run(self.go(hubname, brickaddress, pyprog))
         
 if __name__ == "__main__":
     rotor = BaseStation()
-    rotor.engage() # make it so
+    #rotor = BaseStation('rotorbase', 'rotor', 'rotor.py')
+    #rotor = BaseStation('stewbase', 'jawaspike', 'stuart.py')
+    rotor.engage('stewbase', 'jawaspike', 'stuart.py') # make it so
     

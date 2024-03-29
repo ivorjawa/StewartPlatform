@@ -82,7 +82,7 @@ class Stewart(object): # millimeters
         
         
     def draw(self, grid, roll, pitch, yaw, coll):
-        
+        # TODO make mode where plate moves in sphere and mode where plate is kept level
         white = cvgraph.white
         red = cvgraph.red
         green = cvgraph.green
@@ -193,16 +193,22 @@ def test_controller():
     # arm radius, min cylinder, max cylinder
     #rot = Rotor(60, 160, 200) # real robot
     #rot = Rotor(70, 100, 130) #pneumatic dummy
+    
+    t0 = time.time()
+    output = []
+    count = 0
+    counting = True
+    
     while 1:
         scenerot = (time.time()*30)% 360
         #for scenerot in range(0, 360):
         grid = cvgraph.SimGrid(800, 800, 1.5)
-        
-        for i in range(len(circle)-1):
-            Stew.drawline(grid, circle[i], circle[i+1], colors[i], 3)
-        Stew.drawline(grid, circle[-1], circle[0], colors[-1], 3)
-        #Stew.draw(grid)
         report = gamepad.read(64)
+        
+        #for i in range(len(circle)-1):
+        #    Stew.drawline(grid, circle[i], circle[i+1], colors[i], 3)
+        #Stew.drawline(grid, circle[-1], circle[0], colors[-1], 3)
+        #Stew.draw(grid)
         #report = None
         if report:
             # Taranis major axes 3 5 7 9 lx = 9, ly = 7, rx = 3, ry = 5 
@@ -212,18 +218,25 @@ def test_controller():
             roll_in = rd['roll']/scale          
             pitch_in = rd['pitch']/scale
             yaw_in = rd['yaw']/scale
+            glyph = rd['glyph']
+            
             #print(f"c: {coll_in:{3.3}}, r: {roll_in:{3.3}}, p: {pitch_in:{3.3}}")
             
             coll = coll_in
             roll = (-roll_in + 0.5) * 40
             pitch = (-pitch_in + .5) * 40
             yaw = (-yaw_in + 0.5) * 90 
-            #print(f"c: {coll:{3.3}}, r: {roll:{3.3}}, p: {pitch:{3.3}}")
+            print(f"c: {coll:{3.3}}, r: {roll:{3.3}}, p: {pitch:{3.3}}")
             Stew.draw(grid, pitch, roll, yaw, coll)
+            
+            label = f"{time.time()-t0:.3f}"
+            cvgraph.draw_button(grid.canvas, label, 100, 40, .5)
+
 
         #re-indent to make part of while loop
         grid.display()
-        inkey = cv2.waitKey(1)
+        inkey = cv2.pollKey()
+        #inkey = cv2.waitKey(1)
         #break
         #inkey  = cv2.waitKey( 30)
         if inkey == 27:
