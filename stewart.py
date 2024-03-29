@@ -101,7 +101,6 @@ class Stewart(object): # millimeters
         sb = rotate(Vdisk_n, m.radians(yaw), self.sB)+coll_v
         sc = rotate(Vdisk_n, m.radians(yaw), self.sC)+coll_v
         
-        
         self.drawline(grid, coll_v, sa, white, 2)   
         self.drawline(grid, coll_v, sb, white, 2)       
         self.drawline(grid, coll_v, sc, white, 2) 
@@ -115,8 +114,43 @@ class Stewart(object): # millimeters
         self.drawline(grid, self.s3, sb, red, 2) 
         self.drawline(grid, self.s4, sb, red, 2)
         self.drawline(grid, self.s5, sc, red, 2) 
-        self.drawline(grid, self.s6, sc, red, 2)   
-            
+        self.drawline(grid, self.s6, sc, red, 2)  
+        
+        #screen_r = m.radians(-90)
+        offset = xaxis * 550 + yaxis * -200
+        
+        rm = lin.rmat(xaxis, m.radians(-90))
+        #return matmul(rm, point)
+        coll_vs = lin.matmul(rm, coll_v)+offset
+        
+        sas = lin.matmul(rm, sa)+offset
+        sbs = lin.matmul(rm, sb)+offset
+        scs = lin.matmul(rm, sc)+offset
+
+        s1s = lin.matmul(rm, self.s1)+offset
+        s2s = lin.matmul(rm, self.s2)+offset
+        s3s = lin.matmul(rm, self.s3)+offset
+        s4s = lin.matmul(rm, self.s4)+offset
+        s5s = lin.matmul(rm, self.s5)+offset
+        s6s = lin.matmul(rm, self.s6)+offset
+        
+        
+        self.drawline(grid, coll_vs, sas, white, 2)   
+        self.drawline(grid, coll_vs, sbs, white, 2)       
+        self.drawline(grid, coll_vs, scs, white, 2) 
+        
+        self.drawline(grid, s1s, s2s, green, 2)      
+        self.drawline(grid, s3s, s4s, green, 2) 
+        self.drawline(grid, s5s, s6s, green, 2)  
+        
+        self.drawline(grid, s1s, sas, red, 2) 
+        self.drawline(grid, s2s, sas, red, 2) 
+        self.drawline(grid, s3s, sbs, red, 2) 
+        self.drawline(grid, s4s, sbs, red, 2)
+        self.drawline(grid, s5s, scs, red, 2) 
+        self.drawline(grid, s6s, scs, red, 2)
+        
+         
     def drawline(self, grid, p1, p2, color, width):
         grid.line(twod(p1), twod(p2), color, width)
     
@@ -202,7 +236,7 @@ def test_controller():
     while 1:
         scenerot = (time.time()*30)% 360
         #for scenerot in range(0, 360):
-        grid = cvgraph.SimGrid(800, 800, 1.5)
+        grid = cvgraph.SimGrid(1000, 1000, .6)
         report = gamepad.read(64)
         
         #for i in range(len(circle)-1):
