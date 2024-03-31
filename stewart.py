@@ -218,22 +218,42 @@ class Stewart(object): # millimeters
         coll_v = coll_p * Vdisk_n         # position of Jesus Nut after rotation
         
         if (glyph & ctrl.cSC): 
-            print("using cup motion")      
+            print("using cup motion") 
+            modelabel = f"cup motion {glyph}"     
             oily = euler_rotation_matrix(m.radians(-roll),m.radians(pitch),0) # cup motion
         else:
+            modelabel = f"sphere motion {glyph}"
             print("using sphere motion")
             oily = euler_rotation_matrix(m.radians(roll),m.radians(-pitch),0) # sphere motion
         
-        sa = lin.matmul(oily, self.sA)+coll_v
-        #print(f"sA: {self.sA+Vjesus} sa: {sa}")
-        sb = lin.matmul(oily, self.sB)+coll_v
-        #print(f"sB: {self.sB+Vjesus} sb: {sb}")
-        sc = lin.matmul(oily, self.sC)+coll_v
-        #print(f"sC: {self.sC+Vjesus} sc: {sc}")
+        flatmode = False
+        if (glyph & ctrl.cSD):
+            flatmode = True
+            print("using flat motion")
+            coll_v = lin.vector(coll_v[0], coll_v[1], coll_p)
+            modelabel = f"flat motion {glyph}"
+            
+        cvgraph.draw_button(grid.canvas, modelabel, 500, 60, 2)
         
-        sa = rotate(Vdisk_n, m.radians(yaw), sa)
-        sb = rotate(Vdisk_n, m.radians(yaw), sb)
-        sc = rotate(Vdisk_n, m.radians(yaw), sc)
+        if flatmode:
+            sa = rotate(zaxis, m.radians(yaw), self.sA)
+            sb = rotate(zaxis, m.radians(yaw), self.sB)
+            sc = rotate(zaxis, m.radians(yaw), self.sC)
+            sa = sa+coll_v
+            sb = sb+coll_v
+            sc = sc+coll_v          
+        else:
+            sa = lin.matmul(oily, self.sA)+coll_v
+            #print(f"sA: {self.sA+Vjesus} sa: {sa}")
+            sb = lin.matmul(oily, self.sB)+coll_v
+            #print(f"sB: {self.sB+Vjesus} sb: {sb}")
+            sc = lin.matmul(oily, self.sC)+coll_v
+            #print(f"sC: {self.sC+Vjesus} sc: {sc}")
+            sa = rotate(Vdisk_n, m.radians(yaw), sa)
+            sb = rotate(Vdisk_n, m.radians(yaw), sb)
+            sc = rotate(Vdisk_n, m.radians(yaw), sc)
+        
+
         
         
         triads = [
@@ -353,7 +373,7 @@ def test_controller():
             Stew.draw(grid, roll, pitch, yaw, coll, glyph)
             
             label = f"{time.time()-t0:.3f}"
-            cvgraph.draw_button(grid.canvas, label, 100, 40, .5)
+            cvgraph.draw_button(grid.canvas, label, 100, 40, 1)
 
 
         #re-indent to make part of while loop
