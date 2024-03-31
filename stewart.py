@@ -164,6 +164,7 @@ class Stewart(object): # millimeters
         self.old_sA = self.sA
         self.old_sB = self.sB
         self.old_sC = self.sC
+        self.old_coll_v = self.p0 *(self.min_height + .5 * self.plat_range)
         
         self.s1 = rotate(zaxis, m.radians(-60+rotoff), fp_line) + outer_r*lin.normalize(self.sA)
         self.s2 = rotate(zaxis, m.radians(120+rotoff), fp_line) + outer_r*lin.normalize(self.sA)
@@ -176,7 +177,7 @@ class Stewart(object): # millimeters
         # circle(self, center, radius, color, lw=1):   
         
         
-    def draw(self, grid, roll, pitch, yaw, coll):
+    def draw(self, grid, roll, pitch, yaw, coll, glyph):
         # TODO make mode where plate moves in sphere and mode where plate is kept level
         
         """
@@ -206,7 +207,7 @@ class Stewart(object): # millimeters
         Vp = lin.vector(m.cos(m.radians(pitch)), 0, m.sin(m.radians(pitch)))
         Vr = lin.vector(0, m.cos(m.radians(roll)), m.sin(m.radians(roll)))
         Vq = lin.normalize(Vp + Vr)
-        print(f"Pitch: {pitch} Vp: {Vp} roll: {roll} Vr: {Vr} Vq: {Vq}")
+        #print(f"Pitch: {pitch} Vp: {Vp} roll: {roll} Vr: {Vr} Vq: {Vq}")
         
         # Normal of rotor disk
         Vdisk = lin.cross(Vp, Vr) 
@@ -215,15 +216,20 @@ class Stewart(object): # millimeters
         coll_p = coll*self.plat_range+self.min_height
         Vjesus = lin.vector(0, 0, coll_p) # position of Jesus Nut before rotation
         coll_v = coll_p * Vdisk_n         # position of Jesus Nut after rotation
-               
-        oily = euler_rotation_matrix(m.radians(roll),m.radians(-pitch),0)
+        
+        if (glyph & ctrl.cSC): 
+            print("using cup motion")      
+            oily = euler_rotation_matrix(m.radians(-roll),m.radians(pitch),0) # cup motion
+        else:
+            print("using sphere motion")
+            oily = euler_rotation_matrix(m.radians(roll),m.radians(-pitch),0) # sphere motion
         
         sa = lin.matmul(oily, self.sA)+coll_v
-        print(f"sA: {self.sA+Vjesus} sa: {sa}")
+        #print(f"sA: {self.sA+Vjesus} sa: {sa}")
         sb = lin.matmul(oily, self.sB)+coll_v
-        print(f"sB: {self.sB+Vjesus} sb: {sb}")
+        #print(f"sB: {self.sB+Vjesus} sb: {sb}")
         sc = lin.matmul(oily, self.sC)+coll_v
-        print(f"sC: {self.sC+Vjesus} sc: {sc}")
+        #print(f"sC: {self.sC+Vjesus} sc: {sc}")
         
         sa = rotate(Vdisk_n, m.radians(yaw), sa)
         sb = rotate(Vdisk_n, m.radians(yaw), sb)
@@ -244,6 +250,7 @@ class Stewart(object): # millimeters
                 sa = self.old_sA
                 sb = self.old_sB
                 sc = self.old_sC
+                coll_v = self.old_coll_v
                 #return
                 
             if max(c1, c2, self.Cmax) != self.Cmax:
@@ -251,7 +258,10 @@ class Stewart(object): # millimeters
                 sa = self.old_sA
                 sb = self.old_sB
                 sc = self.old_sC
+                coll_v = self.old_coll_v
+                
                 #return
+        
                    
         dl = DrawList()
         
@@ -290,6 +300,7 @@ class Stewart(object): # millimeters
         self.old_sA = sa
         self.old_sB = sb
         self.old_sC = sc
+        self.old_coll_v = coll_v
         
          
     #def drawline(self, grid, p1, p2, color, width):
@@ -339,7 +350,7 @@ def test_controller():
             pitch = (pitch_in - .5) * 40
             yaw = (-yaw_in + 0.5) * 90 
             #print(f"c: {coll:{3.3}}, r: {roll:{3.3}}, p: {pitch:{3.3}}")
-            Stew.draw(grid, roll, pitch, yaw, coll)
+            Stew.draw(grid, roll, pitch, yaw, coll, glyph)
             
             label = f"{time.time()-t0:.3f}"
             cvgraph.draw_button(grid.canvas, label, 100, 40, .5)

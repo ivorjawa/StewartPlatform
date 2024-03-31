@@ -43,6 +43,11 @@ def open_taranis(debug=False):
 
     ctrlr.set_nonblocking(True)
     return ctrlr
+
+cSA = 24
+cSB = 40
+cSC = 72
+cSD = 68
     
 def dword(arr, off):
     # decode little-endian word
