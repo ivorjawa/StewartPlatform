@@ -137,6 +137,8 @@ class Stewart(object): # millimeters
         self.inner_r = inner_r
         self.outer_r = outer_r
         self.p0 = lin.vector(0, 0, 0)
+        self.last_time = time.time()
+        self.times = [time.time() for x in range(5)]
         #big_line = lin.vector(outer_r, 0, 0)  
         small_line = lin.vector(inner_r, 0, 0)
         fp_line = lin.vector(footprint/2.0, 0, 0)
@@ -177,9 +179,7 @@ class Stewart(object): # millimeters
         # circle(self, center, radius, color, lw=1):   
         
         
-    def draw(self, grid, roll, pitch, yaw, coll, glyph):
-        # TODO make mode where plate moves in sphere and mode where plate is kept level
-        
+    def draw(self, grid, roll, pitch, yaw, coll, glyph):        
         """
         https://stackoverflow.com/questions/26289972/use-numpy-to-multiply-a-matrix-across-an-array-of-points
         
@@ -217,21 +217,24 @@ class Stewart(object): # millimeters
         Vjesus = lin.vector(0, 0, coll_p) # position of Jesus Nut before rotation
         coll_v = coll_p * Vdisk_n         # position of Jesus Nut after rotation
         
-        if (glyph & ctrl.cSC): 
-            print("using cup motion") 
-            modelabel = f"cup motion {glyph}"     
-            oily = euler_rotation_matrix(m.radians(-roll),m.radians(pitch),0) # cup motion
-        else:
-            modelabel = f"sphere motion {glyph}"
-            print("using sphere motion")
-            oily = euler_rotation_matrix(m.radians(roll),m.radians(-pitch),0) # sphere motion
-        
         flatmode = False
-        if (glyph & ctrl.cSD):
+        if (glyph & ctrl.cSD) == ctrl.cSD:
             flatmode = True
-            print("using flat motion")
+            #print("using flat motion")
             coll_v = lin.vector(coll_v[0], coll_v[1], coll_p)
             modelabel = f"flat motion {glyph}"
+        
+        if not flatmode:
+            if (glyph & ctrl.cSC) == ctrl.cSC: 
+                #print("using cup motion") 
+                modelabel = f"cup motion {glyph}"     
+                oily = euler_rotation_matrix(m.radians(-roll),m.radians(pitch),0) # cup motion
+            else:
+                modelabel = f"sphere motion {glyph}"
+                #print("using sphere motion")
+                oily = euler_rotation_matrix(m.radians(roll),m.radians(-pitch),0) # sphere motion
+        
+
             
         cvgraph.draw_button(grid.canvas, modelabel, 500, 60, 2)
         
@@ -266,7 +269,7 @@ class Stewart(object): # millimeters
             c2 = lin.vmag(top-right)
             
             if min(c1, c2, self.Cmin) != self.Cmin:
-                print(f"cylinder too short: c1: {c1} c2: {c2} Cmin: {self.Cmin}")
+                #print(f"cylinder too short: c1: {c1} c2: {c2} Cmin: {self.Cmin}")
                 sa = self.old_sA
                 sb = self.old_sB
                 sc = self.old_sC
@@ -274,7 +277,7 @@ class Stewart(object): # millimeters
                 #return
                 
             if max(c1, c2, self.Cmax) != self.Cmax:
-                print(f"cylinder too long: c1: {c1} c2: {c2} Cax: {self.Cmax}")
+                #print(f"cylinder too long: c1: {c1} c2: {c2} Cax: {self.Cmax}")
                 sa = self.old_sA
                 sb = self.old_sB
                 sc = self.old_sC
@@ -322,7 +325,14 @@ class Stewart(object): # millimeters
         self.old_sC = sc
         self.old_coll_v = coll_v
         
-         
+        now = time.time()
+        dt = now - self.last_time
+        self.last_time = now
+        self.times.append(dt)
+        self.times.pop(0)
+        fps = sum(self.times) / len(self.times)
+        label = f"{fps*1000:.3f} ms/frame"
+        cvgraph.draw_button(grid.canvas, label, 600, 950, 1) 
     #def drawline(self, grid, p1, p2, color, width):
     #    grid.line(twod(p1), twod(p2), color, width)
     
