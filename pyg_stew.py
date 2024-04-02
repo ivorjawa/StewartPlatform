@@ -1,22 +1,52 @@
-#!/usr/bin/env python
-
-import sys
+import pyglet
+import numpy as np
 import math as m
 import time
-import numpy as np
-import cv2
-
-import controllers as ctrl
-import cvgraph
 
 from linear import xaxis, yaxis, zaxis, rotate, vector
 import linear as lin
 
 # convert from 3-space to 2-space
-twod = lambda p: np.array([p[0], p[1]])
-   
-decode_report = ctrl.decode_taranis
-gamepad = ctrl.open_taranis()
+#twod = lambda p: np.array([p[0], p[1]])
+twod = lambda p: [int(p[0]), int(p[1])]
+ 
+#from pyglet.gl import *
+
+joysticks = pyglet.input.get_joysticks()
+assert joysticks, 'No joystick device is connected'
+joystick = joysticks[0]
+joystick.open()
+
+
+window = pyglet.window.Window(width=800, height=800)
+oldbatch = pyglet.graphics.Batch()
+
+
+# Labels
+pyglet.text.Label("Buttons:", x=15, y=window.height - 25, font_size=14, batch=oldbatch)
+pyglet.text.Label("D Pad:", x=window.width - 125, y=window.height - 25, font_size=14, batch=oldbatch)
+
+#c = lambda b, g, r: A([b, g, r], dtype='int32')
+c = lambda b, g, r: np.array([r, g, b], dtype='int32') # converts bgr to rgb
+red = c(0, 0, 255)
+#red1 = red/2
+green = c(0, 255, 0)
+#green1 = green/2
+yellow = c(0, 255, 255)
+#yellow1 = yellow/2
+white = c(255, 255, 255)
+#gray1 = white/2
+purple = c(255, 0, 255)
+#purple1 = purple/2
+blue = c(255, 0, 0)
+#blue1 = blue/2
+orange = c(0, 165, 255)
+#orange1 = orange/2
+
+cSA = 24
+cSB = 40
+cSC = 72
+cSD = 68
 
 t0 = time.time()
 
@@ -24,6 +54,39 @@ outlog = []
 outcount = 0
 fastcount = 0
 
+class DrawList(object):
+    def __init__(self):
+        self.points = []
+        self.colors = []
+        self.widths = []
+        self.compoints = None
+        self.batch = pyglet.graphics.Batch()
+        self.lines = []
+    def drawline(self, p1, p2, color, width):
+        self.points.append(p1)
+        self.points.append(p2)
+        self.colors.append(color)
+        self.widths.append(width)
+    def compile(self):
+        self.compoints = np.array(self.points)
+    def draw(self, compoints = []): # can draw on a transformed array
+        self.batch = pyglet.graphics.Batch()
+        self.lines = []
+        if (len(compoints) == 0):
+            compoints = self.compoints
+        for i in range(len(self.colors)):
+            #grid.line(twod(compoints[2*i]), twod(compoints[2*i + 1]), self.colors[i], self.widths[i])
+            #pyglet.shapes.Line(p1[0], p1[1], p2[0], p2[1], width=width, color=color, batch=self.batch)
+            #print(*twod(compoints[2*i]), *twod(compoints[2*i + 1]), self.widths[i], self.colors[i])
+            l = pyglet.shapes.Line(*twod(compoints[2*i]), *twod(compoints[2*i + 1]), self.widths[i], self.colors[i], batch=self.batch)
+            self.lines.append(l)
+        self.batch.draw()
+
+
+def hsv82bgr(h, s, v):
+    (r, g, b) = colorsys.hsv_to_rgb(h/255.0, s/255.0, v/255.0)
+    return bgr(b*255, g*255, r*255)   
+       
 def get_circle(radius, n = 128):
     circle = []
     colors = []
@@ -33,7 +96,7 @@ def get_circle(radius, n = 128):
             [radius*m.cos(theta),
             radius*m.sin(theta),
             0])
-        color = cvgraph.hsv82bgr((i/float(n))*255, 255, 255)
+        color = hsv82bgr((i/float(n))*255, 255, 255)
         colors.append(color)
     return circle, colors
 
@@ -75,66 +138,7 @@ def euler_rotation_matrix(alpha,beta,gamma):
                             
     return rot_matrix
 
-def quaternion_rotation_matrix(Q):
-    """
-    https://automaticaddison.com/how-to-convert-a-quaternion-to-a-rotation-matrix/
-    Covert a quaternion into a full three-dimensional rotation matrix.
- 
-    Input
-    :param Q: A 4 element array representing the quaternion (q0,q1,q2,q3) 
- 
-    Output
-    :return: A 3x3 element matrix representing the full 3D rotation matrix. 
-             This rotation matrix converts a point in the local reference 
-             frame to a point in the global reference frame.
-    """
-    # Extract the values from Q
-    q0 = Q[0]
-    q1 = Q[1]
-    q2 = Q[2]
-    q3 = Q[3]
-     
-    # First row of the rotation matrix
-    r00 = 2 * (q0 * q0 + q1 * q1) - 1
-    r01 = 2 * (q1 * q2 - q0 * q3)
-    r02 = 2 * (q1 * q3 + q0 * q2)
-     
-    # Second row of the rotation matrix
-    r10 = 2 * (q1 * q2 + q0 * q3)
-    r11 = 2 * (q0 * q0 + q2 * q2) - 1
-    r12 = 2 * (q2 * q3 - q0 * q1)
-     
-    # Third row of the rotation matrix
-    r20 = 2 * (q1 * q3 - q0 * q2)
-    r21 = 2 * (q2 * q3 + q0 * q1)
-    r22 = 2 * (q0 * q0 + q3 * q3) - 1
-     
-    # 3x3 rotation matrix
-    rot_matrix = np.array([[r00, r01, r02],
-                           [r10, r11, r12],
-                           [r20, r21, r22]])
-                            
-    return rot_matrix
-        
-class DrawList(object):
-    def __init__(self):
-        self.points = []
-        self.colors = []
-        self.widths = []
-        self.compoints = None
-    def drawline(self, p1, p2, color, width):
-        self.points.append(p1)
-        self.points.append(p2)
-        self.colors.append(color)
-        self.widths.append(width)
-    def compile(self):
-        self.compoints = np.array(self.points)
-    def draw(self, grid, compoints = []): # can draw on a transformed array
-        if (len(compoints) == 0):
-            compoints = self.compoints
-        for i in range(len(self.colors)):
-            grid.line(twod(compoints[2*i]), twod(compoints[2*i + 1]), self.colors[i], self.widths[i])
-            
+      
 class Stewart(object): # millimeters
     def __init__(self, inner_r, outer_r, footprint, min_cyl, max_cyl):
         self.Cmin = min_cyl
@@ -211,9 +215,9 @@ class Stewart(object): # millimeters
                [ 0.71625289, -0.45795695,  0.5231511 ]])
         
         """
-        white = cvgraph.white
-        red = cvgraph.red
-        green = cvgraph.green
+        #white = white
+        #red = red
+        #green = green
 
         Vp = lin.vector(m.cos(m.radians(pitch)), 0, m.sin(m.radians(pitch)))
         Vr = lin.vector(0, m.cos(m.radians(roll)), m.sin(m.radians(roll)))
@@ -228,14 +232,14 @@ class Stewart(object): # millimeters
         coll_v = coll_p * Vdisk_n         
         
         flatmode = False
-        if (glyph & ctrl.cSD) == ctrl.cSD:
+        if (glyph & cSD) == cSD:
             flatmode = True
             #print("using flat motion")
             coll_v = lin.vector(coll_v[0], coll_v[1], coll_p)
             self.modelabel = f"flat motion {glyph}"
         
         if not flatmode:
-            if (glyph & ctrl.cSC) == ctrl.cSC: 
+            if (glyph & cSC) == cSC: 
                 #print("using cup motion") 
                 self.modelabel = f"cup motion {glyph}"     
                 oily = euler_rotation_matrix(m.radians(-roll),m.radians(pitch),0) # cup motion
@@ -299,36 +303,39 @@ class Stewart(object): # millimeters
             
             return (coll_v, sa, sb, sc)
         
-    def draw(self, grid, coll_v, sa, sb, sc):           
+    def draw(self, coll_v, sa, sb, sc):           
         dl = DrawList()
                 
-        dl.drawline(self.p0, coll_v, cvgraph.purple1, 2)
+        dl.drawline(self.p0, coll_v, purple, 2)
         
-        dl.drawline(coll_v, sa, cvgraph.white, 2)   
-        dl.drawline(coll_v, sb, cvgraph.white, 2)       
-        dl.drawline(coll_v, sc, cvgraph.white, 2) 
+        dl.drawline(coll_v, sa, white, 2)   
+        dl.drawline(coll_v, sb, white, 2)       
+        dl.drawline(coll_v, sc, white, 2) 
         
-        dl.drawline(self.s1, self.s2, cvgraph.green, 2)      
-        dl.drawline(self.s3, self.s4, cvgraph.green, 2) 
-        dl.drawline(self.s5, self.s6, cvgraph.green, 2)  
+        dl.drawline(self.s1, self.s2, green, 2)      
+        dl.drawline(self.s3, self.s4, green, 2) 
+        dl.drawline(self.s5, self.s6, green, 2)  
         
-        dl.drawline(self.s1, sa, cvgraph.red, 2) 
-        dl.drawline(self.s2, sa, cvgraph.red, 2) 
-        dl.drawline(self.s3, sb, cvgraph.red, 2) 
-        dl.drawline(self.s4, sb, cvgraph.red, 2)
-        dl.drawline(self.s5, sc, cvgraph.red, 2) 
-        dl.drawline(self.s6, sc, cvgraph.red, 2)  
+        dl.drawline(self.s1, sa, red, 2) 
+        dl.drawline(self.s2, sa, red, 2) 
+        dl.drawline(self.s3, sb, red, 2) 
+        dl.drawline(self.s4, sb, red, 2)
+        dl.drawline(self.s5, sc, red, 2) 
+        dl.drawline(self.s6, sc, red, 2)  
         
         dl.compile()
-        dl.draw(grid, dl.compoints - xaxis * 150)
-        grid.circle(twod(xaxis*-150), self.outer_r, cvgraph.green, lw=1)
+        #print("top")
+        dl.draw(dl.compoints + xaxis*300  + yaxis*400)
+        #grid.circle(twod(xaxis*-150), self.outer_r, green, lw=1)
+        #dl.draw()
         
-        offset = xaxis * 250 + yaxis * -200
+        offset = xaxis*600 + yaxis* 400
         
         screen_rm = lin.rmat(xaxis, m.radians(-90))
         screenpts = lin.matmul(dl.compoints, screen_rm.T) + offset
         
-        dl.draw(grid, screenpts)
+        #print("side")
+        dl.draw(screenpts)
         
 
         
@@ -340,103 +347,84 @@ class Stewart(object): # millimeters
         dtavg = sum(self.times) / len(self.times)
         
         dtlabel = f"{dtavg*1000:.3f} ms/frame"
-        cvgraph.draw_button(grid.canvas, dtlabel, 600, 950, 1) 
-        cvgraph.draw_button(grid.canvas, self.modelabel, 500, 60, 2)
+        #draw_button(grid.canvas, dtlabel, 600, 950, 1) 
+        #draw_button(grid.canvas, self.modelabel, 500, 60, 2)
         
-        #"time,dt,coll,roll,pitch,yaw,glyph,fastcount,outcount"
-        
-        #outlog.append([now-t0,dt,coll,roll,pitch,yaw,glyph,fastcount,outcount])
-    #def drawline(self, grid, p1, p2, color, width):
-    #    grid.line(twod(p1), twod(p2), color, width)
-    
-      
-def test_controller():
-    global fastcount, outcount, outlog
-    # test with input from game controller
-    
-    circle, colors = get_circle(200)
-    Stew = Stewart(40, 120, 120, 240, 308) #inner, outer radius, footprint, min, max cylinder extension
-    
-    Vucs = lin.vector(0, 0, Stew.max_height) # position of Jesus Nut before rotation
-    
-    # arm radius, min cylinder, max cylinder
-    #rot = Rotor(60, 160, 200) # real robot
-    #rot = Rotor(70, 100, 130) #pneumatic dummy
-    
-    #t0 = time.time()
-    #output = []
-    #count = 0
-    #counting = True
-    
-    print(f"unclog attempt start: {time.time()-t0}")
-    i = 0
-    while i < 50:
-        report = gamepad.read(20)
-        if report:
-            i += 1
-    print(f"unclog attempt finish: {time.time()-t0}")
-    print(f"report len: {len(report)}")
-    
-    while 1:
-        scenerot = (time.time()*30)% 360
-        #for scenerot in range(0, 360):
-        grid = cvgraph.SimGrid(1200, 1200, 1.5)
-        report = gamepad.read(64)
-        
-        #for i in range(len(circle)-1):
-        #    Stew.drawline(grid, circle[i], circle[i+1], colors[i], 3)
-        #Stew.drawline(grid, circle[-1], circle[0], colors[-1], 3)
-        #Stew.draw(grid)
-        #report = None
-        fastcount += 1
-        if report:
-            # Taranis major axes 3 5 7 9 lx = 9, ly = 7, rx = 3, ry = 5 
-            rd = decode_report(report)
-            scale = 256.0
-            coll_in = rd['coll']/scale
-            roll_in = rd['roll']/scale          
-            pitch_in = rd['pitch']/scale
-            yaw_in = rd['yaw']/scale
-            glyph = rd['glyph']
-            
-            #print(f"c: {coll_in:{3.3}}, r: {roll_in:{3.3}}, p: {pitch_in:{3.3}}")
-            
-            coll = coll_in
-            roll = (-roll_in + 0.5) * 40
-            pitch = (pitch_in - .5) * 40
-            yaw = (-yaw_in + 0.5) * 90 
-            #print(f"c: {coll:{3.3}}, r: {roll:{3.3}}, p: {pitch:{3.3}}")
-            (coll_v, sa, sb, sc) = Stew.solve(roll, pitch, yaw, coll, glyph)
-            Stew.draw(grid, coll_v, sa, sb, sc)
-            #dl.drawline(1.5*Vucs, Vp*50+1.5*Vucs, cvgraph.orange, 2)
-            #dl.drawline(1.5*Vucs, Vr*50+1.5*Vucs, cvgraph.blue, 2)
-            #dl.drawline(1.5*Vucs, Vq*50+1.5*Vucs, cvgraph.gray1, 2)
-            
-            label = f"{time.time()-t0:.3f}"
-            cvgraph.draw_button(grid.canvas, label, 100, 40, 1)
-            #outcount += 1
+"""button_labels = []
+button_shapes = []
+
+for i in range(len(joystick.buttons)):
+    rows = len(joystick.buttons) // 2
+    y = window.height - 50 - 25 * (i % rows)
+    x = 35 + 60 * (i // rows)
+    label = pyglet.text.Label(f"{i}:", x=x, y=y, font_size=14, anchor_x='right', batch=batch)
+    button_labels.append(label)
+    shape = pyglet.shapes.Rectangle(x + 10, y + 1, 10, 10, color=(255, 0, 0), batch=batch)
+    button_shapes.append(shape)
 
 
-        #re-indent to make part of while loop
-        grid.display()
-        inkey = cv2.pollKey()
-        #inkey = cv2.waitKey(1)
-        #break
-        #inkey  = cv2.waitKey( 30)
-        if outcount == 500:
-            with open("stulog.csv", "w") as f:
-                print("time,dt,coll,roll,pitch,yaw,glyph,fastcount,outcount", file=f)
-                for line in outlog:
-                    print(",".join([str(x) for x in line]),file=f)
-            sys.exit(0)
-        if inkey == 27:
-            sys.exit(0)
-            
-   
-def run():
-    #test_recorded()
-    test_controller()
-    sys.exit()
+joystick_rect = pyglet.shapes.Rectangle(window.width // 2, window.height // 2, 10, 10, color=(255, 0, 255), batch=batch)
+joystick_rect.anchor_position = joystick_rect.width // 2, joystick_rect.height // 2
+d_pad_rect = pyglet.shapes.Rectangle(window.width - 75, window.height - 100, 10, 10, color=(0, 0, 255), batch=batch)"""
 
-if __name__ == "__main__":
-    run()
+line2 = pyglet.shapes.Line(0, 0, window.width/2, window.height/2, width=4, color=(200, 20, 20), batch=oldbatch)
+
+Stew = Stewart(40, 120, 120, 240, 308) #inner, outer radius, footprint, min, max cylinder extension
+
+@window.event
+def on_draw():
+    window.clear()
+    #oldbatch.draw()
+    
+    #print(window.width, window.height)
+    axes = joystick.device.get_controls()[24:]
+    
+    coll_in = axes[2].value/2047.0
+    roll_in = axes[0].value/1024.0 - 1
+    pitch_in = axes[1].value/1024.0 - 1
+    yaw_in = axes[3].value/1024.0 - 1
+    
+    #print(f"ci: {coll_in:{3.3}}, ri: {roll_in:{3.3}}, pi: {pitch_in:{3.3}}, yi: {yaw_in:{3.3}}")
+    
+    glyph = 0
+    if (axes[4].value == 1024): glyph |= cSA
+    if (axes[5].value == 1024): glyph |= cSB
+    if (axes[6].value == 1024): glyph |= cSC
+    if (axes[7].value == 1024): glyph |= cSD
+
+        
+    coll = coll_in 
+    roll = (-roll_in) * 40
+    pitch = (pitch_in) * 40
+    yaw = (yaw_in) * 90 
+    
+    #print(f"c: {coll:{3.3}}, r: {roll:{3.3}}, p: {pitch:{3.3}}, y: {yaw:{3.3}} g: {glyph}")
+    (coll_v, sa, sb, sc) = Stew.solve(roll, pitch, yaw, coll, glyph)
+    Stew.draw(coll_v, sa, sb, sc)
+    
+    """x = round((.5 * joystick.x + 1), 2) * window.width / 2
+    y = round((-.5 * joystick.y + 1), 2) * window.height / 2
+    rx = (.5 * joystick.rx + 1) * 60
+    ry = (-.5 * joystick.ry + 1) * 60
+    z = joystick.z * 50
+    #print(f"joystick.z * 1024: {joystick.z*1024}, {z}")
+    #print(f"x: {x:0.3f}, y: {y:0.3f}, rx: {rx:0.3f}, ry: {ry:0.3f}, z: {z:0.3f}")
+    # Axes
+    joystick_rect.position = x, y
+    joystick_rect.anchor_position = joystick_rect.width // 2, joystick_rect.height // 2
+    joystick_rect.width = 10 + rx + z
+    joystick_rect.height = 10 + ry + z
+
+    #sa: 4, sb: 5, sc: 6, sd: 7
+    #lx/yaw: 3, ly/coll: 2, rx/roll: 0, ry/pitch: 1"""
+    
+    #print([f"{i}: {x.value}" for (i, x) in enumerate(joystick.device.get_controls()[24:])])
+    """# Buttons
+    for i in range(len(joystick.buttons)):
+        rect = button_shapes[i]
+        rect.color = (0, 255, 0) if joystick.buttons[i] else (255, 0, 0)"""
+
+
+
+
+pyglet.app.run()

@@ -16,7 +16,7 @@ t0 = time.time()
 output = []
 if __name__ == "__main__":
     count = 0
-    counting = False
+    counting = True
     while 1:
         report = gamepad.read(64)
         #report = None
