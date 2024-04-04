@@ -63,7 +63,8 @@ class BaseStation(object):
         
             report = self.gamepad.report()
             #report = None
-            if report:            
+            if report:  
+                #print(report)          
                 output = wirep.encode(report)
                 if (output != lastout) or (((time.time()-self.last_sent)*1000) > 16):
                     lastout = output

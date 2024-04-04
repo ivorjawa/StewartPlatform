@@ -17,6 +17,10 @@ from linear import xaxis, yaxis, zaxis, rotate
 import linear as lin
 
 from joycode import JoyProtocol
+from StewartPlatform import StewartPlatform
+
+millis = StopWatch().time
+
 
 M1 = Motor(Port.A)
 M2 = Motor(Port.B)
@@ -88,7 +92,7 @@ def neutral_coll(cmots, angle):
 def memory_calibrate():
     print("Starting soft calibration")
     threshold = readthresh()
-    if (threshold < 0) or (threshold > 2000):
+    if (threshold < 0) or (threshold > 3500):
         raise ValueError(f"Recorded threshold of {threshold} degrees invalid, recalibrate")
     cmots = [M1, M2, M3, M4, M5, M6]
     calib_core(cmots)
@@ -133,7 +137,94 @@ def identify():
     print(f"Implementation: {usys.implementation}")      
     print(f"Version Info: {usys.version_info}")
     print(f"Battery Voltage: {hub.battery.voltage()}mv") 
+
+class Stewart(StewartPlatform):
+    def __init__(self, inner_r, outer_r, footprint, min_cyl, max_cyl, threshang):
+        super().__init__(inner_r, outer_r, footprint, min_cyl, max_cyl)
+        self.threshang = threshang # top of cylinder, degrees
+        self.angle_mul = self.threshang / self.Crange # mm to degree
+        self.cmots = [M1, M2, M3, M4, M5, M6]
+        
+    def pos_ang(self, position):
+        # decode desired cylinder length into rotations
+        # threshold max angle, degrees
+        # mincyl, maxcyl, position mm
+        if (position < self.Cmin) or (position > self.Cmax):
+            raise ValueError(f"{position} is not in {self.Cmin}...{self.Cmax}")
+        offset = position - self.Cmin
+        return offset * self.angle_mul # angle in degrees, can be > 360
     
+    def actuate(self):
+        for i, cyl in enumerate(self.cyls):
+            #print(f"motor {i} wants cylinder length {cyl}")
+            target = self.pos_ang(cyl)
+            self.cmots[i].track_target(target)
+ 
+          
+    def calculate(self, roll, pitch, yaw, coll, glyph):
+        try:
+            #print(f"calculate roll: {roll}, pitch: {pitch} yaw: {yaw} glyph: {glyph}")
+            (coll_v, sa, sb, sc) = self.solve(roll, pitch, yaw, coll, glyph) # sets self.cyls
+            #print(f"coll_v: {coll_v}, sa: {sa}, sb: {sb}, sc{sc}")
+            #self.solve(pitch, roll, collpct)
+            #print(self.cfc, self.cpc, self.csc)
+            #print(f"front: {self.pos_ang(self.cfc)}  port: {self.pos_ang(self.cpc)}  star: {self.pos_ang(self.csc)}")
+        except ValueError as e:
+            label = f"Range Error P: {pitch:{4}.{3}}, R: {roll:{4}.{3}}, C%: {collpct:{3}.{3}} {e}"
+            print(label)
+            
+def run_remote():
+    poller = poll()
+    # Register the standard input so we can read keyboard presses.
+    poller.register(stdin)
+    
+    wvars = ['coll', 'roll', 'pitch', 'yaw', 'glyph']
+    wirep = JoyProtocol(wvars, 2, poller, stdin)
+    
+    #jsman = JSMan()
+    last_input = 0 # last input from base station
+    
+    disk_def = 40 # degrees +-
+    coll_range = 1 # % +-
+    
+    threshold = memory_calibrate() # max travel of cylinders, degrees
+    # arm radius, min cylinder, max cylinder
+    Stew = Stewart(40, 120, 120, 240, 308, threshold) #inner, outer radius, footprint, min, max cylinder extension
+        
+    while True:
+        if wirep.poll():
+            try:    
+                last_input = millis() 
+
+                wirep.decode_wire()
+                coll = (wirep.vals['coll']/2 + .5)*coll_range                 
+                #print(f"wire coll: {wirep.vals['coll']} calculated: {coll}")
+                roll = -1*wirep.vals['roll']*disk_def
+                pitch = 1*wirep.vals['pitch']*disk_def
+                yaw = wirep.vals['yaw']
+                glyph = wirep.decode_raw('glyph')
+                
+                #print(f"roll: {roll:.3f}, pitch: {pitch:.3f}, yaw: {yaw:.3f} coll: {coll:.3f} glyph: {glyph}")
+
+                
+                Stew.calculate(roll, pitch, yaw, coll, glyph)
+                
+                if((glyph & 40) == 40): # X '0b0101000' SB
+                    print(f"<goodbye/>")
+                    return None
+                    #break
+                    
+            except Exception as e:
+                print("failure in main loop:")
+                print(e)
+            
+            try:
+                Stew.actuate()
+            except Exception as e:
+                print("actuate failed: ", e)
+                print(f"<goodbye/>")
+                return None
+                
 if __name__ == "__main__":
     # pybricksdev run ble -n rotor rotor.py
     #teststorage()
@@ -141,8 +232,8 @@ if __name__ == "__main__":
     #run_remote()
     try:
         #pass # when running above tests
-        #run_remote() # full talks to remote run under ./rotorbase.py
-        full_calibrate() # should be done with rotors and scissor link detached
+        run_remote() # full talks to remote run under ./rotorbase.py
+        #full_calibrate() 
     except Exception as e:
         print("General failure: ", e)
     identify()   
