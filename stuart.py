@@ -184,7 +184,7 @@ def run_remote():
     #jsman = JSMan()
     last_input = 0 # last input from base station
     
-    disk_def = 40 # degrees +-
+    disk_def = 10 # degrees +-
     coll_range = 1 # % +-
     
     threshold = memory_calibrate() # max travel of cylinders, degrees
@@ -197,17 +197,22 @@ def run_remote():
                 last_input = millis() 
 
                 wirep.decode_wire()
-                coll = (wirep.vals['coll']/2 + .5)*coll_range                 
+                coll = (wirep.vals['coll']/2 + .5)*coll_range   
+                #coll = .5              
                 #print(f"wire coll: {wirep.vals['coll']} calculated: {coll}")
                 roll = -1*wirep.vals['roll']*disk_def
                 pitch = 1*wirep.vals['pitch']*disk_def
-                yaw = wirep.vals['yaw']
+                yaw = wirep.vals['yaw']*90
                 glyph = wirep.decode_raw('glyph')
                 
-                #print(f"roll: {roll:.3f}, pitch: {pitch:.3f}, yaw: {yaw:.3f} coll: {coll:.3f} glyph: {glyph}")
 
                 
                 Stew.calculate(roll, pitch, yaw, coll, glyph)
+                
+                print(f"roll:{roll: 3.1f}, pitch:{pitch: 3.1f}, yaw:{yaw: 3.1f} coll:{coll: 3.1f} glyph:{glyph}", end="")
+                for i, cyl in enumerate(Stew.cyls):
+                    print(f" Cyl {i}:{cyl: 3.1f}mm", end="")
+                print("")
                 
                 if((glyph & 40) == 40): # X '0b0101000' SB
                     print(f"<goodbye/>")

@@ -139,18 +139,18 @@ class StewartPlatform(object): # millimeters
         flatmode = False
         if (glyph & cSD) == cSD:
             flatmode = True
-            print("using flat motion")
+            #print("using flat motion")
             coll_v = lin.vector(coll_v[0], coll_v[1], coll_p)
             self.modelabel = f"flat motion {glyph}"
         
         if not flatmode:
             if (glyph & cSC) == cSC: 
-                print("using cup motion") 
+                #print("using cup motion") 
                 self.modelabel = f"cup motion {glyph}"     
                 oily = euler_rotation_matrix(m.radians(-roll),m.radians(pitch),0) # cup motion
             else:
                 self.modelabel = f"sphere motion {glyph}"
-                print("using sphere motion")
+                #print("using sphere motion")
                 oily = euler_rotation_matrix(m.radians(roll),m.radians(-pitch),0) # sphere motion
                 
         
@@ -189,7 +189,7 @@ class StewartPlatform(object): # millimeters
             cyls.append(c2)
             
             if min(c1, c2, self.Cmin) != self.Cmin:
-                #print(f"cylinder too short: c1: {c1} c2: {c2} Cmin: {self.Cmin}")
+                print(f"cylinder too short: c1: {c1} c2: {c2} Cmin: {self.Cmin}")
                 sa = self.old_sA
                 sb = self.old_sB
                 sc = self.old_sC
@@ -198,7 +198,7 @@ class StewartPlatform(object): # millimeters
                 break
                 
             if max(c1, c2, self.Cmax) != self.Cmax:
-                #print(f"cylinder too long: c1: {c1} c2: {c2} Cax: {self.Cmax}")
+                print(f"cylinder too long: c1: {c1} c2: {c2} Cmax: {self.Cmax}")
                 sa = self.old_sA
                 sb = self.old_sB
                 sc = self.old_sC

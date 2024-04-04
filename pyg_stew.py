@@ -21,29 +21,29 @@ joystick.open()
 
 
 window = pyglet.window.Window(width=800, height=800)
-oldbatch = pyglet.graphics.Batch()
+#oldbatch = pyglet.graphics.Batch()
 
 
 # Labels
-pyglet.text.Label("Buttons:", x=15, y=window.height - 25, font_size=14, batch=oldbatch)
-pyglet.text.Label("D Pad:", x=window.width - 125, y=window.height - 25, font_size=14, batch=oldbatch)
+#pyglet.text.Label("Buttons:", x=15, y=window.height - 25, font_size=14, batch=oldbatch)
+#pyglet.text.Label("D Pad:", x=window.width - 125, y=window.height - 25, font_size=14, batch=oldbatch)
 
 #c = lambda b, g, r: A([b, g, r], dtype='int32')
 c = lambda b, g, r: np.array([r, g, b], dtype='int32') # converts bgr to rgb
 red = c(0, 0, 255)
-#red1 = red/2
+red1 = c(*red/2)
 green = c(0, 255, 0)
-#green1 = green/2
+green1 = c(*green/2)
 yellow = c(0, 255, 255)
-#yellow1 = yellow/2
+yellow1 = c(*yellow/2)
 white = c(255, 255, 255)
-#gray1 = white/2
+gray1 = c(*white/2)
 purple = c(255, 0, 255)
-#purple1 = purple/2
+purple1 = c(*purple/2)
 blue = c(255, 0, 0)
-#blue1 = blue/2
+blue1 = c(*blue/2)
 orange = c(0, 165, 255)
-#orange1 = orange/2
+orange1 = c(*orange/2)
 
 cSA = 24
 cSB = 40
@@ -146,9 +146,13 @@ class Stewart(StewartPlatform):
     def __init__(self, inner_r, outer_r, footprint, min_cyl, max_cyl):
         super().__init__(inner_r, outer_r, footprint, min_cyl, max_cyl)
         self.last_time = time.time()
-        self.times = [time.time() for i in range(5)]  
+        self.times = [time.time() for i in range(5)] 
+        self.textbatch = pyglet.graphics.Batch()
+        self.labels = []
          
-    def draw(self, coll_v, sa, sb, sc):           
+    def draw(self, coll_v, sa, sb, sc):  
+        self.textbatch = pyglet.graphics.Batch() 
+        self.labels = []        
         dl = DrawList()
                 
         dl.drawline(self.p0, coll_v, purple, 2)
@@ -212,12 +216,14 @@ joystick_rect = pyglet.shapes.Rectangle(window.width // 2, window.height // 2, 1
 joystick_rect.anchor_position = joystick_rect.width // 2, joystick_rect.height // 2
 d_pad_rect = pyglet.shapes.Rectangle(window.width - 75, window.height - 100, 10, 10, color=(0, 0, 255), batch=batch)"""
 
-line2 = pyglet.shapes.Line(0, 0, window.width/2, window.height/2, width=4, color=(200, 20, 20), batch=oldbatch)
 
 Stew = Stewart(40, 120, 120, 240, 308) #inner, outer radius, footprint, min, max cylinder extension
 
+#line2 = pyglet.shapes.Line(0, 0, window.width/2, window.height/2, width=4, color=(200, 20, 20), batch=textbatch)
+
 @window.event
 def on_draw():
+    #global textbatch
     window.clear()
     #oldbatch.draw()
     
@@ -237,15 +243,32 @@ def on_draw():
     if (axes[6].value == 1024): glyph |= cSC
     if (axes[7].value == 1024): glyph |= cSD
 
-        
+    
+    disk_def = 10 # degrees 
     coll = coll_in 
-    roll = (-roll_in) * 40
-    pitch = (pitch_in) * 40
+    roll = (-roll_in) * disk_def
+    pitch = (pitch_in) * disk_def
     yaw = (yaw_in) * 90 
+    
+
     
     #print(f"c: {coll:{3.3}}, r: {roll:{3.3}}, p: {pitch:{3.3}}, y: {yaw:{3.3}} g: {glyph}")
     (coll_v, sa, sb, sc) = Stew.solve(roll, pitch, yaw, coll, glyph)
     Stew.draw(coll_v, sa, sb, sc)
+    
+    l = pyglet.text.Label(f"coll: {coll: 3.1f}", x=15, y=window.height - 25, font_size=14, batch=Stew.textbatch)
+    Stew.labels.append(l)
+    l = pyglet.text.Label(f"roll: {roll: 3.1f}", x=15, y=window.height - 45, font_size=14, batch=Stew.textbatch)
+    Stew.labels.append(l)    
+    l = pyglet.text.Label(f"pitch: {pitch: 3.1f}", x=15, y=window.height - 65, font_size=14, batch=Stew.textbatch)
+    Stew.labels.append(l)    
+    l = pyglet.text.Label(f"yaw: {yaw: 3.1f}", x=15, y=window.height - 85, font_size=14, batch=Stew.textbatch)
+    Stew.labels.append(l)
+    
+    for i, cyl in enumerate(Stew.cyls):
+        l = pyglet.text.Label(f"Cyl {i}: {cyl: 3.1f}mm", x=15, y=window.height - (120+i*20), font_size=14, batch=Stew.textbatch)
+        Stew.labels.append(l)
+    Stew.textbatch.draw()
     
     """x = round((.5 * joystick.x + 1), 2) * window.width / 2
     y = round((-.5 * joystick.y + 1), 2) * window.height / 2
