@@ -80,6 +80,24 @@ def gupervate():
         if cv2.pollKey() == 27:
             break
 
+def darkitate(img):
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+
+    #lim = 255 - value
+    #v[v > lim] = 255
+    #v[v <= lim] += value
+    #v = v*.5
+    ret,v = cv2.threshold(v,240,255,cv2.THRESH_BINARY)
+    #v = np.sqrt(v)
+    #v = v*.5
+    #v = v*v
+    #v = np.array(v, dtype='uint8')
+
+    final_hsv = cv2.merge((h, s, v))
+    img = cv2.cvtColor(final_hsv, cv2.COLOR_HSV2BGR)
+    return img
+    
 def kypertate():
     cam = cv2.VideoCapture("/Users/kujawa/Desktop/goodballdata.mov")
 
@@ -102,8 +120,14 @@ def kypertate():
         
         res = cv2.resize(frame,(int(width/2), int(height/2)), interpolation = cv2.INTER_CUBIC)
         blue = cv2.cvtColor(res[:, :, 0],cv2.COLOR_GRAY2BGR)
+        print("blue", blue.shape, blue.dtype)
+        
         green = cv2.cvtColor(res[:, :, 1],cv2.COLOR_GRAY2BGR)
         red = cv2.cvtColor(res[:, :, 2],cv2.COLOR_GRAY2BGR)
+        
+        blue = darkitate(blue)
+        red = darkitate(red)
+        green = darkitate(green)
         
         #>>> ball = img[280:340, 330:390]
         #>>> img[273:333, 100:160] = ball
