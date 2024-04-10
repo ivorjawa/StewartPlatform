@@ -72,14 +72,55 @@ def gupervate():
         #ba = res[0:0, 240:320]
         #print("ba", ba.shape, ba.dtype)
         canvas[0:240, 0:320] = res
-        print('canvas', canvas.shape, canvas.dtype)
-        print("res", res.shape, res.dtype)
+        #print('canvas', canvas.shape, canvas.dtype)
+        #print("res", res.shape, res.dtype)
         
         cv2.line(canvas, (0,0), (int(width), int(height)), (0, 0, 255), 1)
         cv2.imshow("output", canvas)
         if cv2.pollKey() == 27:
             break
-            
+
+def kypertate():
+    cam = cv2.VideoCapture("/Users/kujawa/Desktop/goodballdata.mov")
+
+    width = 640
+    height = 480
+    
+    cv2.namedWindow("output", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("output", width, height) 
+    
+    while 1:
+        
+        ret, frame = cam.read()
+        if not ret:
+            print("eof?")
+            break
+        
+        canvas = np.zeros((height, width, 3), np.uint8)
+        #cv2.line(img, ituple(p1), ituple(p2), ituple(c), width)
+        #frame = cap.get_frame().bgr
+        
+        res = cv2.resize(frame,(int(width/2), int(height/2)), interpolation = cv2.INTER_CUBIC)
+        blue = cv2.cvtColor(res[:, :, 0],cv2.COLOR_GRAY2BGR)
+        green = cv2.cvtColor(res[:, :, 1],cv2.COLOR_GRAY2BGR)
+        red = cv2.cvtColor(res[:, :, 2],cv2.COLOR_GRAY2BGR)
+        
+        #>>> ball = img[280:340, 330:390]
+        #>>> img[273:333, 100:160] = ball
+        #ba = res[0:0, 240:320]
+        #print("ba", ba.shape, ba.dtype)
+        canvas[0:240, 0:320] = res
+        canvas[240:480, 0:320] = blue
+        canvas[0:240, 320:640] = red
+        canvas[240:480, 320:640] = green
+        
+        #print('canvas', canvas.shape, canvas.dtype)
+        #print("res", res.shape, res.dtype)
+        
+        cv2.line(canvas, (0,0), (int(width), int(height)), (0, 0, 255), 1)
+        cv2.imshow("output", canvas)
+        if cv2.pollKey() == 27:
+            break            
  
 def cavitate():
     img = cv2.imread('roi.jpg')  
@@ -96,7 +137,8 @@ def cavitate():
 
 if __name__ == "__main__":
     #gronkulate()
-    gupervate()
+    #gupervate()
     #cavitate()
+    kypertate()
     
     
