@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import numpy as np
 import cv2
 import uvc
 
@@ -48,8 +49,54 @@ def gronkulate():
         cv2.imshow("crapture", frame.bgr)
         if cv2.pollKey() == 27:
             break
+
+def gupervate():
+    device = uvc.device_list()[0]
+    cap = uvc.Capture(device["uid"])
+    width = 640
+    height = 480
+    cap.frame_mode = find_mode(cap, width, height, 30) 
+    
+    cv2.namedWindow("output", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("output", width, height) 
+    
+    while 1:
+        canvas = np.zeros((height, width, 3), np.uint8)
+        #cv2.line(img, ituple(p1), ituple(p2), ituple(c), width)
+        frame = cap.get_frame().bgr
+        
+        res = cv2.resize(frame,(int(width/2), int(height/2)), interpolation = cv2.INTER_CUBIC)
+        
+        #>>> ball = img[280:340, 330:390]
+        #>>> img[273:333, 100:160] = ball
+        #ba = res[0:0, 240:320]
+        #print("ba", ba.shape, ba.dtype)
+        canvas[0:240, 0:320] = res
+        print('canvas', canvas.shape, canvas.dtype)
+        print("res", res.shape, res.dtype)
+        
+        cv2.line(canvas, (0,0), (int(width), int(height)), (0, 0, 255), 1)
+        cv2.imshow("output", canvas)
+        if cv2.pollKey() == 27:
+            break
             
+ 
+def cavitate():
+    img = cv2.imread('roi.jpg')  
+    print("roi", img.shape, img.dtype) 
+    # row_low:row_high, col_low:col_high
+    ball = img[280:340, 330:390]
+    print("ball", ball.shape, ball.dtype) 
+    img[273:333, 100:160] = ball  
+    
+    while 1:
+        cv2.imshow("output", img) 
+        if cv2.pollKey() == 27:
+            break         
+
 if __name__ == "__main__":
-    gronkulate()
-    pass
+    #gronkulate()
+    gupervate()
+    #cavitate()
+    
     
