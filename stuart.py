@@ -202,17 +202,17 @@ def run_remote():
                 #print(f"wire coll: {wirep.vals['coll']} calculated: {coll}")
                 roll = -1*wirep.vals['roll']*disk_def
                 pitch = 1*wirep.vals['pitch']*disk_def
-                yaw = wirep.vals['yaw']*90
+                yaw = wirep.vals['yaw']*35
                 glyph = wirep.decode_raw('glyph')
                 
 
                 
                 Stew.calculate(roll, pitch, yaw, coll, glyph)
                 
-                print(f"roll:{roll: 3.1f}, pitch:{pitch: 3.1f}, yaw:{yaw: 3.1f} coll:{coll: 3.1f} glyph:{glyph}", end="")
-                for i, cyl in enumerate(Stew.cyls):
-                    print(f" Cyl {i}:{cyl: 3.1f}mm", end="")
-                print("")
+                #print(f"roll:{roll: 3.1f}, pitch:{pitch: 3.1f}, yaw:{yaw: 3.1f} coll:{coll: 3.1f} glyph:{glyph}", end="")
+                #for i, cyl in enumerate(Stew.cyls):
+                #    print(f" Cyl {i}:{cyl: 3.1f}mm", end="")
+                #print("")
                 
                 if((glyph & 40) == 40): # X '0b0101000' SB
                     print(f"<goodbye/>")

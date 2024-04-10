@@ -198,7 +198,7 @@ class StewartPlatform(object): # millimeters
                 break
                 
             if max(c1, c2, self.Cmax) != self.Cmax:
-                print(f"cylinder too long: c1: {c1} c2: {c2} Cmax: {self.Cmax}")
+                print(f"cylinder too long: c1: {c1} c2: {c2} Cax: {self.Cmax}")
                 sa = self.old_sA
                 sb = self.old_sB
                 sc = self.old_sC

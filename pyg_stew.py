@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import pyglet
 import numpy as np
 import math as m
@@ -248,7 +250,7 @@ def on_draw():
     coll = coll_in 
     roll = (-roll_in) * disk_def
     pitch = (pitch_in) * disk_def
-    yaw = (yaw_in) * 90 
+    yaw = (yaw_in) * 35 
     
 
     
@@ -264,9 +266,11 @@ def on_draw():
     Stew.labels.append(l)    
     l = pyglet.text.Label(f"yaw: {yaw: 3.1f}", x=15, y=window.height - 85, font_size=14, batch=Stew.textbatch)
     Stew.labels.append(l)
+    l = pyglet.text.Label(f"mode: {Stew.modelabel}", x=15, y=window.height - 105, font_size=14, batch=Stew.textbatch)
+    Stew.labels.append(l)
     
     for i, cyl in enumerate(Stew.cyls):
-        l = pyglet.text.Label(f"Cyl {i}: {cyl: 3.1f}mm", x=15, y=window.height - (120+i*20), font_size=14, batch=Stew.textbatch)
+        l = pyglet.text.Label(f"Cyl {i}: {cyl: 3.1f}mm", x=15, y=window.height - (140+i*20), font_size=14, batch=Stew.textbatch)
         Stew.labels.append(l)
     Stew.textbatch.draw()
     
