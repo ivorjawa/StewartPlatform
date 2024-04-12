@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
+import time
 import numpy as np
 import cv2
 import uvc
+
+import linear as lin
 
 #camprops = list(filter(lambda x: x.find("CAP_") == 0, dir(cv2)))
 #cam = cv2.VideoCapture(0)
@@ -266,12 +269,56 @@ def redmenace():
                  
             # big ball can fall off table
             if (len(smallcircles) == 3) and (len(bigcircles) == 1):
-                good_circ_run.append((bigcircles[0], smallcircles))
+                good_circ_run.append((time.time(), bigcircles[0], smallcircles))
                 print(f"Potential solution found! Current run {len(good_circ_run)}")
             else:
                 good_circ_run.clear()
-                
         
+            gcr = len(good_circ_run)
+            if gcr >= 1:
+                # we can calculate position
+                t1, big1, small1 = good_circ_run[0]
+                p1, p2, p3 = small1
+                cv2.line(red, (p1[0],p1[1]), (p2[0],p2[1]), (0, 0, 255), 3)
+                cv2.line(red, (p2[0],p2[1]), (p3[0],p3[1]), (0, 0, 255), 3)
+                cv2.line(red, (p1[0],p1[1]), (p3[0],p3[1]), (0, 0, 255), 3)
+            if gcr >= 2:
+                # we can calculate position and velocity
+                t2, big2, small2 = good_circ_run[1]
+                s1 = lin.vector(big1[:2])
+                s2 = lin.vector(big2[:2])
+                ds1 = lin.vmag(s2-s1)
+                dt1 = t2-t1
+                v1 = ds1/dt1
+                if ds1 < 50:
+                    print(f"v1: {v1:3.2f} pix/s ds1: {ds1:3.2f} dt1: {dt1:3.4f}") #  vs: {s2-s1} s1: {s1} s2: {s2}
+                    cv2.line(red, *s2, *(s2+(s2-s1)), (255, 255, 0), 2)
+                else:
+                    print(f"bad ds {ds1:3.2f} rejected")
+                
+                # draw entire path here
+            
+            
+            if gcr >= 3:
+                # we can calculate position, velocity, and acceleration
+                #three = good_circ_run[-3:]
+                t3, big3, small3 = good_circ_run[2]
+                if ds1 < 50: # reject bad calculations
+                    s3 = lin.vector(big2[:2])
+                    ds2 = lin.vmag(s3-s2)
+                    dt2 = t3-t2
+                    v2 = ds2/dt2
+                    dv = v2 - v1
+                    a = dv/dt2
+                    if ds2 < 50:
+                        print(f"v2: {v2:3.2f} pix/s a: {a:3.2f} pix/s^2 ds2: {ds2:3.2f} dt2: {dt2:3.4f}") #  vs: {s2-s1} s1: {s1} s2: {s2}
+                        cv2.line(red, *s3, *(s3+(s3-s2)), (255, 255, 0), 2)
+                    else:
+                        print(f"bad ds {ds1:3.2f} rejected")
+                    
+                
+ 
+            
         #red = cv2.cvtColor(rcan,cv2.COLOR_GRAY2BGR)
         
         canvas[0:480, 0:640] = red
