@@ -211,6 +211,7 @@ def redmenace():
     cv2.namedWindow("output", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("output", width, height) 
     
+    good_circ_run = [] # how many times in a row have we got a good solution
     while 1:
         
         ret, frame = cam.read()
@@ -244,13 +245,32 @@ def redmenace():
         circles = cv2.HoughCircles(rblur,cv2.HOUGH_GRADIENT,1,20,param1=130,param2=30,minRadius=15,maxRadius=80)
         #circles = None
         if np.any(circles):
+            bigcircles = []
+            smallcircles = []
             circles = np.uint16(np.around(circles))
             for i in circles[0,:]:
                  # draw the outer circle
-                 print(f"circle ({i[0]}, {i[1]}), r = {i[2]}")
+                 r = i[2]
+                 if (r > 22) and (r < 60):
+                     #print(f"dud rejected with radius {r}")
+                     continue
+                     
+                 if r <= 22:
+                     smallcircles.append(i)
+                 else:
+                     bigcircles.append(i)
+                 #print(f"circle ({i[0]}, {i[1]}), r = {i[2]}")
                  cv2.circle(red,(i[0],i[1]),i[2],(0,255,0),2)
                  # draw the center of the circle
                  cv2.circle(red,(i[0],i[1]),2,(0,0,255),3)
+                 
+            # big ball can fall off table
+            if (len(smallcircles) == 3) and (len(bigcircles) == 1):
+                good_circ_run.append((bigcircles[0], smallcircles))
+                print(f"Potential solution found! Current run {len(good_circ_run)}")
+            else:
+                good_circ_run.clear()
+                
         
         #red = cv2.cvtColor(rcan,cv2.COLOR_GRAY2BGR)
         
