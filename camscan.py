@@ -215,6 +215,8 @@ def redmenace():
     cv2.resizeWindow("output", width, height) 
     
     good_circ_run = [] # how many times in a row have we got a good solution
+    #out = cv2.VideoWriter('output.avi', -1, 30.0, (640,480))
+    out = cv2.VideoWriter('output.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (width,height))
     while 1:
         
         ret, frame = cam.read()
@@ -275,58 +277,64 @@ def redmenace():
                 good_circ_run.clear()
         
             gcr = len(good_circ_run)
-            if gcr >= 1:
-                # we can calculate position
-                t1, big1, small1 = good_circ_run[0]
-                p1, p2, p3 = small1
-                cv2.line(red, (p1[0],p1[1]), (p2[0],p2[1]), (0, 0, 255), 3)
-                cv2.line(red, (p2[0],p2[1]), (p3[0],p3[1]), (0, 0, 255), 3)
-                cv2.line(red, (p1[0],p1[1]), (p3[0],p3[1]), (0, 0, 255), 3)
-            if gcr >= 2:
-                # we can calculate position and velocity
-                t2, big2, small2 = good_circ_run[1]
-                s1 = lin.vector(big1[:2])
-                s2 = lin.vector(big2[:2])
-                ds1 = lin.vmag(s2-s1)
-                dt1 = t2-t1
-                v1 = ds1/dt1
-                if ds1 < 50:
-                    print(f"v1: {v1:3.2f} pix/s ds1: {ds1:3.2f} dt1: {dt1:3.4f}") #  vs: {s2-s1} s1: {s1} s2: {s2}
-                    cv2.line(red, *s2, *(s2+(s2-s1)), (255, 255, 0), 2)
-                else:
-                    print(f"bad ds {ds1:3.2f} rejected")
-                
-                # draw entire path here
-            
-            
-            if gcr >= 3:
-                # we can calculate position, velocity, and acceleration
-                #three = good_circ_run[-3:]
-                t3, big3, small3 = good_circ_run[2]
-                if ds1 < 50: # reject bad calculations
-                    s3 = lin.vector(big2[:2])
-                    ds2 = lin.vmag(s3-s2)
-                    dt2 = t3-t2
-                    v2 = ds2/dt2
-                    dv = v2 - v1
-                    a = dv/dt2
-                    if ds2 < 50:
-                        print(f"v2: {v2:3.2f} pix/s a: {a:3.2f} pix/s^2 ds2: {ds2:3.2f} dt2: {dt2:3.4f}") #  vs: {s2-s1} s1: {s1} s2: {s2}
-                        cv2.line(red, *s3, *(s3+(s3-s2)), (255, 255, 0), 2)
+            if gcr > 0:
+                lastthree = good_circ_run[-3:]
+                if gcr >= 1:
+                    # we can calculate position
+                    t1, big1, small1 = lastthree[0]
+                    p1, p2, p3 = small1
+                    cv2.line(red, (p1[0],p1[1]), (p2[0],p2[1]), (0, 0, 255), 3)
+                    cv2.line(red, (p2[0],p2[1]), (p3[0],p3[1]), (0, 0, 255), 3)
+                    cv2.line(red, (p1[0],p1[1]), (p3[0],p3[1]), (0, 0, 255), 3)
+                if gcr >= 2:
+                    # we can calculate position and velocity
+                    t2, big2, small2 = lastthree[1]
+                    s1 = lin.vector(big1[:2])
+                    s2 = lin.vector(big2[:2])
+                    ds1 = lin.vmag(s2-s1)
+                    dt1 = t2-t1
+                    v1 = ds1/dt1
+                    if ds1 < 50:
+                        print(f"v1: {v1:3.2f} pix/s ds1: {ds1:3.2f} dt1: {dt1:3.4f}") #  vs: {s2-s1} s1: {s1} s2: {s2}
+                        cv2.line(red, *s2, *(s2+(s2-s1)), (255, 255, 0), 2)
                     else:
                         print(f"bad ds {ds1:3.2f} rejected")
+                
+                    # draw entire path here
+                    _, path1, _ = good_circ_run[0]
+                    for _, path2, _ in good_circ_run[1:]:
+                        cv2.line(red, (path1[0],path1[1]), (path2[0],path2[1]), (255, 0, 255), 3)
+                        path1 = path2
+                    
+                if gcr >= 3:
+                    # we can calculate position, velocity, and acceleration
+                    #
+                    t3, big3, small3 = lastthree[2]
+                    if ds1 < 50: # reject bad calculations
+                        s3 = lin.vector(big2[:2])
+                        ds2 = lin.vmag(s3-s2)
+                        dt2 = t3-t2
+                        v2 = ds2/dt2
+                        dv = v2 - v1
+                        a = dv/dt2
+                        if ds2 < 50:
+                            print(f"v2: {v2:3.2f} pix/s a: {a:3.2f} pix/s^2 ds2: {ds2:3.2f} dt2: {dt2:3.4f}") #  vs: {s2-s1} s1: {s1} s2: {s2}
+                            cv2.line(red, *s3, *(s3+(s3-s2)), (255, 255, 0), 2)
+                        else:
+                            print(f"bad ds {ds1:3.2f} rejected")
                     
                 
  
             
         #red = cv2.cvtColor(rcan,cv2.COLOR_GRAY2BGR)
-        
+        out.write(red)
         canvas[0:480, 0:640] = red
         
-        cv2.line(canvas, (0,0), (int(width), int(height)), (0, 0, 255), 1)
+        #cv2.line(canvas, (0,0), (int(width), int(height)), (0, 0, 255), 1)
         cv2.imshow("output", canvas)
         if cv2.pollKey() == 27:
-            break            
+            break 
+    out.release()           
 
 class Clacker(object):
     def __init__(self):
