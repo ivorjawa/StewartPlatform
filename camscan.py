@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
+import sys
 import time
+import math as m
+
 import numpy as np
 import cv2
 import uvc
@@ -204,7 +207,69 @@ def kypertate():
         if cv2.pollKey() == 27:
             break            
 
-                
+# intersection between line(p1, p2) and line(p3, p4)
+def intersect(p1, p2, p3, p4):
+    x1,y1,_ = p1
+    x2,y2,_ = p2
+    x3,y3,_ = p3
+    x4,y4,_ = p4
+    denom = (y4-y3)*(x2-x1) - (x4-x3)*(y2-y1)
+    if denom == 0: # parallel
+        return None
+    ua = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / denom
+    if ua < 0 or ua > 1: # out of range
+        return None
+    ub = ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3)) / denom
+    if ub < 0 or ub > 1: # out of range
+        return None
+    x = x1 + ua * (x2-x1)
+    y = y1 + ua * (y2-y1)
+    return (x,y)
+    
+def triangle_defuckery(Leglen, Ared, Bblue, Ggreen):
+    print(f"Ared: {Ared}, Bblue: {Bblue}, Ggreen: {Ggreen}")
+    
+    A = lin.vector(*Ared[:2], 0)
+    B = lin.vector(*Bblue[:2], 0)
+    G = lin.vector(*Ggreen[:2], 0)
+    print(f"A red: {A}, B blue: {B}, G green: {G}")
+    
+
+    # angle between AB and AG
+    AB = B-A
+    AG = G-A
+    BG = G-B
+    BA = -AB
+    GA = -AG
+    GB = -BG
+    print(f"AB len: {lin.vmag(AB)}")
+    print(f"AG len: {lin.vmag(AG)}")
+    print(f"BG len: {lin.vmag(BG)}")
+    
+    BAG = lin.included_angle(AB, AG)
+    AGB = lin.included_angle(GA, GB)
+    ABG = lin.included_angle(BG, BA)
+    print(f"AB: {AB}, AG: {AG} Angle BAG: {m.degrees(BAG)}")
+    print(f"AG: {AG}, BG: {BG} Angle AGB: {m.degrees(AGB)}")
+    print(f"AB: {AB}, BG: {BG} Angle ABG: {m.degrees(ABG)}")
+    
+    #midpoint of lines
+    AGc = A+AG/2
+    ABc = A+AB/2
+    print(f"AGc: {AGc}, ABc: {ABc}")
+    
+    # center of triangle
+    GABc = ABc-G
+    BAGc = AGc-B 
+    C = intersect(ABc, G, AGc, B)
+    #C = lin.cross(GABc, BAGc)
+    
+    print(f"GABc: {GABc}, BAGc: {BAGc}")
+    #print(f"center: {C}")
+    return AGc.astype('int16'), ABc.astype('int16'), np.array(C, dtype='int16')
+    #sys.exit(0)
+    
+            
 def redmenace():
     #cam = cv2.VideoCapture("/Users/kujawa/Desktop/goodballdata.mov")
     cam = cv2.VideoCapture("/Users/kujawa/Desktop/color_ring_crop.mov")
@@ -218,7 +283,7 @@ def redmenace():
     #out = cv2.VideoWriter('output.avi', -1, 30.0, (640,480))
     out = cv2.VideoWriter('output.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (width,height))
     while 1:
-        
+        halt = False
         ret, frame = cam.read()
         if not ret:
             print("eof?")
@@ -271,6 +336,8 @@ def redmenace():
                  
             # big ball can fall off table
             if (len(smallcircles) == 3) and (len(bigcircles) == 1):
+                # FIXME this time() is bogus, should be frame dt from camera
+                # but it will be correct when doing realtime
                 good_circ_run.append((time.time(), bigcircles[0], smallcircles))
                 print(f"Potential solution found! Current run {len(good_circ_run)}")
             else:
@@ -286,6 +353,22 @@ def redmenace():
                     cv2.line(red, (p1[0],p1[1]), (p2[0],p2[1]), (0, 0, 255), 3)
                     cv2.line(red, (p2[0],p2[1]), (p3[0],p3[1]), (0, 0, 255), 3)
                     cv2.line(red, (p1[0],p1[1]), (p3[0],p3[1]), (0, 0, 255), 3)
+                    #triangle_defuckery(Leglen, Ared, Bblue, Ggreen)
+                    # try to figure out red later for real order
+                    AGc, BGc, C = triangle_defuckery(130, p1, p2, p3)
+                    print(f"AGc: {AGc}, BGc: {BGc}")
+                    cv2.line(red, (p2[0],p2[1]), (AGc[0],AGc[1]), (128, 128, 128), 3) # blue to AGc (yellow)
+                    cv2.line(red, (p3[0],p3[1]), (BGc[0],BGc[1]), (128, 128, 128), 3) # green to BGc (cyan)
+                    cv2.circle(red, (AGc[0], AGc[1]), 10, (0, 255, 255), -1) 
+                    cv2.circle(red, (BGc[0], BGc[1]), 10, (255, 255, 0), -1)
+                    cv2.circle(red, (C[0], C[1]), 10, (255, 255, 255), -1)
+                    
+                    
+                    cv2.circle(red,(p1[0],p1[1]),10,(0,0,255),-1)
+                    cv2.circle(red,(p2[0],p2[1]),10,(255,0,0),-1)
+                    cv2.circle(red,(p3[0],p3[1]),10,(0,255,0),-1)
+                    
+                    halt = True
                 if gcr >= 2:
                     # we can calculate position and velocity
                     t2, big2, small2 = lastthree[1]
@@ -332,6 +415,9 @@ def redmenace():
         
         #cv2.line(canvas, (0,0), (int(width), int(height)), (0, 0, 255), 1)
         cv2.imshow("output", canvas)
+        if halt:
+            cv2.waitKey(0)
+            sys.exit(0)
         if cv2.pollKey() == 27:
             break 
     out.release()           
@@ -394,6 +480,26 @@ def cavitate():
         cv2.imshow("output", img) 
         if cv2.pollKey() == 27:
             break         
+"""
+            Red Ball is 50mm.  Color circles are 15mm.
+            Distance from sensor to color wheels is 24.5cm at 50% collective
+            
+            * Bubble level and new brick, communicate async with new brick while reading video
+            * aruco markers for ring if possible
+            * Camera calibration
+            * IMU in new brick vs bubble
+            * Recognition of bubble
+            * Recognition of Lego pneumatic gauge
+            * Calibration checkerboard for platform and program to control and calibrate on new brick
+            * Pybricks asynchronous comm with opencv camera read and pyglet.
+            * Write 6DOF isolation demo like video on parallel and serial robots
+            
+            https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html
+            https://pysource.com/2021/05/28/measure-size-of-an-object-with-opencv-aruco-marker-and-python/
+            https://github.com/niconielsen32/ComputerVision/tree/master
+             
+            
+"""
 
 if __name__ == "__main__":
     #gronkulate()

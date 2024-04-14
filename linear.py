@@ -113,6 +113,9 @@ def rmat(axis, theta):
                      [2 * (bc - ad), aa + cc - bb - dd, 2 * (cd + ab)],
                      [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
 
+def included_angle(a, b):
+    return m.acos(dot(a, b)/(vmag(a)*vmag(b)))
+    
 def rotate(axis, theta, point):
     rm = rmat(axis, theta)
     return matmul(rm, point)
@@ -127,6 +130,7 @@ def test():
     [0.000 0.707 -0.707]
     [0.000 0.707 0.707]] fv(rotv): [1.000 -0.707 3.536]
     Fn: [60.000 0.000 0.000], Vmast: [0.000 0.000 180.000], Vcn: [0.000 -10800.000 0.000]
+    Included angle expected: 60.000 actual: 60.000
     """
     
     v = vector(1.0, 2.0, 3.0)
@@ -141,6 +145,13 @@ def test():
     Vmast = vector(0.000, 0.000, 180.000)
     Vcn = cross(Fn, Vmast)
     print(f"Fn: {fv(Fn)}, Vmast: {fv(Vmast)}, Vcn: {fv(Vcn)}")
+    r = 100
+    ia = 60
+    x = r*m.cos(m.radians(ia))
+    y = r*m.sin(m.radians(ia))
+    a = vector(x, y)
+    b = vector(x, 0)
+    print(f"Included angle expected: {ia:3.3f} actual: {m.degrees(included_angle(a, b)):3.3f}")
            
 if __name__ == "__main__":
     # pybricksdev run ble -n rotor linear.py 
