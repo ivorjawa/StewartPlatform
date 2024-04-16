@@ -486,7 +486,8 @@ def cavitate():
             
             * Bubble level and new brick, communicate async with new brick while reading video
             * aruco markers for ring if possible
-            * Camera calibration
+            * Camera calibration -- use statemachine() to run through camera calibration smoothly
+            * use statemachine and quaternions slerp to animate through a path smoothly
             * IMU in new brick vs bubble
             * Recognition of bubble
             * Recognition of Lego pneumatic gauge

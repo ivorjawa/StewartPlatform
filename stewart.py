@@ -371,7 +371,7 @@ def test_controller():
     print(f"unclog attempt start: {time.time()-t0}")
     i = 0
     while i < 50:
-        report = gamepad.read(20)
+        report = gamepad.read(20, timeout=0)
         if report:
             i += 1
     print(f"unclog attempt finish: {time.time()-t0}")

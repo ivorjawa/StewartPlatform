@@ -3,7 +3,8 @@
 import sys
 import datetime, time
 import logging, logging.handlers
-from asyncio import gather, sleep, run
+import asyncio
+#from asyncio import gather, sleep, run
 
 from pybricksdev.connections.pybricks import PybricksHub
 from pybricksdev.ble import find_device, nus
@@ -85,7 +86,7 @@ class BaseStation(object):
 
         try:
             await hub.run(pyprog, wait=False)
-            await gather(self.send_data(hub))
+            await asyncio.gather(self.send_data(hub))
 
         except Exception as e:
             logging.error("script gather failed:  ", e)
@@ -93,7 +94,7 @@ class BaseStation(object):
         await hub.disconnect()
     
     def engage(self, hubname, brickaddress, pyprog):
-        run(self.go(hubname, brickaddress, pyprog))
+        asyncio.run(self.go(hubname, brickaddress, pyprog))
         
 if __name__ == "__main__":
     rotor = BaseStation()

@@ -30,22 +30,22 @@ def open_taranis(debug=False):
     # decoding ps4
     # https://web.archive.org/web/20210301230721/https://www.psdevwiki.com/ps4/DS4-USB
 
-    if(debug):
-        for device in hid.enumerate():
-            print(f"0x{device['vendor_id']:04x}:0x{device['product_id']:04x}   {device['product_string']}")
+    #if(debug):
+    #    for device in hid.enumerate():
+    #        print(f"0x{device['vendor_id']:04x}:0x{device['product_id']:04x}   {device['product_string']}")
 
     print("Opening Taranis")
 
     #gamepad.open(0x054c, 0x09cc) # crappy PS4 controller
     #from gamepads import decode_ps4 as decode_report
     #https://github.com/trezor/cython-hidapi
-    ctrlr = hid.device()
-    ctrlr.open(0x1209, 0x4f54) # Taranis
-    ctrlr.set_nonblocking(True)
+    #ctrlr = hid.device()
+    #ctrlr.open(0x1209, 0x4f54) # Taranis
+    #ctrlr.set_nonblocking(True)
     
     #https://github.com/apmorton/pyhidapi
-    #ctrlr = hiid.Device(0x1209, 0x4f54)
-    #ctrlr.nonblocking = True
+    ctrlr = hid.Device(0x1209, 0x4f54)
+    ctrlr.nonblocking = True
     
     return ctrlr
     
