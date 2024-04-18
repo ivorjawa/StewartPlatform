@@ -34,7 +34,7 @@ def run_remote():
     # Register the standard input so we can read keyboard presses.
     poller.register(stdin)
     
-    wvars = ['framenum']
+    wvars = ['roll', 'pitch', 'yaw', 'coll', 'glyph']
     wirep = JoyProtocol(wvars, 2, poller, stdin)
     
     #jsman = JSMan()
@@ -47,6 +47,7 @@ def run_remote():
     # arm radius, min cylinder, max cylinder
     #rot = Rotor(60, 160, 200, threshold) # real robot
     
+    identify()
     while True:
         if wirep.poll():
             try:    
