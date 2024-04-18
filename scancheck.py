@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 
+import pickle
 import numpy as np
 import cv2
 import uvc 
 from rich import print as rprint
 
 np.set_printoptions(suppress=True, formatter={'float_kind':'{:5.3f}'.format})  
+
+# https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html
+
 
 
 def find_mode(cap, width, height, fps):
@@ -84,6 +88,11 @@ class Calibrator(object):
                     rprint(f"Successful calibration")
                     rprint(f"Camera matrix: {mtx}")
                     rprint(f"Distortion coefficients: {dist}")
+                    caminfo = {"cam_mtx": mtx, "distortion": dist}
+                    pfilename = "caminfo.pickle"
+                    with open(pfilename, "wb") as f:
+                        pickle.dump(caminfo, f)
+                    print(f"saved as {pfilename}")
                     #print(f"Rotation vectors: {rvecs}")
                     #print(f"Translation vectors: {tvecs}")
                     
