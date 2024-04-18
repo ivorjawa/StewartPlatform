@@ -4,6 +4,8 @@ import sys
 import time
 import math as m
 
+from rich import print as rp
+
 import numpy as np
 import cv2
 import uvc
@@ -38,10 +40,71 @@ def find_mode(cap, width, height, fps):
             return mode
                 
 def gronkulate():   
+    """
+    Control[0], auto exposure mode
+    https://community.infineon.com/t5/USB-superspeed-peripherals/question-about-UVC-auto-exposure-mode/td-p/52722
+    1: manual mode
+    2: auto mode
+    4: shutter priority
+    8: aperture priority
+    
+    
+    Control[0]: Auto Exposure Mode                  min:      1 max      8 value:      8
+    Doc: 
+
+    Control[1]: Absolute Exposure Time              min:      2 max    500 value:     84
+    Doc: The `time` parameter should be provided in units of 0.0001 seconds (e.g., use the value 100 for a 10ms exposure period). Auto exposure should be set to
+    `manual` or `shutter_priority`before attempting to change this setting.
+
+    Control[2]: Auto Focus                          min:      0 max      1 value:      1
+    Doc: Enable the Auto Focus
+
+    Control[3]: Absolute Focus                      min:      0 max    200 value:     49
+    Doc: Set Absolute Focus
+
+    Control[4]: Backlight Compensation              min:      0 max      4 value:      1
+    Doc: The Backlight Compensation Control is used to specify the backlight compensation.
+
+    Control[5]: Brightness                          min:   -128 max    127 value:      0
+    Doc: This is used to specify the brightness.
+
+    Control[6]: Contrast                            min:     60 max    255 value:    136
+    Doc: This is used to specify the contrast value.
+
+    Control[7]: Power Line frequency                min:      0 max      2 value:      2
+    Doc: This control allows the host software to specify the local power line frequency,for the implementing anti-flicker processing.
+
+    Control[8]: Hue                                 min:   -128 max    127 value:      0
+    Doc: This is used to specify the hue setting.
+
+    Control[9]: Saturation                          min:      0 max    255 value:    150
+    Doc: This is used to specify the saturation setting.
+
+    Control[10]: Sharpness                           min:      0 max    255 value:     50
+    Doc: This is used to specify the sharpness setting.
+
+    Control[11]: Gamma                               min:     72 max    500 value:    100
+    Doc: This is used to specify the gamma setting.
+
+    Control[12]: White Balance temperature           min:   2800 max   6500 value:   4434
+    Doc: This is used to specify the white balance setting as a color temperature in degrees Kelvin.
+
+    Control[13]: White Balance temperature,Auto      min:      0 max      1 value:      1
+    Doc: The White Balance Temperature Auto Control setting determines whether the device will provide automatic adjustment of the related control.1 indicates 
+    automatic adjustment is enabled
+    
+    """
     device = uvc.device_list()[0]
     cap = uvc.Capture(device["uid"])
-    for c in cap.controls:
-        print(f"Control: {c.display_name:35} min: {c.min_val:6} max {c.max_val:6} value: {c.value:6}")
+    for i, c in enumerate(cap.controls):
+        print(f"Control[{i}]: {c.display_name:35} min: {c.min_val:6} max {c.max_val:6} value: {c.value:6}")
+        rp("[green bold]Doc: %s[/green bold]\n" % c.doc)
+        
+    cap.controls[0] = 0 # 1 manual, 2 auto, 4 aperture priority,  8 shutter priority
+    cap.controls[1] = 100 # exposure time 10ms
+    cap.controls[2] = 0 # auto focus
+    cap.controls[3] = 2000 # absolute focus, 0 ... 200
+    
     cap.frame_mode = find_mode(cap, 640, 480, 30) 
     print(f"frame mode: {cap.frame_mode}")
      
@@ -484,17 +547,20 @@ def cavitate():
             Red Ball is 50mm.  Color circles are 15mm.
             Distance from sensor to color wheels is 24.5cm at 50% collective
             
-            * Bubble level and new brick, communicate async with new brick while reading video
-            * aruco markers for ring if possible
+        x   * Bubble level and new brick, communicate async with new brick while reading video
+        x   * aruco markers for ring if possible
             * Camera calibration -- use statemachine() to run through camera calibration smoothly
             * use statemachine and quaternions slerp to animate through a path smoothly
             * IMU in new brick vs bubble
             * Recognition of bubble
             * Recognition of Lego pneumatic gauge
             * Calibration checkerboard for platform and program to control and calibrate on new brick
-            * Pybricks asynchronous comm with opencv camera read and pyglet.
+        x   * Pybricks asynchronous comm with opencv camera read and pyglet.
             * Write 6DOF isolation demo like video on parallel and serial robots
-            
+            * Fix joystick dead zone so no step at zero — subtract n steps from each side. 
+            * Benchmark rotation rates to estimate needed number of points for slerp 
+            * Degrees per second on isolated axes
+            * Do boneheaded elevator animation in f360 -- Servo, wire, horn, hinge. 
             https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html
             https://pysource.com/2021/05/28/measure-size-of-an-object-with-opencv-aruco-marker-and-python/
             https://github.com/niconielsen32/ComputerVision/tree/master
@@ -503,11 +569,11 @@ def cavitate():
 """
 
 if __name__ == "__main__":
-    #gronkulate()
+    gronkulate() # camera interrogation
     #gupervate()
     #cavitate()
     #kypertate() # 4-by
-    redmenace() # 1-by red
+    #redmenace() # 1-by red
     #clickitate() # HSV clicker
     
     

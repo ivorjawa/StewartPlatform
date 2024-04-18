@@ -104,11 +104,6 @@ class BaseStation(object):
         asyncio.run(self.go(hubname, brickaddress, pyprog))
 
 def slurnk(fromq, toq):
-    #for number in range(50):
-    #    time.sleep(0.1)
-    #    print(number)
-    #print("farting in hat")    
-    #q.put("Farthat = True") 
     bubblebase = BaseStation(fromq, toq)
     bubblebase.engage("bubble", "bubble", "bubble.py")
       
