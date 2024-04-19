@@ -18,18 +18,27 @@ from statemachine import BasicSM, Transition, State
 from rotorbase import LoggingBricksHub
 
 class SeekingPose(State):
-    def __init__(self):
+    def __init__(self, sm):
         super().__init__()
+        self.sm = sm
     def work(self):
-        pass
+        #print("SeekPose.work()")
+        if self.sm.moved:
+            self.sm.moved = False
+            print("processed movement")
+            
     def reset(self):
         pass
         
 class MovingPlatform(State):
-    def __init__(self):
+    def __init__(self, sm):
         super().__init__()
+        self.sm = sm
     def work(self):
-        pass
+        #print("MovingPlatform.work()")
+        if len(self.sm.pose) > 0: #edge trigger
+            self.sm.pose.clear()
+            print("processed pose")
     def reset(self):
         pass
         
@@ -49,17 +58,17 @@ class CalibSM(BasicSM):
         super().__init__()
         self.pose = []
         self.moved = False
-        self.seeking_pose = SeekingPose()
-        self.moving_plat = MovingPlatform()
+        self.seeking_pose = SeekingPose(self)
+        self.moving_plat = MovingPlatform(self)
         self.t_pose_found = Transition(lambda: len(self.pose) >0, self.moving_plat)
-        self.t_plat_moved = Transition(lambda: self.Moved == True, self.seeking_pose)
+        self.t_plat_moved = Transition(lambda: self.moved == True, self.seeking_pose)
         
         self.moving_plat.set_transitions([self.t_plat_moved])
         self.moving_plat.set_transitions([self.t_plat_moved])
         
-        self.states = [self.seeking_pose, self_moving_plat]
-        self.cur_state = seeking_pose
-        self.default_state = seeking_pose
+        self.states = [self.seeking_pose, self.moving_plat]
+        self.cur_state = self.seeking_pose
+        self.default_state = self.seeking_pose
                 
 def find_mode(cap, width, height, fps):
     """
@@ -79,6 +88,8 @@ def load_img(fromq, toq):
     device = uvc.device_list()[0]
     cap = uvc.Capture(device["uid"]) 
     cap.frame_mode = find_mode(cap, width, height, 30)
+    csm = CalibSM()
+    csm.start()
     #cam = cv2.VideoCapture("/Users/kujawa/Desktop/color_ring_crop.mov")
     #im = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
     #_, inv = cv2.threshold(im, 150, 255, cv2.THRESH_BINARY_INV)
@@ -93,24 +104,25 @@ def load_img(fromq, toq):
         cv2.line(frame, (int(width/2),int(0)), (int(width/2), int(height)), (0, 0, 255), 1)
         cv2.imshow('Async test', frame)
         count += 1
+        csm.pose = [count]
         #print(f"frame {count}")
         cdict = {'roll': 255, 'pitch': 8, 'yaw': 16, 'coll': 32, 'glyph': 64}
         toq.put_nowait(cdict)
-        #cv2.waitKey(0)
+
         if cv2.pollKey() == 27:
             break
         try:
             token = fromq.get_nowait()
-            print(f"got token {token}")
-            fromq.task_done()
-            #cv2.destroyAllWindows()
-            #return
-            break
+            #fromq.task_done()
+            csm.moved = True
+            print(f"got token {token} csm.moved: {csm.moved}")
+            
+            #break
         except Exception as e:
-            pass
-            #print(f"q broked: {e}")
-        #if Farthat:
-        #    break
+            print(e)
+        print(f"pretick: csm.pose: {csm.pose}, csm.moved: {csm.moved}, csm.state:  {csm.cur_state}")
+        csm.tick()
+        print(f"posttick: csm.pose: {csm.pose}, csm.moved: {csm.moved}, csm.state:  {csm.cur_state}")
     cv2.destroyAllWindows()
     return
 
@@ -192,8 +204,8 @@ class BaseStation(object):
                         logging.error(f"Other error in hub.write(): {e}")
                         #sys.exit(0)
     
-    async def go(self, hubname, brickaddress, pyprog):
-        hub = LoggingQueuedBricksHub(hubname, self.toq)
+    async def go(self, logbasename, brickaddress, pyprog):
+        hub = LoggingQueuedBricksHub(logbasename, self.toq)
         address = await find_device(brickaddress)
         await hub.connect(address)   
 
@@ -206,8 +218,8 @@ class BaseStation(object):
 
         await hub.disconnect()
     
-    def engage(self, hubname, brickaddress, pyprog):
-        asyncio.run(self.go(hubname, brickaddress, pyprog))
+    def engage(self, logbasename, brickaddress, pyprog):
+        asyncio.run(self.go(logbasename, brickaddress, pyprog))
 
 def slurnk(fromq, toq):
     bubblebase = BaseStation(fromq, toq)
