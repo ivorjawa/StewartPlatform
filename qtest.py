@@ -11,11 +11,56 @@ import uvc
 
 from pybricksdev.connections.pybricks import PybricksHub
 from pybricksdev.ble import find_device, nus
+import bleak
 
 from joycode import JoyProtocol
 from statemachine import BasicSM, Transition, State
 from rotorbase import LoggingBricksHub
 
+class SeekingPose(State):
+    def __init__(self):
+        super().__init__()
+    def work(self):
+        pass
+    def reset(self):
+        pass
+        
+class MovingPlatform(State):
+    def __init__(self):
+        super().__init__()
+    def work(self):
+        pass
+    def reset(self):
+        pass
+        
+class CalibSM(BasicSM):
+    """
+    command full left roll
+    wait for completion
+    calculate time
+    seek pose
+    command full right roll
+    wait for completion 
+    calculate time
+    seek pose 
+    ...
+    """
+    def __init__(self):
+        super().__init__()
+        self.pose = []
+        self.moved = False
+        self.seeking_pose = SeekingPose()
+        self.moving_plat = MovingPlatform()
+        self.t_pose_found = Transition(lambda: len(self.pose) >0, self.moving_plat)
+        self.t_plat_moved = Transition(lambda: self.Moved == True, self.seeking_pose)
+        
+        self.moving_plat.set_transitions([self.t_plat_moved])
+        self.moving_plat.set_transitions([self.t_plat_moved])
+        
+        self.states = [self.seeking_pose, self_moving_plat]
+        self.cur_state = seeking_pose
+        self.default_state = seeking_pose
+                
 def find_mode(cap, width, height, fps):
     """
     for mode in cap.available_modes:
@@ -57,7 +102,7 @@ def load_img(fromq, toq):
         try:
             token = fromq.get_nowait()
             print(f"got token {token}")
-            #q.task_done()
+            fromq.task_done()
             #cv2.destroyAllWindows()
             #return
             break
@@ -69,7 +114,45 @@ def load_img(fromq, toq):
     cv2.destroyAllWindows()
     return
 
-
+class  LoggingQueuedBricksHub(PybricksHub):
+    """
+        A PybricksHub that can act on things received by _line_handler.
+        <report> (lines) </report> will create a log file from 
+        logfilename, ideally comma-separated values.
+        <goodbye/> is the disconnect single from the hub.
+    """
+    def __init__(self, logfilename, toq):
+        super().__init__()
+        self.csvfile = None
+        self.csv_stemname = logfilename
+        self.toq = toq
+        
+    def _line_handler(self, line: bytes) -> None:
+        try:
+            l = line.decode()
+            logging.info(f"Hub Sent:  {l}")
+            
+            if l == "<report>":
+                fn = "%s_%s.csv" % (self.csv_stemname,
+                                    str(datetime.datetime.now().isoformat()))
+                self.csvfile = open(fn, "w")
+                logging.info("logging to ", fn)
+                return
+            elif l == "</report>":
+                if(self.csvfile):
+                    self.csvfile.close()
+                    self.csvfile = None
+                    logging.info("done logging")
+            elif l == "<goodbye/>":
+                sys.exit(1)
+            elif l == "<taskdone/>":
+                self.toq.put_nowait(l) 
+                print("queued taskdone")           
+            if(self.csvfile):
+                print(l, file=self.csvfile)
+        except Exception as e:
+            logging.error(f"_line_handler error: {e}")
+        
  
 class BaseStation(object):
     def __init__(self, fromq, toq):
@@ -110,7 +193,7 @@ class BaseStation(object):
                         #sys.exit(0)
     
     async def go(self, hubname, brickaddress, pyprog):
-        hub = LoggingBricksHub(hubname)
+        hub = LoggingQueuedBricksHub(hubname, self.toq)
         address = await find_device(brickaddress)
         await hub.connect(address)   
 

@@ -55,6 +55,7 @@ def run_remote():
 
                 wirep.decode_wire()
                 print(wirep.vals)
+                print("<taskdone/>")
                     
             except Exception as e:
                 print("failure in main loop:")

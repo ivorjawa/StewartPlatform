@@ -552,7 +552,7 @@ def cavitate():
             * Camera calibration -- use statemachine() to run through camera calibration smoothly
             * use statemachine and quaternions slerp to animate through a path smoothly
             * IMU in new brick vs bubble
-            * Recognition of bubble
+        x   * Recognition of bubble
             * Recognition of Lego pneumatic gauge
             * Calibration checkerboard for platform and program to control and calibrate on new brick
         x   * Pybricks asynchronous comm with opencv camera read and pyglet.
