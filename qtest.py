@@ -97,14 +97,12 @@ class CalibSM(object):
                 self.end_time = time.time()
                 self.state = self.states.scan
                 print(f"got movement, took {self.end_time-self.start_time:3.3f}s")
-                
         elif self.state == self.states.scan:
             ret, pose = self.recognize()
             if ret:
                 self.poses.append(pose)
-                print("appended pose")
+                print(f"appended pose {len(self.poses)}")
             self.state = self.states.count
-
         elif self.state == self.states.count:
             if len(self.poses) > 50:
                 print("enough poses found")
@@ -246,7 +244,7 @@ class BaseStation(object):
         while 1:
         
             #report = self.gamepad.report()
-            cdict = {'roll': 0, 'pitch': 0, 'yaw': 0, 'coll': 0, 'glyph': 255}
+            cdict = {'roll': 0, 'pitch': 0, 'yaw': 0, 'coll': 0, 'glyph': 255} # keepawake
             try:
                 cdict = self.fromq.get_nowait()
                 #report["framenum"] = framenum

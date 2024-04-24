@@ -27,8 +27,34 @@ millis = StopWatch().time
 #port = Motor(Port.B)
 #front = Motor(Port.A)
 
+class Enum(object):
+    # this is good enough for state machines in micropython
+    def __init__(self, enumname, enums, start=1):
+        self.__enumname = enumname
+        for i, e in enumerate(enums):
+            setattr(self, e, i+start)
 
-                       
+class MoveSM(object):
+    def __init__(self):
+        print("new MoveSM")
+        self.states = Enum("movestates", ['started', 'finished']) 
+        self.state = self.states.finished
+        self.start_time = 0
+    def tick(self):
+        #print(f"MoveSM.tick(): {self.state} start: {self.start_time}")
+        if self.state == self.states.started:
+            if millis() > self.start_time + 1000:
+                self.state = self.states.finished
+                print("<taskdone/>")
+        else:
+            #print(f"not done yet st: {self.start_time} time: {millis()}")
+            pass
+    def moveto(self):
+        self.start_time = millis()
+        self.state = self.states.started
+        #print(f"moveto() start_time: {self.start_time}")
+        
+                              
 def run_remote():
     poller = poll()
     # Register the standard input so we can read keyboard presses.
@@ -49,14 +75,21 @@ def run_remote():
     
     identify()
     print("<awake/>")
+    msm = MoveSM()
     while True:
         if wirep.poll():
             try:    
                 last_input = millis() 
 
                 wirep.decode_wire()
-                print(wirep.vals)
-                print("<taskdone/>")
+                #print(wirep.vals)
+                if wirep.decode_raw('glyph') == 255:
+                    pass
+                    #print("got keepalive")
+                else:
+                    print("got moveto")
+                    msm.moveto()
+                msm.tick()
                     
             except Exception as e:
                 print("failure in main loop:")
