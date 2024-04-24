@@ -43,16 +43,18 @@ class MoveSM(object):
     def tick(self):
         #print(f"MoveSM.tick(): {self.state} start: {self.start_time}")
         if self.state == self.states.started:
-            if millis() > self.start_time + 1000:
+            if millis() > (self.start_time + 1000):
                 self.state = self.states.finished
                 print("<taskdone/>")
+            else:
+                print("not done yet.")
         else:
-            #print(f"not done yet st: {self.start_time} time: {millis()}")
+            # state is finished
             pass
     def moveto(self):
         self.start_time = millis()
         self.state = self.states.started
-        #print(f"moveto() start_time: {self.start_time}")
+        print(f"moveto() start_time: {self.start_time}")
         
                               
 def run_remote():
@@ -76,6 +78,7 @@ def run_remote():
     identify()
     print("<awake/>")
     msm = MoveSM()
+    
     while True:
         if wirep.poll():
             try:    

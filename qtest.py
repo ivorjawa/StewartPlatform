@@ -110,7 +110,7 @@ class CalibSM(object):
             else:
                 self.state = self.states.gen_sig           
         else:
-            print(f"sufficient poses found {self.state}")
+            #print(f"sufficient poses found {self.state}")
             pass
     
     def loop(self):
