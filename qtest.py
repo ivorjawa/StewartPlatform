@@ -6,6 +6,7 @@ import multiprocessing as mp
 import asyncio
 import time
 from enum import Enum
+import random
 
 import numpy as np
 import cv2
@@ -99,14 +100,14 @@ class CalibSM(object):
             #.cSB is kill switch
             modeglyph = StewartPlatform.cSC|StewartPlatform.cSD
             cdict = {
-                'roll': one28(0), 
-                'pitch': one28(self.cur_pitch), 
+                'roll': one28(random.random()-.5), 
+                'pitch': one28(random.random()-.5), 
                 'yaw': one28(0), 
                 'coll': one28(0), 
                 'glyph': modeglyph
             }
-            print(f"cdict: {cdict}")
-            self.cur_pitch += 1/self.posegoal
+            #print(f"cdict: {cdict}")
+            #self.cur_pitch += 1/self.posegoal
             self.toq.put_nowait(cdict)
             self.moving = True
             self.start_time = time.time()
@@ -230,8 +231,8 @@ class BaseStation(object):
             if (output != lastout) or (((time.time()-self.last_sent)*1000) > 16):
                 lastout = output
                 logging.debug(output)
-                print(f"cdict before send: {cdict}")        
-                print(f"output: {output}")
+                #print(f"cdict before send: {cdict}")        
+                #print(f"output: {output}")
                 try:
                     await hub.write(bytearray(output, 'ascii'))
                     self.last_sent = time.time()

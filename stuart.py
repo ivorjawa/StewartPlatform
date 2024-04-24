@@ -244,7 +244,7 @@ def run_remote():
                 last_input = millis() 
 
                 wirep.decode_wire()
-                print("wirep: ", wirep.vals)
+                #print("wirep: ", wirep.vals)
                 coll = (wirep.vals['coll']/2 + .5)*coll_range   
                 #coll = .5              
                 #print(f"wire coll: {wirep.vals['coll']} calculated: {coll}")
@@ -259,7 +259,7 @@ def run_remote():
                 else:
                     Stew.calculate(roll, pitch, yaw, coll, glyph)
                     msm.moveto()
-                    print(f"roll:{roll: 3.1f}, pitch:{pitch: 3.1f}, yaw:{yaw: 3.1f} coll:{coll: 3.1f} glyph:{glyph}", end="\n")
+                    #print(f"roll:{roll: 3.1f}, pitch:{pitch: 3.1f}, yaw:{yaw: 3.1f} coll:{coll: 3.1f} glyph:{glyph}", end="\n")
                     #for i, cyl in enumerate(Stew.cyls):
                     #    print(f" Cyl {i}:{cyl: 3.1f}mm", end="")
                     #print("")
