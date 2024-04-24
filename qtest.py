@@ -19,6 +19,7 @@ from joycode import JoyProtocol
 #from statemachine import BasicSM, Transition, State
 from rotorbase import LoggingBricksHub
 
+import StewartPlatform
 
 def find_mode(cap, width, height, fps):
     """
@@ -37,7 +38,11 @@ class AEnum(object):
         self.__enumname = enumname
         for i, e in enumerate(enums):
             setattr(self, e, i+start)
-        
+
+def one28(x):
+     "maps -1.0..1.0 to 0..255"
+     return int((x+1)/2)*255 
+     
 class CalibSM(object):
     """
     Generate pose and signal
@@ -65,6 +70,9 @@ class CalibSM(object):
         self.woke = False
         self.moving = False
         self.poses = []
+        self.posegoal = 50
+        
+        self.cur_pitch = -1
         
         self.width = 640
         self.height = 480
@@ -86,7 +94,18 @@ class CalibSM(object):
                 self.state = self.states.gen_sig
                 print("generating signal")
         elif self.state == self.states.gen_sig:
-            cdict = {'roll': 255, 'pitch': 8, 'yaw': 16, 'coll': 32, 'glyph': 64}
+            #StewartPlatform.cSD = Flatmode
+            #StewartPlatform.cSC set is cup motion, otherwise dome motion
+            #.cSB is kill switch
+            modeglyph = StewartPlatform.cSC|StewartPlatform.cSD
+            cdict = {
+                'roll': one28(0), 
+                'pitch': one28(self.cur_pitch), 
+                'yaw': one28(0), 
+                'coll': one28(0), 
+                'glyph': modeglyph
+            }
+            self.cur_pitch += 1/self.posegoal
             self.toq.put_nowait(cdict)
             self.moving = True
             self.start_time = time.time()
@@ -104,7 +123,7 @@ class CalibSM(object):
                 print(f"appended pose {len(self.poses)}")
             self.state = self.states.count
         elif self.state == self.states.count:
-            if len(self.poses) > 50:
+            if len(self.poses) >= self.posegoal:
                 print("enough poses found")
                 self.state = self.states.done
             else:
@@ -136,56 +155,9 @@ class CalibSM(object):
         cv2.destroyAllWindows()
         return        
 
-
 def load_img(fromq, toq):
     csm = CalibSM(fromq, toq)
     csm.loop()
-    
-def old_load_img(fromq, toq):
-    #print(image)
-    width = 640
-    height = 480
-    device = uvc.device_list()[0]
-    cap = uvc.Capture(device["uid"]) 
-    cap.frame_mode = find_mode(cap, width, height, 30)
-    #csm = CalibSM()
-    #csm.start()
-    #cam = cv2.VideoCapture("/Users/kujawa/Desktop/color_ring_crop.mov")
-    #im = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
-    #_, inv = cv2.threshold(im, 150, 255, cv2.THRESH_BINARY_INV)
-    #cv2.GaussianBlur(inv, (3, 3), 0)
-    count = 0
-    while 1:
-        #ret, frame = cam.read()
-        #if not ret:
-        #    break
-        frame = cap.get_frame().bgr
-        cv2.line(frame, (int(0),int(height/2)), (int(width), int(height/2)), (0, 0, 255), 1)
-        cv2.line(frame, (int(width/2),int(0)), (int(width/2), int(height)), (0, 0, 255), 1)
-        cv2.imshow('Async test', frame)
-        count += 1
-        csm.pose = [count]
-        #print(f"frame {count}")
-        cdict = {'roll': 255, 'pitch': 8, 'yaw': 16, 'coll': 32, 'glyph': 64}
-        toq.put_nowait(cdict)
-
-        if cv2.pollKey() == 27:
-            break
-        try:
-            token = fromq.get_nowait()
-            #fromq.task_done()
-            csm.moved = True
-            print(f"got token {token} csm.moved: {csm.moved}")
-            
-            #break
-        except Exception as e:
-            #print(e)
-            pass
-        #print(f"pretick: csm.pose: {csm.pose}, csm.moved: {csm.moved}, csm.state:  {csm.cur_state}")
-        csm.tick()
-        #print(f"posttick: csm.pose: {csm.pose}, csm.moved: {csm.moved}, csm.state:  {csm.cur_state}")
-    cv2.destroyAllWindows()
-    return
 
 class  LoggingQueuedBricksHub(PybricksHub):
     """

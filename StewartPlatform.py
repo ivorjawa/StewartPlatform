@@ -136,6 +136,7 @@ class StewartPlatform(object): # millimeters
         #print(f"plat_range: {self.plat_range} min_height: {self.min_height}, collective: {coll} coll_p: {coll_p}")
         coll_v = coll_p * Vdisk_n         
         
+
         flatmode = False
         if (glyph & cSD) == cSD:
             flatmode = True
