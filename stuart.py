@@ -138,6 +138,37 @@ def identify():
     print(f"Version Info: {usys.version_info}")
     print(f"Battery Voltage: {hub.battery.voltage()}mv") 
 
+class Enum(object):
+    # this is good enough for state machines in micropython
+    def __init__(self, enumname, enums, start=1):
+        self.__enumname = enumname
+        for i, e in enumerate(enums):
+            setattr(self, e, i+start)
+            
+class MoveSM(object):
+    def __init__(self, testfn):
+        print("new MoveSM")
+        self.states = Enum("movestates", ['started', 'finished']) 
+        self.state = self.states.finished
+        self.start_time = 0
+        self.testfn = testfn
+    def tick(self):
+        #print(f"MoveSM.tick(): {self.state} start: {self.start_time}")
+        if self.state == self.states.started:
+            if self.testfn():
+                self.state = self.states.finished
+                print(f"elapsed {millis() - self.start_time}")
+                print("<taskdone/>")
+            else:
+                print("not done yet.")
+        else:
+            # state is finished
+            pass
+    def moveto(self):
+        self.start_time = millis()
+        self.state = self.states.started
+        print(f"moveto() start_time: {self.start_time}")
+        
 class Stewart(StewartPlatform):
     def __init__(self, inner_r, outer_r, footprint, min_cyl, max_cyl, threshang):
         super().__init__(inner_r, outer_r, footprint, min_cyl, max_cyl)
@@ -160,7 +191,19 @@ class Stewart(StewartPlatform):
             target = self.pos_ang(cyl)
             self.cmots[i].track_target(target)
  
-          
+    def is_moved(self):
+        thresh = 5
+        done = [False for i in self.cyls]
+        for i, cyl in enumerate(self.cyls):
+            target = self.pos_ang(cyl)
+            current = self.cmots[i].angle()
+            speed = self.cmots[i].speed()
+            motordone = self.cmots[i].done()
+            mathdone = abs(current-target) < thresh
+            done[i] = mathdone
+            #print(f"cyl: {i} target: {target} current: {current} speed: {speed} motord: {motordone} mathd: {mathdone} d:{done[i]}")
+        return sum(done) == len(self.cyls)
+        
     def calculate(self, roll, pitch, yaw, coll, glyph):
         try:
             #print(f"calculate roll: {roll}, pitch: {pitch} yaw: {yaw} glyph: {glyph}")
@@ -190,6 +233,10 @@ def run_remote():
     threshold = memory_calibrate() # max travel of cylinders, degrees
     # arm radius, min cylinder, max cylinder
     Stew = Stewart(40, 120, 120, 240, 308, threshold) #inner, outer radius, footprint, min, max cylinder extension
+    
+    identify()
+    print("<awake/>")    
+    msm = MoveSM(Stew.is_moved)
         
     while True:
         if wirep.poll():
@@ -197,6 +244,7 @@ def run_remote():
                 last_input = millis() 
 
                 wirep.decode_wire()
+                print("wirep: ", wirep.vals)
                 coll = (wirep.vals['coll']/2 + .5)*coll_range   
                 #coll = .5              
                 #print(f"wire coll: {wirep.vals['coll']} calculated: {coll}")
@@ -205,19 +253,21 @@ def run_remote():
                 yaw = -1*wirep.vals['yaw']*23
                 glyph = wirep.decode_raw('glyph')
                 
-
+                if glyph == 255:
+                    # keepalive
+                    pass
+                else:
+                    Stew.calculate(roll, pitch, yaw, coll, glyph)
+                    msm.moveto()
+                    print(f"roll:{roll: 3.1f}, pitch:{pitch: 3.1f}, yaw:{yaw: 3.1f} coll:{coll: 3.1f} glyph:{glyph}", end="\n")
+                    #for i, cyl in enumerate(Stew.cyls):
+                    #    print(f" Cyl {i}:{cyl: 3.1f}mm", end="")
+                    #print("")
                 
-                Stew.calculate(roll, pitch, yaw, coll, glyph)
-                
-                #print(f"roll:{roll: 3.1f}, pitch:{pitch: 3.1f}, yaw:{yaw: 3.1f} coll:{coll: 3.1f} glyph:{glyph}", end="")
-                #for i, cyl in enumerate(Stew.cyls):
-                #    print(f" Cyl {i}:{cyl: 3.1f}mm", end="")
-                #print("")
-                
-                if((glyph & 40) == 40): # X '0b0101000' SB
-                    print(f"<goodbye/>")
-                    return None
-                    #break
+                    if((glyph & 40) == 40): # X '0b0101000' SB
+                        print(f"<goodbye/>")
+                        return None
+                        #break
                     
             except Exception as e:
                 print("failure in main loop:")
@@ -229,6 +279,7 @@ def run_remote():
                 print("actuate failed: ", e)
                 print(f"<goodbye/>")
                 return None
+            msm.tick()
                 
 if __name__ == "__main__":
     # pybricksdev run ble -n rotor rotor.py

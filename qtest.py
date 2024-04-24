@@ -39,9 +39,9 @@ class AEnum(object):
         for i, e in enumerate(enums):
             setattr(self, e, i+start)
 
-def one28(x):
-     "maps -1.0..1.0 to 0..255"
-     return int((x+1)/2)*255 
+#"maps -1.0..1.0 to 0..255"
+one28 = lambda x: int(((x+1)/2)*255)
+
      
 class CalibSM(object):
     """
@@ -72,7 +72,7 @@ class CalibSM(object):
         self.poses = []
         self.posegoal = 50
         
-        self.cur_pitch = -1
+        self.cur_pitch = -0.5
         
         self.width = 640
         self.height = 480
@@ -105,6 +105,7 @@ class CalibSM(object):
                 'coll': one28(0), 
                 'glyph': modeglyph
             }
+            print(f"cdict: {cdict}")
             self.cur_pitch += 1/self.posegoal
             self.toq.put_nowait(cdict)
             self.moving = True
@@ -210,7 +211,7 @@ class BaseStation(object):
     
     async def send_data(self, hub):
         lastout = ""
-        wvars = ['roll', 'pitch', 'yaw', 'coll', 'glyph']
+        wvars = ['coll', 'roll', 'pitch', 'yaw', 'glyph']
         wirep = JoyProtocol(wvars, 2, None, sys.stdin)
         logging.info("starting main loop")
         while 1:
@@ -223,12 +224,14 @@ class BaseStation(object):
                 #print(f"got frame framenum")
             except Exception as e:
                 pass
-            #print(report)          
+            #print(report)  
             output = wirep.encode(cdict)
-            #print(output)
+
             if (output != lastout) or (((time.time()-self.last_sent)*1000) > 16):
                 lastout = output
                 logging.debug(output)
+                print(f"cdict before send: {cdict}")        
+                print(f"output: {output}")
                 try:
                     await hub.write(bytearray(output, 'ascii'))
                     self.last_sent = time.time()
@@ -257,7 +260,8 @@ class BaseStation(object):
 
 def slurnk(fromq, toq):
     bubblebase = BaseStation(fromq, toq)
-    bubblebase.engage("bubble", "bubble", "bubble.py")
+    bubblebase.engage('stewbase', 'jawaspike', 'stuart.py') # make it so
+    #bubblebase.engage("bubble", "bubble", "bubble.py") # make it so on a dummy machine
       
                
 if __name__ == '__main__':
