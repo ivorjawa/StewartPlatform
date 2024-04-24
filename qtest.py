@@ -5,7 +5,9 @@ import logging, logging.handlers
 import multiprocessing as mp
 import asyncio
 import time
+from enum import Enum
 
+import numpy as np
 import cv2
 import uvc 
 
@@ -14,35 +16,35 @@ from pybricksdev.ble import find_device, nus
 import bleak
 
 from joycode import JoyProtocol
-from statemachine import BasicSM, Transition, State
+#from statemachine import BasicSM, Transition, State
 from rotorbase import LoggingBricksHub
 
-class SeekingPose(State):
-    def __init__(self, sm):
-        super().__init__()
-        self.sm = sm
-    def work(self):
-        #print("SeekPose.work()")
-        if self.sm.moved:
-            self.sm.moved = False
-            print("processed movement")
-            
-    def reset(self):
-        pass
+
+def find_mode(cap, width, height, fps):
+    """
+    for mode in cap.available_modes:
+        print(
+            f"MODE: {mode.width} x {mode.height} @ {mode.fps} ({mode.format_name}) {mode.__class__}"
+        )
+    """
+    for mode in cap.available_modes:
+        if (mode.width == width) and (mode.height == height) and (mode.fps == fps):
+            return mode
+
+class AEnum(object):
+    # this is good enough for state machines in micropython
+    def __init__(self, enumname, enums, start=1):
+        self.__enumname = enumname
+        for i, e in enumerate(enums):
+            setattr(self, e, i+start)
         
-class MovingPlatform(State):
-    def __init__(self, sm):
-        super().__init__()
-        self.sm = sm
-    def work(self):
-        #print("MovingPlatform.work()")
-        if len(self.sm.pose) > 0: #edge trigger
-            self.sm.pose.clear()
-            print("processed pose")
-    def reset(self):
-        pass
-        
-class CalibSM(BasicSM):
+class CalibSM(object):
+    """
+    Generate pose and signal
+    Wait for movement to complete
+    Scan for board and save if found
+    Loop until points is 50
+    """
     """
     command full left roll
     wait for completion
@@ -54,42 +56,102 @@ class CalibSM(BasicSM):
     seek pose 
     ...
     """
-    def __init__(self):
-        super().__init__()
-        self.pose = []
-        self.moved = False
-        self.seeking_pose = SeekingPose(self)
-        self.moving_plat = MovingPlatform(self)
-        self.t_pose_found = Transition(lambda: len(self.pose) >0, self.moving_plat)
-        self.t_plat_moved = Transition(lambda: self.moved == True, self.seeking_pose)
+    def __init__(self, fromq, toq):
+        self.fromq = fromq
+        self.toq = toq
+
+        self.start_time = 0
+        self.end_time = 0
+        self.woke = False
+        self.moving = False
+        self.poses = []
         
-        self.moving_plat.set_transitions([self.t_plat_moved])
-        self.moving_plat.set_transitions([self.t_plat_moved])
+        self.width = 640
+        self.height = 480
+        self.device = uvc.device_list()[0]
+        self.cap = uvc.Capture(self.device["uid"]) 
+        self.cap.frame_mode = find_mode(self.cap, self.width, self.height, 30)
         
-        self.states = [self.seeking_pose, self.moving_plat]
-        self.cur_state = self.seeking_pose
-        self.default_state = self.seeking_pose
+        self.states = Enum('cstates', ['wait_start', 'gen_sig', 'wait_move', 'scan', 'count', 'done'])
+        self.state = self.states.wait_start
+    
+    def recognize(self):
+        return True, True
+        
+    def tick(self):
+        #print(f"tick(): self.state: {self.state} |{self.state == self.states.wait_start}|")
+        if self.state == self.states.wait_start:
+            #print("asleep")
+            if self.woke:
+                self.state = self.states.gen_sig
+                print("generating signal")
+        elif self.state == self.states.gen_sig:
+            cdict = {'roll': 255, 'pitch': 8, 'yaw': 16, 'coll': 32, 'glyph': 64}
+            self.toq.put_nowait(cdict)
+            self.moving = True
+            self.start_time = time.time()
+            print("sent command")
+            self.state = self.states.wait_move
+        elif self.state == self.states.wait_move:
+            if self.moving == False:
+                self.end_time = time.time()
+                self.state = self.states.scan
+                print(f"got movement, took {self.end_time-self.start_time:3.3f}s")
                 
-def find_mode(cap, width, height, fps):
-    """
-    for mode in cap.available_modes:
-        print(
-            f"MODE: {mode.width} x {mode.height} @ {mode.fps} ({mode.format_name}) {mode.__class__}"
-        )
-    """
-    for mode in cap.available_modes:
-        if (mode.width == width) and (mode.height == height) and (mode.fps == fps):
-            return mode
-            
+        elif self.state == self.states.scan:
+            ret, pose = self.recognize()
+            if ret:
+                self.poses.append(pose)
+                print("appended pose")
+            self.state = self.states.count
+
+        elif self.state == self.states.count:
+            if len(self.poses) > 50:
+                print("enough poses found")
+                self.state = self.states.done
+            else:
+                self.state = self.states.gen_sig           
+        else:
+            print(f"sufficient poses found {self.state}")
+            pass
+    
+    def loop(self):
+        while 1:
+            frame = self.cap.get_frame().bgr
+            cv2.line(frame, np.intp((0, self.height/2)), np.intp((self.width, self.height/2)), (0, 0, 255), 1)
+            cv2.line(frame, np.intp((self.width/2, 0)), np.intp((self.width/2, self.height)), (0, 0, 255), 1)
+            cv2.imshow('Async test', frame)
+            try:
+                token = self.fromq.get_nowait()
+                print(f"got token {token}")
+                if token == "<awake/>":
+                    self.woke = True
+                elif token == "<taskdone/>":
+                    self.moving = False
+                else:
+                    print(f"got unknown token: {token}")
+            except Exception as e:
+                pass
+            self.tick()
+            if cv2.pollKey() == 27:
+                break
+        cv2.destroyAllWindows()
+        return        
+
+
 def load_img(fromq, toq):
+    csm = CalibSM(fromq, toq)
+    csm.loop()
+    
+def old_load_img(fromq, toq):
     #print(image)
     width = 640
     height = 480
     device = uvc.device_list()[0]
     cap = uvc.Capture(device["uid"]) 
     cap.frame_mode = find_mode(cap, width, height, 30)
-    csm = CalibSM()
-    csm.start()
+    #csm = CalibSM()
+    #csm.start()
     #cam = cv2.VideoCapture("/Users/kujawa/Desktop/color_ring_crop.mov")
     #im = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
     #_, inv = cv2.threshold(im, 150, 255, cv2.THRESH_BINARY_INV)
@@ -119,10 +181,11 @@ def load_img(fromq, toq):
             
             #break
         except Exception as e:
-            print(e)
-        print(f"pretick: csm.pose: {csm.pose}, csm.moved: {csm.moved}, csm.state:  {csm.cur_state}")
+            #print(e)
+            pass
+        #print(f"pretick: csm.pose: {csm.pose}, csm.moved: {csm.moved}, csm.state:  {csm.cur_state}")
         csm.tick()
-        print(f"posttick: csm.pose: {csm.pose}, csm.moved: {csm.moved}, csm.state:  {csm.cur_state}")
+        #print(f"posttick: csm.pose: {csm.pose}, csm.moved: {csm.moved}, csm.state:  {csm.cur_state}")
     cv2.destroyAllWindows()
     return
 
@@ -157,6 +220,8 @@ class  LoggingQueuedBricksHub(PybricksHub):
                     logging.info("done logging")
             elif l == "<goodbye/>":
                 sys.exit(1)
+            elif l == "<awake/>":
+                self.toq.put_nowait(l)
             elif l == "<taskdone/>":
                 self.toq.put_nowait(l) 
                 print("queued taskdone")           
@@ -181,28 +246,27 @@ class BaseStation(object):
         while 1:
         
             #report = self.gamepad.report()
-            report = {}
+            cdict = {'roll': 0, 'pitch': 0, 'yaw': 0, 'coll': 0, 'glyph': 255}
             try:
                 cdict = self.fromq.get_nowait()
                 #report["framenum"] = framenum
                 #print(f"got frame framenum")
             except Exception as e:
                 pass
-            if len(cdict) > 0:  
-                #print(report)          
-                output = wirep.encode(cdict)
-                #print(output)
-                if (output != lastout) or (((time.time()-self.last_sent)*1000) > 16):
-                    lastout = output
-                    logging.debug(output)
-                    try:
-                        await hub.write(bytearray(output, 'ascii'))
-                        self.last_sent = time.time()
-                    except bleak.exc.BleakError as e:
-                        logging.debug(f"BLE communication error: {e}")
-                    except Exception as e:
-                        logging.error(f"Other error in hub.write(): {e}")
-                        #sys.exit(0)
+            #print(report)          
+            output = wirep.encode(cdict)
+            #print(output)
+            if (output != lastout) or (((time.time()-self.last_sent)*1000) > 16):
+                lastout = output
+                logging.debug(output)
+                try:
+                    await hub.write(bytearray(output, 'ascii'))
+                    self.last_sent = time.time()
+                except bleak.exc.BleakError as e:
+                    logging.debug(f"BLE communication error: {e}")
+                except Exception as e:
+                    logging.error(f"Other error in hub.write(): {e}")
+                    #sys.exit(0)
     
     async def go(self, logbasename, brickaddress, pyprog):
         hub = LoggingQueuedBricksHub(logbasename, self.toq)

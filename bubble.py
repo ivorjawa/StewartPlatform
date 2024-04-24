@@ -48,6 +48,7 @@ def run_remote():
     #rot = Rotor(60, 160, 200, threshold) # real robot
     
     identify()
+    print("<awake/>")
     while True:
         if wirep.poll():
             try:    

@@ -200,9 +200,9 @@ def run_remote():
                 coll = (wirep.vals['coll']/2 + .5)*coll_range   
                 #coll = .5              
                 #print(f"wire coll: {wirep.vals['coll']} calculated: {coll}")
-                roll = -1*wirep.vals['roll']*disk_def
-                pitch = 1*wirep.vals['pitch']*disk_def
-                yaw = wirep.vals['yaw']*35
+                pitch = -1*wirep.vals['roll']*disk_def
+                roll = -1*wirep.vals['pitch']*disk_def
+                yaw = -1*wirep.vals['yaw']*23
                 glyph = wirep.decode_raw('glyph')
                 
 

@@ -96,19 +96,40 @@ def gronkulate():
     """
     device = uvc.device_list()[0]
     cap = uvc.Capture(device["uid"])
+    cont_dict = {}
     for i, c in enumerate(cap.controls):
-        print(f"Control[{i}]: {c.display_name:35} min: {c.min_val:6} max {c.max_val:6} value: {c.value:6}")
-        rp("[green bold]Doc: %s[/green bold]\n" % c.doc)
+        key = '_'.join(c.display_name.lower().split(' '))
+        cont_dict[key] = c
+        #print(f"key: {key}, control: {c}")
+       
+    print(cont_dict.keys()) 
+    for k in ['auto_focus','absolute_focus','auto_exposure_mode','absolute_exposure_time']:
+        c = cont_dict[k]
+        print(f"in:  {k:35} min: {c.min_val:6} max {c.max_val:6} value: {c.value:6}")
+        #rp("[green bold]Doc: %s[/green bold]\n" % c.doc)
         
-    cap.controls[0] = 0 # 1 manual, 2 auto, 4 aperture priority,  8 shutter priority
-    cap.controls[1] = 100 # exposure time 10ms
-    cap.controls[2] = 0 # auto focus
-    cap.controls[3] = 2000 # absolute focus, 0 ... 200
+
     
     cap.frame_mode = find_mode(cap, 640, 480, 30) 
     print(f"frame mode: {cap.frame_mode}")
-     
+
+
+    cont_dict['auto_focus'].value = 0 
+    cont_dict['absolute_focus'].value = 200 # absolute focus, 1 ... 200
+    cont_dict['auto_exposure_mode'].value = 1 # 1 manual, 2 auto, 4 aperture priority,  8 shutter priority
+    cont_dict['absolute_exposure_time'].value = 100 # exposure time 10ms
+    #cap.controls[2] = 0 # auto focus
+        
+    for k in ['auto_focus','absolute_focus','auto_exposure_mode','absolute_exposure_time']:
+        c = cont_dict[k]
+        print(f"out:  {k:35} min: {c.min_val:6} max {c.max_val:6} value: {c.value:6}")
+        #rp("[green bold]Doc: %s[/green bold]\n" % c.doc)
+    ficus = 0 
     while True:
+        cont_dict['absolute_focus'].value = ficus
+        ficus += 1
+        if ficus % 200 == 0:
+            ficus = 0
         frame = cap.get_frame()
         
         #ret, frame = cam.read()
@@ -331,7 +352,6 @@ def triangle_defuckery(Leglen, Ared, Bblue, Ggreen):
     #print(f"center: {C}")
     return AGc.astype('int16'), ABc.astype('int16'), np.array(C, dtype='int16')
     #sys.exit(0)
-    
             
 def redmenace():
     #cam = cv2.VideoCapture("/Users/kujawa/Desktop/goodballdata.mov")
@@ -567,13 +587,69 @@ def cavitate():
              
             
 """
+def galvatron():
+    #print(image)
+    width = 640
+    height = 480
+    
+    cap = cv2.VideoCapture(0)
 
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+    cap.set(cv2.CAP_PROP_FPS, 30)
+    
+    time.sleep(2)
+    
+    
+    # https://docs.opencv.org/3.4/d4/d15/group__videoio__flags__base.html
+    focus = 0   # min: 0, max: 255, increment:5
+    #cam.set(cv2.CAP_PROP_FOCUS, focus)
+    print(f"fps: {cap.get(cv2.CAP_PROP_FPS)} autofocus: {cap.get(cv2.CAP_PROP_AUTOFOCUS)} focus: {cap.get(cv2.CAP_PROP_FOCUS)} ")
+    cap.set(cv2.CAP_PROP_FPS, 30)
+    cap.set(cv2.CAP_PROP_AUTOFOCUS,0) # I want to change the focus manually myself
+    cap.set(cv2.CAP_PROP_FOCUS,focus)
+    cap.set(cv2.CAP_PROP_EXPOSURE,25)
+    time.sleep(2)
+    
+    print(f"fps: {cap.get(cv2.CAP_PROP_FPS)} autofocus: {cap.get(cv2.CAP_PROP_AUTOFOCUS)} focus: {cap.get(cv2.CAP_PROP_FOCUS)} ")
+    
+    
+    cv2.namedWindow("output", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("output", width, height) 
+        
+    #device = uvc.device_list()[0]
+    #cap = uvc.Capture(device["uid"]) 
+    #cap.frame_mode = find_mode(cap, width, height, 30)
+
+
+
+
+    
+    
+    count = 0
+    while 1:
+        #frame = cap.get_frame().bgr
+        ret, frame = cap.read()
+        if not ret:
+            print("eof?")
+            break
+        count += 1
+        if count % 200 == 0: count = 0
+        cap.set(cv2.CAP_PROP_FOCUS,focus)
+        print(f"fps: {cap.get(cv2.CAP_PROP_FPS)} autofocus: {cap.get(cv2.CAP_PROP_AUTOFOCUS)} focus: {cap.get(cv2.CAP_PROP_FOCUS)} ")
+        cv2.line(frame, (int(0),int(height/2)), (int(width), int(height/2)), (0, 0, 255), 1)
+        cv2.line(frame, (int(width/2),int(0)), (int(width/2), int(height)), (0, 0, 255), 1)
+        cv2.imshow('Async test', frame)
+        if cv2.waitKey(1000) == 27:
+            break
+        
 if __name__ == "__main__":
-    gronkulate() # camera interrogation
+    #gronkulate() # camera interrogation
     #gupervate()
     #cavitate()
     #kypertate() # 4-by
     #redmenace() # 1-by red
     #clickitate() # HSV clicker
+    galvatron() # just q&d video
     
     
