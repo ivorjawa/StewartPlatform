@@ -15,8 +15,10 @@ import linear as lin
 # convert from 3-space to 2-space
 twod = lambda p: np.array([p[0], p[1]])
    
-decode_report = ctrl.decode_taranis
-gamepad = ctrl.open_taranis()
+#decode_report = ctrl.decode_taranis
+#gamepad = ctrl.open_taranis()
+#gamepad = ctrl.TaranisX9d()
+gamepad = ctrl.TaranisX9dPyg()
 
 t0 = time.time()
 
@@ -368,20 +370,21 @@ def test_controller():
     #count = 0
     #counting = True
     
-    print(f"unclog attempt start: {time.time()-t0}")
-    i = 0
-    while i < 50:
-        report = gamepad.read(20, timeout=0)
-        if report:
-            i += 1
-    print(f"unclog attempt finish: {time.time()-t0}")
-    print(f"report len: {len(report)}")
+    #print(f"unclog attempt start: {time.time()-t0}")
+    #i = 0
+    #while i < 50:
+    #    report = gamepad.read(20, timeout=0)
+    #    if report:
+    #        i += 1
+    #print(f"unclog attempt finish: {time.time()-t0}")
+    #print(f"report len: {len(report)}")
     
     while 1:
         scenerot = (time.time()*30)% 360
         #for scenerot in range(0, 360):
         grid = cvgraph.SimGrid(1200, 1200, 1.5)
-        report = gamepad.read(64)
+        #report = gamepad.read(64)
+        report = gamepad.report()
         
         #for i in range(len(circle)-1):
         #    Stew.drawline(grid, circle[i], circle[i+1], colors[i], 3)
@@ -391,8 +394,9 @@ def test_controller():
         fastcount += 1
         if report:
             # Taranis major axes 3 5 7 9 lx = 9, ly = 7, rx = 3, ry = 5 
-            rd = decode_report(report)
-            scale = 256.0
+            #rd = decode_report(report)
+            rd = report # implicitly decoded
+            scale = 255.0
             coll_in = rd['coll']/scale
             roll_in = rd['roll']/scale          
             pitch_in = rd['pitch']/scale

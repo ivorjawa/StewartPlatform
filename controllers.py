@@ -8,11 +8,38 @@
 from abc import ABC, abstractmethod 
 import hid
 #import hiid
+import pyglet
 
 class Controller(ABC): 
     @abstractmethod
     def report(self): pass
-    
+
+class TaranisX9dPyg(Controller):
+    def __init__(self, rescale=8):
+        # truncate 11-bits to 8 with divisor of 8, use 1 for full resolution
+        print("Opening Taranis (Pyglet)")
+        self.rescale = rescale 
+        joysticks = pyglet.input.get_joysticks()
+        assert joysticks, 'No joystick device is connected'
+        self.joystick = joysticks[0]
+        self.joystick.open()  
+    def report(self):
+        axes = self.joystick.device.get_controls()[24:]
+        # scaled from 11 to 8 bits by default, set rescale to 1 to get 11 bit values
+        roll = int(axes[0].value/self.rescale) 
+        yaw = int(axes[3].value/self.rescale)    
+        pitch = int(axes[1].value/self.rescale) 
+        coll = int(axes[2].value/self.rescale)
+        
+        glyph = 0
+        if (axes[4].value == 1024): glyph |= cSA
+        if (axes[5].value == 1024): glyph |= cSB
+        if (axes[6].value == 1024): glyph |= cSC
+        if (axes[7].value == 1024): glyph |= cSD
+        
+        return {'yaw': yaw, 'pitch': pitch, 'roll': roll, 'coll': coll, 'glyph': glyph}
+        
+         
 class TaranisX9d(Controller):
     def __init__(self, rescale=8):
         # truncate 11-bits to 8 with divisor of 8, use 1 for full resolution
