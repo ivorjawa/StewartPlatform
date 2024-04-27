@@ -160,7 +160,8 @@ class MoveSM(object):
                 print(f"elapsed {millis() - self.start_time}")
                 print("<taskdone/>")
             else:
-                print("not done yet.")
+                #pass
+                print("<notdoneyet/>") # gets stuck if I don't report FIXME
         else:
             # state is finished
             pass

@@ -7,6 +7,7 @@ import asyncio
 import time
 from enum import Enum
 import random
+import pickle
 
 import numpy as np
 import cv2
@@ -15,6 +16,8 @@ import uvc
 from pybricksdev.connections.pybricks import PybricksHub
 from pybricksdev.ble import find_device, nus
 import bleak
+
+from rich import print as rprint
 
 from joycode import JoyProtocol
 #from statemachine import BasicSM, Transition, State
@@ -33,6 +36,80 @@ def find_mode(cap, width, height, fps):
         if (mode.width == width) and (mode.height == height) and (mode.fps == fps):
             return mode
 
+class Calibrator(object):
+    def __init__(self, sqx=8, sqy=6, width=640, height=480):            
+        # termination criteria
+        self.criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+ 
+        # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
+        self.sqx = sqx
+        self.sqy = sqy
+        self.objp = np.zeros((sqx*sqy,3), np.float32)
+        self.objp[:,:2] = np.mgrid[0:sqx,0:sqy].T.reshape(-1,2)
+ 
+        # Arrays to store object points and image points from all the images.
+        self.objpoints = [] # 3d point in real world space
+        self.imgpoints = [] # 2d points in image plane.
+ 
+        self.width = width
+        self.height = height
+        #self.device = uvc.device_list()[0]
+        #self.cap = uvc.Capture(self.device["uid"]) 
+        #self.cap.frame_mode = find_mode(self.cap, width, height, 30)
+        self.sufficient_pts = False 
+        #print(f"frame mode: {self.cap.frame_mode}")
+    def calibrate_frame(self, img):
+        #img = self.cap.get_frame()
+        #print (img)
+        #img = img.bgr
+        print("calibrate_frame")
+        self.gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        #gray = img.gray
+        # Find the chess board corners
+        ret, corners = cv2.findChessboardCorners(self.gray, (self.sqx,self.sqy), None)
+
+        # If found, add object points, image points (after refining them)
+        waittime = 1
+        if ret == True:
+            print("found chessboard")
+            self.objpoints.append(self.objp)
+
+
+            corners2 = cv2.cornerSubPix(self.gray,corners, (11,11), (-1,-1), self.criteria)
+            self.imgpoints.append(corners2)
+
+            # Draw and display the corners
+            cv2.drawChessboardCorners(img, (self.sqx,self.sqy), corners2, ret)
+            #waittime = 500
+    
+        cv2.line(img, (int(0),int(self.height/2)), (int(self.width), int(self.height/2)), (0, 0, 255), 1)
+        cv2.line(img, (int(self.width/2),int(0)), (int(self.width/2), int(self.height)), (0, 0, 255), 1)
+        cv2.imshow('calibrator', img)
+        return ret, True
+    def calculate(self):
+        numpts = len(self.objpoints)
+        rprint(f"now I have {numpts} points", end='\r')
+        if numpts >= 50:
+            print("")
+            self.sufficient_pts = True
+            ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(self.objpoints, self.imgpoints, self.gray.shape[::-1], None, None)
+            if ret:
+                self.mtx = mtx
+                self.dist = dist
+                self.rvecs = rvecs
+                self.tvecs = tvecs
+                rprint(f"Successful calibration")
+                rprint(f"Camera matrix: {mtx}")
+                rprint(f"Distortion coefficients: {dist}")
+                caminfo = {"cam_mtx": mtx, "distortion": dist}
+                pfilename = "caminfo.pickle"
+                with open(pfilename, "wb") as f:
+                    pickle.dump(caminfo, f)
+                print(f"saved as {pfilename}")
+                #print(f"Rotation vectors: {rvecs}")
+                #print(f"Translation vectors: {tvecs}") 
+            return
+                
 class AEnum(object):
     # this is good enough for state machines in micropython
     def __init__(self, enumname, enums, start=1):
@@ -73,7 +150,8 @@ class CalibSM(object):
         self.poses = []
         self.posegoal = 50
         
-        self.cur_pitch = -0.5
+        self.calibrator = Calibrator()
+        #self.cur_pitch = -0.5
         
         self.width = 640
         self.height = 480
@@ -85,7 +163,9 @@ class CalibSM(object):
         self.state = self.states.wait_start
     
     def recognize(self):
-        return True, True
+        print("recognizer")
+        ret, pose = self.calibrator.calibrate_frame(self.frame)
+        return ret, pose
         
     def tick(self):
         #print(f"tick(): self.state: {self.state} |{self.state == self.states.wait_start}|")
@@ -102,8 +182,8 @@ class CalibSM(object):
             cdict = {
                 'roll': one28(random.random()-.5), 
                 'pitch': one28(random.random()-.5), 
-                'yaw': one28(0), 
-                'coll': one28(0), 
+                'yaw': one28(random.random()-.5), 
+                'coll': one28(random.random()-.5), 
                 'glyph': modeglyph
             }
             #print(f"cdict: {cdict}")
@@ -127,6 +207,7 @@ class CalibSM(object):
         elif self.state == self.states.count:
             if len(self.poses) >= self.posegoal:
                 print("enough poses found")
+                self.calibrator.calculate()
                 self.state = self.states.done
             else:
                 self.state = self.states.gen_sig           
@@ -136,10 +217,10 @@ class CalibSM(object):
     
     def loop(self):
         while 1:
-            frame = self.cap.get_frame().bgr
-            cv2.line(frame, np.intp((0, self.height/2)), np.intp((self.width, self.height/2)), (0, 0, 255), 1)
-            cv2.line(frame, np.intp((self.width/2, 0)), np.intp((self.width/2, self.height)), (0, 0, 255), 1)
-            cv2.imshow('Async test', frame)
+            self.frame = self.cap.get_frame().bgr
+            cv2.line(self.frame, np.intp((0, self.height/2)), np.intp((self.width, self.height/2)), (0, 0, 255), 1)
+            cv2.line(self.frame, np.intp((self.width/2, 0)), np.intp((self.width/2, self.height)), (0, 0, 255), 1)
+            cv2.imshow('calibrator', self.frame)
             try:
                 token = self.fromq.get_nowait()
                 print(f"got token {token}")
@@ -177,7 +258,7 @@ class  LoggingQueuedBricksHub(PybricksHub):
     def _line_handler(self, line: bytes) -> None:
         try:
             l = line.decode()
-            logging.info(f"Hub Sent:  {l}")
+            logging.debug(f"Hub Sent:  {l}")
             
             if l == "<report>":
                 fn = "%s_%s.csv" % (self.csv_stemname,

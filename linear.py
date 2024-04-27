@@ -1,9 +1,13 @@
 #an attempt to provide a consistent interface between pybricks.tools.Matrix, vector, etc and np
 
 def vector(*args):
-    # n by 1 vector convenience function
+    # 2- or 3- by 1 vector convenience function
     return vector_(args)
 
+def vec4(w, x, y, z):
+    # 2- or 3- by 1 vector convenience function
+    return vec4_(w, x, y, z).T
+    
 def vlen(v): 
     "number of elements in v"
     # len doesn't work on a pybricks "vector"
@@ -49,6 +53,8 @@ try:
     print("Numpy detected")
     def vector_(args):
         return np.array(args)
+    def vec4_(args):
+        return np.array(args)
     vlen_ = lambda v: v.shape[0] # len also works, shape is (3,) on np and (3,1) on pybricks
     Matrix = np.array
     cross_ = np.cross
@@ -70,6 +76,10 @@ except Exception as e:
         import umath as m
         def vector_(args):
             return pbvector(*args)
+        def vec4_(w, x, y, z):
+            #print(args)
+            #return args
+            return pbmatrix([[w, x, y, z]])
         print("PyBricks detected")
         vlen_ = lambda v: v.shape[0]
         Matrix = pbmatrix
