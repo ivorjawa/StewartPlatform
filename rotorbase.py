@@ -53,9 +53,9 @@ class  LoggingBricksHub(PybricksHub):
 class BaseStation(object):
     def __init__(self):
         self.last_sent = time.time()
-        self.gamepad = ctrl.TaranisX9d()
     
     async def send_data(self, hub):
+        self.gamepad = ctrl.TaranisX9d() # pyglet doesn't work under async?
         lastout = ""
         wvars = ['coll', 'roll', 'pitch', 'yaw', 'glyph']
         wirep = JoyProtocol(wvars, 2, None, sys.stdin)
@@ -65,7 +65,7 @@ class BaseStation(object):
             report = self.gamepad.report()
             #report = None
             if report:  
-                #print(report)          
+                print(report)          
                 output = wirep.encode(report)
                 if (output != lastout) or (((time.time()-self.last_sent)*1000) > 16):
                     lastout = output

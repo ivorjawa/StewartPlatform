@@ -405,10 +405,13 @@ def test_controller():
             
             #print(f"c: {coll_in:{3.3}}, r: {roll_in:{3.3}}, p: {pitch_in:{3.3}}")
             
+            disk_def = 10 # degrees
             coll = coll_in
-            roll = (-roll_in + 0.5) * 40
-            pitch = (pitch_in - .5) * 40
-            yaw = (-yaw_in + 0.5) * 90 
+            roll = (-roll_in + 0.5) * disk_def
+            pitch = (pitch_in - .5) * disk_def
+            yaw = (-yaw_in + 0.5) * 45 
+            
+            
             #print(f"c: {coll:{3.3}}, r: {roll:{3.3}}, p: {pitch:{3.3}}")
             (coll_v, sa, sb, sc) = Stew.solve(roll, pitch, yaw, coll, glyph)
             Stew.draw(grid, coll_v, sa, sb, sc)
