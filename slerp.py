@@ -54,6 +54,8 @@ def slerp(quat1, quat2, t):
     # linearly interpolate and normalize the result.
     # if abs(dot) > 0.9995:
     #     pass
+    # https://en.wikipedia.org/wiki/Spherical_law_of_cosines
+    # https://www.movable-type.co.uk/scripts/latlong.html
 
     # If the dot product is negative, the quaternions
     # have opposite handed-ness and slerp won't take
