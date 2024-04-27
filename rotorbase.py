@@ -55,7 +55,7 @@ class BaseStation(object):
         self.last_sent = time.time()
     
     async def send_data(self, hub):
-        self.gamepad = ctrl.TaranisX9d() # pyglet doesn't work under async?
+        self.gamepad = ctrl.TaranisX9d() # pyglet doesn't work under async?  Try running in own process like qtest
         lastout = ""
         wvars = ['coll', 'roll', 'pitch', 'yaw', 'glyph']
         wirep = JoyProtocol(wvars, 2, None, sys.stdin)
@@ -65,7 +65,7 @@ class BaseStation(object):
             report = self.gamepad.report()
             #report = None
             if report:  
-                print(report)          
+                #print(report)          
                 output = wirep.encode(report)
                 if (output != lastout) or (((time.time()-self.last_sent)*1000) > 16):
                     lastout = output

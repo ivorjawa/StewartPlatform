@@ -2,10 +2,15 @@
 
 import pickle
 import numpy as np
+import math as m
 import cv2
 import sys
 import time
 
+import linear as lin
+
+np.set_printoptions(suppress=True, 
+                    formatter={'float_kind':'{:3.3f}'.format}) 
 
 ARUCO_DICT = {
 	"DICT_4X4_50": cv2.aruco.DICT_4X4_50,
@@ -56,15 +61,27 @@ def aruco_display(corners, ids, rejected, image):
 			cY = int((topLeft[1] + bottomRight[1]) / 2.0)
 			cv2.circle(image, (cX, cY), 4, (0, 0, 255), -1)
 			
-			cv2.putText(image, str(markerID),(topLeft[0], topLeft[1] - 10), cv2.FONT_HERSHEY_SIMPLEX,
-				0.5, (0, 255, 0), 2)
-			print("[Inference] ArUco marker ID: {}".format(markerID))
+			cv2.putText(image, str(markerID),(topLeft[0]+30, topLeft[1] - 30), cv2.FONT_HERSHEY_SIMPLEX,
+				1.5, (255, 0, 255), 2)
+			#print("[Inference] ArUco marker ID: {}".format(markerID))
 			
 	return image
 
 
+def drawg(img, corners, imgpts):
+ corner = tuple(corners[0].ravel())
+ img = cv.line(img, corner, tuple(imgpts[0].ravel()), (255,0,0), 5)
+ img = cv.line(img, corner, tuple(imgpts[1].ravel()), (0,255,0), 5)
+ img = cv.line(img, corner, tuple(imgpts[2].ravel()), (0,0,255), 5)
+ return img
+ 
+vdegrees = lambda v: np.array([np.degrees(x) for x in v])
 
+cb_valid = [False, False, False]
+circle_buf = [[], [], []]
+cb_times = [time.time(), time.time(), time.time()]
 def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coefficients):
+    global circle_buf, cb_valid, cb_times
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     #cv2.aruco_dict = cv2.aruco.Dictionary_get(aruco_dict_type)
@@ -77,17 +94,99 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
         #cameraMatrix=matrix_coefficients,
         #distCoeff=distortion_coefficients)
 
-        
+    tags = {
+        'red27': 27,
+        'blue03': 3,
+        'green15': 15,
+        'bubble': 42,
+    }
+    rtags = {
+        27: 'red:27', 
+        3: 'blue:3',
+        15: 'green:15',
+        42: 'bubble:42',
+    }    
     if len(corners) > 0:
+        aruco_display(corners, ids, rejected_img_points, frame)
+        #print(f"detected ids: {ids}")
         for i in range(0, len(ids)):
-           
+            tid = ids[i][0]
+
             rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(corners[i], 0.02, matrix_coefficients,
                                                                        distortion_coefficients)
             
-            cv2.aruco.drawDetectedMarkers(frame, corners) 
+            #cv2.aruco.drawDetectedMarkers(frame, corners) 
 
-            cv2.drawFrameAxes(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.01)  
-
+            cv2.drawFrameAxes(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.05, 1)
+ 
+            axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
+            imgpts, jac = cv2.projectPoints(axis, rvec, tvec, matrix_coefficients, distortion_coefficients)
+            print("imgpts:  ",imgpts)
+            #print("jac:  ", jac.shape)
+            try:
+                #print(f"id: {rtags[tid]}  x: {frame[0]:3.3f}, y: {frame[1]:3.3f}, z: {frame[2]:3.3f}")
+                rvd = vdegrees(rvec[0][0])
+                #tvd = vdegrees(tvec[0][0])
+                tvd = tvec[0][0] # not radians
+                
+                print(f"id: {rtags[tid]}  rvec: {rvd}, tvec: {tvd}")
+            except KeyError as e:
+                print(f"unknown tag {tid}")
+                
+        # look for ball
+        rin = frame[:, :, 2]
+        rblur = cv2.medianBlur(rin,5)
+        #red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
+        
+        circles = cv2.HoughCircles(rblur,cv2.HOUGH_GRADIENT,1,20,param1=130,param2=30,minRadius=55,maxRadius=90)
+        #circles = None
+        if np.any(circles):
+            circles = np.uint16(np.around(circles))
+            if len(circles) == 1: 
+                circle_buf.append(circles[0][0])
+                cb_valid.append(True)
+            else:
+                circle_buf.append([])
+                cb_valid.append(False)
+            cb_times.append(time.time())
+            circle_buf.pop(0)
+            cb_valid.pop(0)
+            cb_times.pop(0)
+            for i in circles[0,:]:
+                 # draw the outer circle
+                 x = i[0]
+                 y = i[1]
+                 r = i[2]
+                 #print(f"found circle with radius: {r}")
+                 # draw circle
+                 cv2.circle(frame,(x, y),r,(0,255,0),2)
+                 # draw the center of the circle
+                 cv2.circle(frame,(x,y),2,(255,255,255),3)
+        if sum(cb_valid) == 3:
+            #print("possible solution found!")
+            try:
+                c1, c2, c3 = [np.array(x, dtype="float64") for x in circle_buf]
+                dt1 = cb_times[1]- cb_times[0]
+                dt2 = cb_times[2]- cb_times[1] 
+                ds1 = (c2 - c1)[:2]
+                ds2 = (c3 - c2)[:2]
+                v1 = ds1/dt1
+                v2 = ds2/dt2
+                dv = v2-v1
+                a = dv/dt2
+                #print(f"c1: {c1}, c2: {c2}, c3: {c3}, dt1: {dt1:3.3f}, dt2: {dt2:3.3f}, dv1: {dv1}, dv2: {dv2}")
+                #print(f"dt1: {dt1:3.3f}, dt2: {dt2:3.3f}, ds1: {ds1}, ds2: {ds2}")
+                v1s = m.sqrt(lin.dot(*v1))
+                v2s = m.sqrt(lin.dot(*v2))
+                a_s = m.sqrt(lin.dot(*a))
+                
+                #print(f"v1: {v1s:8.2f}, v2: {v2s:8.2f}, a: {a_s:8.2f}", end='\r')
+                cv2.line(output, np.intp((c1[0], c1[1])), np.intp((c2[0], c2[1])), (255, 255, 0), 2)
+                cv2.line(output, np.intp((c2[0], c2[1])), np.intp((c3[0], c3[1])), (255, 255, 0), 2)
+            except Exception as e:
+                pass
+                #print("Did I divide by zero?:  ", e)
+            
     return frame
 
 
@@ -104,7 +203,7 @@ arucoParams =  cv2.aruco.DetectorParameters()
 arucoDict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
 with open('caminfo.pickle', 'rb') as f:
     caminfo = pickle.load(f)
-    intrinsic_camera = caminfo['cam_mtx']
+    cam_mtx = caminfo['cam_mtx']
     distortion = caminfo['distortion']
 
 cap = cv2.VideoCapture(0)
@@ -121,7 +220,7 @@ while cap.isOpened():
     
     ret, img = cap.read()
     
-    output = pose_estimation(img, ARUCO_DICT[aruco_type], intrinsic_camera, distortion)
+    output = pose_estimation(img, ARUCO_DICT[aruco_type], cam_mtx, distortion)
 
     cv2.line(output, (int(0),int(height/2)), (int(width), int(height/2)), (0, 0, 255), 1)
     cv2.line(output, (int(width/2),int(0)), (int(width/2), int(height)), (0, 0, 255), 1)
