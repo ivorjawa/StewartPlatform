@@ -105,7 +105,12 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
         3: 'blue:3',
         15: 'green:15',
         42: 'bubble:42',
-    }    
+    }  
+    
+    # save for later ball-seeking
+    rin = frame[:, :, 2]
+    rblur = cv2.medianBlur(rin,5)
+      
     if len(corners) > 0:
         aruco_display(corners, ids, rejected_img_points, frame)
         #print(f"detected ids: {ids}")
@@ -138,12 +143,20 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
             cv2.line(frame, np.intp(imgpts[1][0]), np.intp(imgpts[2][0]), (255, 0, 255), 2)
             cv2.line(frame, np.intp(imgpts[2][0]), np.intp(imgpts[0][0]), (255, 255, 0), 2)
             
+            crlen = 0.162
             if tid == 27: # red
-                centeray = np.float32([[0, 0, 0], [0, 0.15, 0]]).reshape(-1,3)
+                centeray = np.float32([[0, 0, 0], [0, crlen, 0]]).reshape(-1,3)
             else:
-                centeray = np.float32([[0, 0, 0], [-0.15, 0, 0]]).reshape(-1,3)
+                centeray = np.float32([[0, 0, 0], [-crlen, 0, 0]]).reshape(-1,3)
             imgpts, jac = cv2.projectPoints(centeray, rvec, tvec, matrix_coefficients, distortion_coefficients)
-            cv2.line(frame, np.intp(imgpts[0][0]), np.intp(imgpts[1][0]), (0, 0, 0), 5)
+            cv2.line(frame, np.intp(imgpts[0][0]), np.intp(imgpts[1][0]), (0, 255, 255), 2)
+            crp0 = lin.vector(imgpts[0][0])
+            crp1 = lin.vector(imgpts[1][0])
+            
+            crplen = int(lin.vmag(crp1-crp0))
+            print(f"centeray projected length is {crplen}")
+            
+            cv2.circle(frame,np.intp(imgpts[1][0]),crplen+10,(0,255,255),2)
             for j in range(len(centeray)):
                 print(f"cpoint: {centeray[j]} projected: {imgpts[j]}")
             #print("jac:  ", jac.shape)
@@ -158,8 +171,7 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
                 print(f"unknown tag {tid}")
                 
         # look for ball
-        rin = frame[:, :, 2]
-        rblur = cv2.medianBlur(rin,5)
+
         #red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
         
         circles = cv2.HoughCircles(rblur,cv2.HOUGH_GRADIENT,1,20,param1=130,param2=30,minRadius=55,maxRadius=90)
