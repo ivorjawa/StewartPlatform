@@ -125,23 +125,23 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
             #corners2 = cv2.cornerSubPix(frame,corners,(11,11),(-1,-1),criteria)
             #ret,rvecs, tvecs = cv2.solvePnP(objp, corners2, mtx, dist)
             #if not ret:
-            #    print("solvePnP failed")
+            #    print("solvePnP failed"
             #    continue
             #cv2.aruco.drawDetectedMarkers(frame, corners) 
 
             # Y is red, X is green, Z is blue
-            cv2.drawFrameAxes(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.05, 1)
+            cv2.drawFrameAxes(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.06, 1)
  
             axis = np.float32([[.03,0,0], [0,.03,0], [0,0,-.03]]).reshape(-1,3)
             imgpts, jac = cv2.projectPoints(axis, rvec, tvec, matrix_coefficients, distortion_coefficients)
             #print(f"imgpts.shape: {imgpts.shape}, imgpts: {imgpts}  ")
             
             #print(f"axis: {axis}, axis.shape: {axis.shape}")
-            for j in range(len(axis)):
-                print(f"point: {axis[j]} projected: {imgpts[j]}")
-            cv2.line(frame, np.intp(imgpts[0][0]), np.intp(imgpts[1][0]), (0, 255, 255), 2)
-            cv2.line(frame, np.intp(imgpts[1][0]), np.intp(imgpts[2][0]), (255, 0, 255), 2)
-            cv2.line(frame, np.intp(imgpts[2][0]), np.intp(imgpts[0][0]), (255, 255, 0), 2)
+            #for j in range(len(axis)):
+            #    print(f"point: {axis[j]} projected: {imgpts[j]}")
+            #cv2.line(frame, np.intp(imgpts[0][0]), np.intp(imgpts[1][0]), (0, 255, 255), 2)
+            #cv2.line(frame, np.intp(imgpts[1][0]), np.intp(imgpts[2][0]), (255, 0, 255), 2)
+            #cv2.line(frame, np.intp(imgpts[2][0]), np.intp(imgpts[0][0]), (255, 255, 0), 2)
             
             crlen = 0.162
             if tid == 27: # red
@@ -156,7 +156,7 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
             crplen = int(lin.vmag(crp1-crp0))
             print(f"centeray projected length is {crplen}")
             
-            cv2.circle(frame,np.intp(imgpts[1][0]),crplen+10,(0,255,255),2)
+            cv2.circle(frame,np.intp(imgpts[1][0]),crplen+30,(0,255,255),2)
             for j in range(len(centeray)):
                 print(f"cpoint: {centeray[j]} projected: {imgpts[j]}")
             #print("jac:  ", jac.shape)
@@ -223,7 +223,7 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
                 pass
                 #print("Did I divide by zero?:  ", e)
             
-    return frame
+    return frame, rblur
 
 
     
@@ -256,11 +256,18 @@ while cap.isOpened():
     
     ret, img = cap.read()
     
-    output = pose_estimation(img, ARUCO_DICT[aruco_type], cam_mtx, distortion)
+    canvas = np.zeros((height, width*2, 3), np.uint8)
+    
+    output, rblur = pose_estimation(img, ARUCO_DICT[aruco_type], cam_mtx, distortion)
 
     cv2.line(output, (int(0),int(height/2)), (int(width), int(height/2)), (0, 0, 255), 1)
     cv2.line(output, (int(width/2),int(0)), (int(width/2), int(height)), (0, 0, 255), 1)
-    cv2.imshow('Estimated Pose', output)
+    
+    red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
+    
+    canvas[0:480, 0:640] = output
+    canvas[0:480, 640:1280] = red
+    cv2.imshow('Estimated Pose', canvas)
 
     if cv2.waitKey(1) == 27:
         break
