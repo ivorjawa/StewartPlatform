@@ -63,7 +63,7 @@ def aruco_display(corners, ids, rejected, image):
 			
 			cv2.putText(image, str(markerID),(topLeft[0]+30, topLeft[1] - 30), cv2.FONT_HERSHEY_SIMPLEX,
 				1.5, (255, 0, 255), 2)
-			#print("[Inference] ArUco marker ID: {}".format(markerID))
+			print("[Inference] ArUco marker ID: {}".format(markerID))
 			
 	return image
 
@@ -115,13 +115,37 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
             rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(corners[i], 0.02, matrix_coefficients,
                                                                        distortion_coefficients)
             
+            print(f"tid: {tid} corners[{i}]: {corners[i]}")
+            #criteria = (cv2.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+            #corners2 = cv2.cornerSubPix(frame,corners,(11,11),(-1,-1),criteria)
+            #ret,rvecs, tvecs = cv2.solvePnP(objp, corners2, mtx, dist)
+            #if not ret:
+            #    print("solvePnP failed")
+            #    continue
             #cv2.aruco.drawDetectedMarkers(frame, corners) 
 
+            # Y is red, X is green, Z is blue
             cv2.drawFrameAxes(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.05, 1)
  
-            axis = np.float32([[3,0,0], [0,3,0], [0,0,-3]]).reshape(-1,3)
+            axis = np.float32([[.03,0,0], [0,.03,0], [0,0,-.03]]).reshape(-1,3)
             imgpts, jac = cv2.projectPoints(axis, rvec, tvec, matrix_coefficients, distortion_coefficients)
-            print("imgpts:  ",imgpts)
+            #print(f"imgpts.shape: {imgpts.shape}, imgpts: {imgpts}  ")
+            
+            #print(f"axis: {axis}, axis.shape: {axis.shape}")
+            for j in range(len(axis)):
+                print(f"point: {axis[j]} projected: {imgpts[j]}")
+            cv2.line(frame, np.intp(imgpts[0][0]), np.intp(imgpts[1][0]), (0, 255, 255), 2)
+            cv2.line(frame, np.intp(imgpts[1][0]), np.intp(imgpts[2][0]), (255, 0, 255), 2)
+            cv2.line(frame, np.intp(imgpts[2][0]), np.intp(imgpts[0][0]), (255, 255, 0), 2)
+            
+            if tid == 27: # red
+                centeray = np.float32([[0, 0, 0], [0, 0.15, 0]]).reshape(-1,3)
+            else:
+                centeray = np.float32([[0, 0, 0], [-0.15, 0, 0]]).reshape(-1,3)
+            imgpts, jac = cv2.projectPoints(centeray, rvec, tvec, matrix_coefficients, distortion_coefficients)
+            cv2.line(frame, np.intp(imgpts[0][0]), np.intp(imgpts[1][0]), (0, 0, 0), 5)
+            for j in range(len(centeray)):
+                print(f"cpoint: {centeray[j]} projected: {imgpts[j]}")
             #print("jac:  ", jac.shape)
             try:
                 #print(f"id: {rtags[tid]}  x: {frame[0]:3.3f}, y: {frame[1]:3.3f}, z: {frame[2]:3.3f}")
