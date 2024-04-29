@@ -25,6 +25,14 @@ class crossout(object):
        self.width = 640
        self.height = 480
        self.cap.frame_mode = find_mode(self.cap, self.width, self.height, 30) 
+       self.cont_dict = {}
+       for i, c in enumerate(self.cap.controls):
+           key = '_'.join(c.display_name.lower().split(' '))
+           self.cont_dict[key] = c
+       self.cont_dict['auto_focus'].value = 0 
+       self.cont_dict['absolute_focus'].value = 0 # absolute focus, 1 ... 200
+           
+    
     def loop(self):
         while True:
             frame = self.cap.get_frame()
@@ -37,6 +45,10 @@ class crossout(object):
             axes = joystick.device.get_controls()[24:]
     
             coll_in = axes[2].value/2047.0
+            focus = np.intp(coll_in*200)
+            self.cont_dict['absolute_focus'].value = focus # absolute focus, 1 ... 200
+            print(f"set focus to {focus}")
+            
             roll_in = axes[0].value/1024.0 - 1
             pitch_in = axes[1].value/1024.0 - 1
             yaw_in = axes[3].value/1024.0 - 1

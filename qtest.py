@@ -158,6 +158,12 @@ class CalibSM(object):
         self.device = uvc.device_list()[0]
         self.cap = uvc.Capture(self.device["uid"]) 
         self.cap.frame_mode = find_mode(self.cap, self.width, self.height, 30)
+        self.cont_dict = {}
+        for i, c in enumerate(self.cap.controls):
+            key = '_'.join(c.display_name.lower().split(' '))
+            self.cont_dict[key] = c
+        self.cont_dict['auto_focus'].value = 0 
+        self.cont_dict['absolute_focus'].value = 0 # absolute focus, 1 ... 200
         
         self.states = Enum('cstates', ['wait_start', 'gen_sig', 'wait_move', 'scan', 'count', 'done'])
         self.state = self.states.wait_start

@@ -80,7 +80,7 @@ vdegrees = lambda v: np.array([np.degrees(x) for x in v])
 cb_valid = [False, False, False]
 circle_buf = [[], [], []]
 cb_times = [time.time(), time.time(), time.time()]
-def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coefficients):
+def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coefficients, width, height):
     global circle_buf, cb_valid, cb_times
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -108,10 +108,12 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
     }  
     
     # save for later ball-seeking
-    rin = frame[:, :, 2]
+    rin = frame[:, :, 2].copy()
     rblur = cv2.medianBlur(rin,5)
       
     if len(corners) > 0:
+        mask_circs = []
+        mask_rads = [] # 145 - 235
         aruco_display(corners, ids, rejected_img_points, frame)
         #print(f"detected ids: {ids}")
         for i in range(0, len(ids)):
@@ -120,7 +122,7 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
             rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(corners[i], 0.02, matrix_coefficients,
                                                                        distortion_coefficients)
             
-            print(f"tid: {tid} corners[{i}]: {corners[i]}")
+            #print(f"tid: {tid} corners[{i}]: {corners[i]}")
             #criteria = (cv2.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
             #corners2 = cv2.cornerSubPix(frame,corners,(11,11),(-1,-1),criteria)
             #ret,rvecs, tvecs = cv2.solvePnP(objp, corners2, mtx, dist)
@@ -144,8 +146,9 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
             #cv2.line(frame, np.intp(imgpts[2][0]), np.intp(imgpts[0][0]), (255, 255, 0), 2)
             
             crlen = 0.162
-            if tid == 27: # red
-                centeray = np.float32([[0, 0, 0], [0, crlen, 0]]).reshape(-1,3)
+            if tid == 42: # bubble, ie false
+                #centeray = np.float32([[0, 0, 0], [0, crlen, 0]]).reshape(-1,3)
+                continue
             else:
                 centeray = np.float32([[0, 0, 0], [-crlen, 0, 0]]).reshape(-1,3)
             imgpts, jac = cv2.projectPoints(centeray, rvec, tvec, matrix_coefficients, distortion_coefficients)
@@ -156,6 +159,9 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
             crplen = int(lin.vmag(crp1-crp0))
             print(f"centeray projected length is {crplen}")
             
+            if (crplen > 145) and (crplen < 235):
+                mask_circs.append(np.intp(imgpts[1][0]))
+                mask_rads.append(crplen)
             cv2.circle(frame,np.intp(imgpts[1][0]),crplen+30,(0,255,255),2)
             for j in range(len(centeray)):
                 print(f"cpoint: {centeray[j]} projected: {imgpts[j]}")
@@ -169,11 +175,37 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
                 print(f"id: {rtags[tid]}  rvec: {rvd}, tvec: {tvd}")
             except KeyError as e:
                 print(f"unknown tag {tid}")
+        if len(mask_circs ) > 0:
+            print (f"mask centers: {mask_circs}")
+            print (f"mask radii: {mask_rads}")
+            cx = []
+            cy = []
+            for c in mask_circs:
+                cx.append(c[0])
+                cy.append(c[1])
+            #cx, cy = mas_circs
+            xsum = np.sum(cx)
+            ysum = np.sum(cy)
+            rsum = np.sum(mask_rads)
+            scale = 1.0*len(mask_circs)
+            xav = np.intp(xsum/scale)
+            yav = np.intp(ysum/scale)
+            rav = np.intp(rsum/scale)
+            #(cx, cy) = np.intp((np.sum(mask_circs)/(1.0*len(mask_circs))))
+            #cr = np.intp(np.sum(mask_rads)/(1.0*len(mask_rads)))
+            print(f"cx, cy: ({xav},{yav}), Radius: {rav}")
+            mask = np.zeros((height, width), np.uint8)
+            cv2.circle(mask,(xav,yav),rav+30,1,-1)
+            rin = rin * mask
+            rblur = cv2.medianBlur(rin,5)
+            
+            
+            
+            
                 
         # look for ball
 
         #red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
-        
         circles = cv2.HoughCircles(rblur,cv2.HOUGH_GRADIENT,1,20,param1=130,param2=30,minRadius=55,maxRadius=90)
         #circles = None
         if np.any(circles):
@@ -228,7 +260,7 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
 
     
 
-aruco_type = "DICT_4X4_100"
+aruco_type = "DICT_4X4_50"
 
 #arucoDict = cv2.aruco.Dictionary_get(ARUCO_DICT[aruco_type])
 #arucoParams = cv2.aruco.DetectorParameters_create()
@@ -248,7 +280,8 @@ width = 640
 height = 480
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-cap.set(cv2.CAP_PROP_AUTOFOCUS, 1) 
+cap.set(cv2.CAP_PROP_AUTOFOCUS, 0) 
+cap.set(cv2.CAP_PROP_FOCUS, 0) 
 
 
 
@@ -258,7 +291,7 @@ while cap.isOpened():
     
     canvas = np.zeros((height, width*2, 3), np.uint8)
     
-    output, rblur = pose_estimation(img, ARUCO_DICT[aruco_type], cam_mtx, distortion)
+    output, rblur = pose_estimation(img, ARUCO_DICT[aruco_type], cam_mtx, distortion, width, height)
 
     cv2.line(output, (int(0),int(height/2)), (int(width), int(height/2)), (0, 0, 255), 1)
     cv2.line(output, (int(width/2),int(0)), (int(width/2), int(height)), (0, 0, 255), 1)
