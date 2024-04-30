@@ -29,12 +29,10 @@ import linear as lin
 #        print(i, prop, val)
  
 def find_mode(cap, width, height, fps):
-    """
     for mode in cap.available_modes:
         print(
             f"MODE: {mode.width} x {mode.height} @ {mode.fps} ({mode.format_name}) {mode.__class__}"
         )
-    """
     for mode in cap.available_modes:
         if (mode.width == width) and (mode.height == height) and (mode.fps == fps):
             return mode

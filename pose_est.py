@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-
-import pickle
-import numpy as np
-import math as m
-import cv2
 import sys
+import os
 import time
+import pickle
+import math as m
+
+import numpy as np
+import cv2
 
 import linear as lin
 
@@ -259,54 +260,64 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
 
 
     
+def go():
+    aruco_type = "DICT_4X4_50"
 
-aruco_type = "DICT_4X4_50"
+    #arucoDict = cv2.aruco.Dictionary_get(ARUCO_DICT[aruco_type])
+    #arucoParams = cv2.aruco.DetectorParameters_create()
+    #intrinsic_camera = np.array(((933.15867, 0, 657.59),(0,933.1586, 400.36993),(0,0,1)))
+    #distortion = np.array((-0.43948,0.18514,0,0))
 
-#arucoDict = cv2.aruco.Dictionary_get(ARUCO_DICT[aruco_type])
-#arucoParams = cv2.aruco.DetectorParameters_create()
-#intrinsic_camera = np.array(((933.15867, 0, 657.59),(0,933.1586, 400.36993),(0,0,1)))
-#distortion = np.array((-0.43948,0.18514,0,0))
+    arucoParams =  cv2.aruco.DetectorParameters()
+    arucoDict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
+    with open('caminfo.pickle', 'rb') as f:
+        caminfo = pickle.load(f)
+        cam_mtx = caminfo['cam_mtx']
+        distortion = caminfo['distortion']
 
-arucoParams =  cv2.aruco.DetectorParameters()
-arucoDict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
-with open('caminfo.pickle', 'rb') as f:
-    caminfo = pickle.load(f)
-    cam_mtx = caminfo['cam_mtx']
-    distortion = caminfo['distortion']
+    cap = cv2.VideoCapture(0)
 
-cap = cv2.VideoCapture(0)
-
-width = 640
-height = 480
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-cap.set(cv2.CAP_PROP_AUTOFOCUS, 0) 
-cap.set(cv2.CAP_PROP_FOCUS, 0) 
-
-
-
-while cap.isOpened():
+    width = 640
+    height = 480
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+    cap.set(cv2.CAP_PROP_FPS, 30)
     
-    ret, img = cap.read()
+    os.system("./uvc-util -I 0 -s auto-focus=0")
+    os.system("./uvc-util -I 0 -s focus-abs=0")
+    os.system("./uvc-util -I 0 -s auto-exposure-mode=1")
+    os.system("./uvc-util -I 0 -s exposure-time-abs=150")
     
-    canvas = np.zeros((height, width*2, 3), np.uint8)
-    
-    output, rblur = pose_estimation(img, ARUCO_DICT[aruco_type], cam_mtx, distortion, width, height)
+    #cap.set(cv2.CAP_PROP_AUTOFOCUS, 0) 
+    #cap.set(cv2.CAP_PROP_FOCUS, 0) 
 
-    cv2.line(output, (int(0),int(height/2)), (int(width), int(height/2)), (0, 0, 255), 1)
-    cv2.line(output, (int(width/2),int(0)), (int(width/2), int(height)), (0, 0, 255), 1)
-    
-    red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
-    
-    canvas[0:480, 0:640] = output
-    canvas[0:480, 640:1280] = red
-    cv2.imshow('Estimated Pose', canvas)
 
-    if cv2.waitKey(1) == 27:
-        break
-    #key = cv2.waitKey(1) & 0xFF
-    #if key == ord('q'):
-    #    break
 
-cap.release()
-cv2.destroyAllWindows()
+    while cap.isOpened():
+    
+        ret, img = cap.read()
+    
+        canvas = np.zeros((height, width*2, 3), np.uint8)
+    
+        output, rblur = pose_estimation(img, ARUCO_DICT[aruco_type], cam_mtx, distortion, width, height)
+
+        cv2.line(output, (int(0),int(height/2)), (int(width), int(height/2)), (0, 0, 255), 1)
+        cv2.line(output, (int(width/2),int(0)), (int(width/2), int(height)), (0, 0, 255), 1)
+    
+        red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
+    
+        canvas[0:480, 0:640] = output
+        canvas[0:480, 640:1280] = red
+        cv2.imshow('Estimated Pose', canvas)
+
+        if cv2.waitKey(1) == 27:
+            break
+        #key = cv2.waitKey(1) & 0xFF
+        #if key == ord('q'):
+        #    break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    go()

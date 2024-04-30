@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys
+import os
 import datetime
 import logging, logging.handlers
 import multiprocessing as mp
@@ -11,7 +12,7 @@ import pickle
 
 import numpy as np
 import cv2
-import uvc 
+#import uvc 
 
 from pybricksdev.connections.pybricks import PybricksHub
 from pybricksdev.ble import find_device, nus
@@ -25,16 +26,6 @@ from rotorbase import LoggingBricksHub
 
 import StewartPlatform
 
-def find_mode(cap, width, height, fps):
-    """
-    for mode in cap.available_modes:
-        print(
-            f"MODE: {mode.width} x {mode.height} @ {mode.fps} ({mode.format_name}) {mode.__class__}"
-        )
-    """
-    for mode in cap.available_modes:
-        if (mode.width == width) and (mode.height == height) and (mode.fps == fps):
-            return mode
 
 class Calibrator(object):
     def __init__(self, sqx=8, sqy=6, width=640, height=480):            
@@ -155,15 +146,28 @@ class CalibSM(object):
         
         self.width = 640
         self.height = 480
-        self.device = uvc.device_list()[0]
-        self.cap = uvc.Capture(self.device["uid"]) 
-        self.cap.frame_mode = find_mode(self.cap, self.width, self.height, 30)
-        self.cont_dict = {}
-        for i, c in enumerate(self.cap.controls):
-            key = '_'.join(c.display_name.lower().split(' '))
-            self.cont_dict[key] = c
-        self.cont_dict['auto_focus'].value = 0 
-        self.cont_dict['absolute_focus'].value = 0 # absolute focus, 1 ... 200
+        #self.device = uvc.device_list()[0]
+        #self.cap = uvc.Capture(self.device["uid"]) 
+        #self.cap.frame_mode = find_mode(self.cap, self.width, self.height, 30)
+        #self.cont_dict = {}
+        #for i, c in enumerate(self.cap.controls):
+        #    key = '_'.join(c.display_name.lower().split(' '))
+        #    self.cont_dict[key] = c
+        #self.cont_dict['auto_focus'].value = 0 
+        #self.cont_dict['absolute_focus'].value = 0 # absolute focus, 1 ... 200
+        self.cam = cv2.VideoCapture(0)
+        self.cam.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+        self.cam.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+        self.cam.set(cv2.CAP_PROP_FPS, 30)
+        #cam.set(cv2.CAP_PROP_AUTOFOCUS, 0)
+        #cam.set(cv2.CAP_PROP_FOCUS, 0) # 0 should be as close as it gets    
+        #cam.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1) # should be manual
+        #cam.set(cv2.CAP_PROP_EXPOSURE, 100) # 15ms
+    
+        os.system("./uvc-util -I 0 -s auto-focus=0")
+        os.system("./uvc-util -I 0 -s focus-abs=0")
+        os.system("./uvc-util -I 0 -s auto-exposure-mode=1")
+        os.system("./uvc-util -I 0 -s exposure-time-abs=150")
         
         self.states = Enum('cstates', ['wait_start', 'gen_sig', 'wait_move', 'scan', 'count', 'done'])
         self.state = self.states.wait_start
@@ -200,8 +204,13 @@ class CalibSM(object):
             print("sent command")
             self.state = self.states.wait_move
         elif self.state == self.states.wait_move:
-            if self.moving == False:
-                self.end_time = time.time()
+            now = time.time()
+            if self.moving == True:
+                if (now - self.start_time > 5):
+                    print("Timeout waiting for robot to move, kicking")
+                    self.state = self.states.gen_sig
+            elif self.moving == False:
+                self.end_time = now
                 self.state = self.states.scan
                 print(f"got movement, took {self.end_time-self.start_time:3.3f}s")
         elif self.state == self.states.scan:
@@ -223,7 +232,12 @@ class CalibSM(object):
     
     def loop(self):
         while 1:
-            self.frame = self.cap.get_frame().bgr
+            #self.frame = self.cap.get_frame().bgr
+            ret, self.frame = self.cam.read()
+            if not ret:
+                print("eof?")
+                break
+
             cv2.line(self.frame, np.intp((0, self.height/2)), np.intp((self.width, self.height/2)), (0, 0, 255), 1)
             cv2.line(self.frame, np.intp((self.width/2, 0)), np.intp((self.width/2, self.height)), (0, 0, 255), 1)
             cv2.imshow('calibrator', self.frame)
