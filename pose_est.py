@@ -64,7 +64,7 @@ def aruco_display(corners, ids, rejected, image):
 			
 			cv2.putText(image, str(markerID),(topLeft[0]+30, topLeft[1] - 30), cv2.FONT_HERSHEY_SIMPLEX,
 				1.5, (255, 0, 255), 2)
-			print("[Inference] ArUco marker ID: {}".format(markerID))
+			#print("[Inference] ArUco marker ID: {}".format(markerID))
 			
 	return image
 
@@ -158,14 +158,15 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
             crp1 = lin.vector(imgpts[1][0])
             
             crplen = int(lin.vmag(crp1-crp0))
-            print(f"centeray projected length is {crplen}")
+            #print(f"centeray projected length is {crplen}")
             
             if (crplen > 145) and (crplen < 235):
                 mask_circs.append(np.intp(imgpts[1][0]))
                 mask_rads.append(crplen)
             cv2.circle(frame,np.intp(imgpts[1][0]),crplen+30,(0,255,255),2)
             for j in range(len(centeray)):
-                print(f"cpoint: {centeray[j]} projected: {imgpts[j]}")
+                pass
+                #print(f"cpoint: {centeray[j]} projected: {imgpts[j]}")
             #print("jac:  ", jac.shape)
             try:
                 #print(f"id: {rtags[tid]}  x: {frame[0]:3.3f}, y: {frame[1]:3.3f}, z: {frame[2]:3.3f}")
@@ -173,12 +174,12 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
                 #tvd = vdegrees(tvec[0][0])
                 tvd = tvec[0][0] # not radians
                 
-                print(f"id: {rtags[tid]}  rvec: {rvd}, tvec: {tvd}")
+                #print(f"id: {rtags[tid]}  rvec: {rvd}, tvec: {tvd}")
             except KeyError as e:
                 print(f"unknown tag {tid}")
         if len(mask_circs ) > 0:
-            print (f"mask centers: {mask_circs}")
-            print (f"mask radii: {mask_rads}")
+            #print (f"mask centers: {mask_circs}")
+            #print (f"mask radii: {mask_rads}")
             cx = []
             cy = []
             for c in mask_circs:
@@ -194,7 +195,7 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
             rav = np.intp(rsum/scale)
             #(cx, cy) = np.intp((np.sum(mask_circs)/(1.0*len(mask_circs))))
             #cr = np.intp(np.sum(mask_rads)/(1.0*len(mask_rads)))
-            print(f"cx, cy: ({xav},{yav}), Radius: {rav}")
+            #print(f"cx, cy: ({xav},{yav}), Radius: {rav}")
             mask = np.zeros((height, width), np.uint8)
             cv2.circle(mask,(xav,yav),rav+30,1,-1)
             rin = rin * mask
@@ -232,7 +233,7 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
                  # draw the center of the circle
                  cv2.circle(frame,(x,y),2,(255,255,255),3)
         if sum(cb_valid) == 3:
-            #print("possible solution found!")
+            print("possible solution found!")
             try:
                 c1, c2, c3 = [np.array(x, dtype="float64") for x in circle_buf]
                 dt1 = cb_times[1]- cb_times[0]
@@ -243,18 +244,21 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
                 v2 = ds2/dt2
                 dv = v2-v1
                 a = dv/dt2
-                #print(f"c1: {c1}, c2: {c2}, c3: {c3}, dt1: {dt1:3.3f}, dt2: {dt2:3.3f}, dv1: {dv1}, dv2: {dv2}")
-                #print(f"dt1: {dt1:3.3f}, dt2: {dt2:3.3f}, ds1: {ds1}, ds2: {ds2}")
-                v1s = m.sqrt(lin.dot(*v1))
-                v2s = m.sqrt(lin.dot(*v2))
-                a_s = m.sqrt(lin.dot(*a))
+                print(f"c1: {np.intp(c1)}, c2: {np.intp(c2)}, c3: {np.intp(c3)}")
+                print(f"v1: {v1}, v2: {v2}, dv: {dv}")
+                print(f"dt1: {dt1:3.3f}, dt2: {dt2:3.3f}, ds1: {ds1}, ds2: {ds2}")
+                v1s = m.sqrt(abs(lin.dot(*v1)))
+                #print("x")
+                v2s = m.sqrt(abs(lin.dot(*v2)))
+                #print(f"a: {a}")
+                a_s = m.sqrt(abs(lin.dot(*a)))
                 
-                #print(f"v1: {v1s:8.2f}, v2: {v2s:8.2f}, a: {a_s:8.2f}", end='\r')
-                cv2.line(output, np.intp((c1[0], c1[1])), np.intp((c2[0], c2[1])), (255, 255, 0), 2)
-                cv2.line(output, np.intp((c2[0], c2[1])), np.intp((c3[0], c3[1])), (255, 255, 0), 2)
+                print(f"v1: {v1s:8.2f}, v2: {v2s:8.2f}, a: {a_s:8.2f}", end='\n')
+                cv2.line(frame, np.intp((c1[0], c1[1])), np.intp((c2[0], c2[1])), (255, 255, 0), 2)
+                cv2.line(frame, np.intp((c2[0], c2[1])), np.intp((c3[0], c3[1])), (255, 255, 0), 2)
             except Exception as e:
                 pass
-                #print("Did I divide by zero?:  ", e)
+                print("Did I divide by zero?:  ", e)
             
     return frame, rblur
 
