@@ -11,12 +11,36 @@ try:
     qnorm = lambda q: q.normalized()
     q2vec = lambda q: q.components
     clamp = np.clip
-    np.set_printoptions(suppress=True, formatter={'float_kind':'{:3.2f}'.format})  
+    np.set_printoptions(suppress=True, formatter={'float_kind':'{:3.2f}'.format})
+    # A rotation quaternion is a unit quaternion i.e. magnitude == 1
+    def RotatorQ(theta=0, x=0, y=0, z=0):
+        s = m.sin(theta/2)
+        m = m.sqrt(x*x + y*y + z*z)  # Convert to unit vector
+        if m > 0:
+            return np.quaternion(cos(theta/2), s*x/m, s*y/m, s*z/m)
+        else:
+            return np.quaternion(1, 0, 0, 0)  # Identity quaternion
+
+    def EulerQ(heading, pitch, roll):
+        cy = m.cos(heading * 0.5);
+        sy = m.sin(heading * 0.5);
+        cp = m.cos(pitch * 0.5);
+        sp = m.sin(pitch * 0.5);
+        cr = m.cos(roll * 0.5);
+        sr = m.sin(roll * 0.5);
+
+        w = cr * cp * cy + sr * sp * sy;
+        x = sr * cp * cy - cr * sp * sy;
+        y = cr * sp * cy + sr * cp * sy;
+        z = cr * cp * sy - sr * sp * cy;
+        return np.quaternion(w, x, y, z)  # Tait-Bryan angles but z == towards sky  
 except Exception as e:
     import umath as m
     import quat
     is_pybrics = True
     make_quat = quat.Quaternion
+    RotatorQ = quat.Rotator
+    EuelerQ = quat.Euler
     qnorm = lambda q: q.normalise()
     q2vec = lambda q: lin.vec4(*q)
     def clamp(n, min, max): 

@@ -82,9 +82,9 @@ class StewartPlatform(object): # millimeters
         self.old_sB = self.sB
         self.old_sC = self.sC
         self.old_coll_v = self.p0 *(self.min_height + .5 * self.plat_range)
-        self.old_Vp = lin.vector(0, 0, 0)
-        self.old_Vr = lin.vector(0, 0, 0)
-        self.old_Vq = lin.vector(0, 0, 0)
+        #self.old_Vp = lin.vector(0, 0, 0)
+        #self.old_Vr = lin.vector(0, 0, 0)
+        #self.old_Vq = lin.vector(0, 0, 0)
         
         self.s1 = rotate(zaxis, m.radians(-60+rotoff), fp_line) + outer_r*lin.normalize(self.sA)
         self.s2 = rotate(zaxis, m.radians(120+rotoff), fp_line) + outer_r*lin.normalize(self.sA)
@@ -170,13 +170,28 @@ class StewartPlatform(object): # millimeters
             sb = rotate(Vdisk_n, m.radians(yaw), sb)
             sc = rotate(Vdisk_n, m.radians(yaw), sc)
         
+        spokes = self.spoke_solve(sa, sb, sc)
+        if len(spokes) == 4:
+            sa, sb, sc, cyls = spokes
+            self.old_sA = sa
+            self.old_sB = sb
+            self.old_sC = sc
+            self.old_coll_v = coll_v
+            self.old_cyls = cyls
+        else:
+            sa = self.old_sA
+            sb = self.old_sB
+            sc = self.old_sC
+            coll_v = self.old_coll_v
+            cyls = self.old_cyls
+        return (coll_v, sa, sb, sc)
         
+    def spoke_solve(self, sa, sb, sc):
         triads = [
             [sa, self.s1, self.s2],
             [sb, self.s3, self.s4],
             [sc, self.s5, self.s6],
         ]
-        self.old_cyls = self.cyls.copy()
         cyls = []
         #print(f"triads: {triads}")
         #for (top, left, right) in triads:
@@ -191,31 +206,10 @@ class StewartPlatform(object): # millimeters
             
             if min(c1, c2, self.Cmin) != self.Cmin:
                 print(f"cylinder too short: c1: {c1} c2: {c2} Cmin: {self.Cmin}")
-                sa = self.old_sA
-                sb = self.old_sB
-                sc = self.old_sC
-                coll_v = self.old_coll_v
-                cyls = self.old_cyls
-                break
+                return(())
                 
             if max(c1, c2, self.Cmax) != self.Cmax:
-                print(f"cylinder too long: c1: {c1} c2: {c2} Cax: {self.Cmax}")
-                sa = self.old_sA
-                sb = self.old_sB
-                sc = self.old_sC
-                coll_v = self.old_coll_v
-                cyls = self.old_cyls
-                break
+                print(f"cylinder too long: c1: {c1} c2: {c2} Cmin: {self.Cmax}")
+                return(())
+        return((sa, sb, sc, cyls))
             
-        #for i, cyl in enumerate(cyls):
-        #    print(f"cyl {i}: {cyl}")
-        self.old_sA = sa
-        self.old_sB = sb
-        self.old_sC = sc
-        self.old_coll_v = coll_v
-        self.old_Vr = Vr
-        self.old_Vp = Vp
-        self.old_Vq = Vq
-        self.cyls = cyls
-        
-        return (coll_v, sa, sb, sc)
