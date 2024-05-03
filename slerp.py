@@ -74,50 +74,6 @@ def slerp(one, two, t):
     """Spherical Linear intERPolation."""
     return (two * one.inverse())**t * one
            
-def slarp(quat1, quat2, t):
-    # this is shit
-    """Spherically interpolates between quat1 and quat2 by t.
-    The parameter t is clamped to the range [0, 1]
-    """
-
-    # https://en.wikipedia.org/wiki/Slerp
-
-    #v0 = normalise(quat1)
-    #v1 = normalise(quat2)
-    # in pybricks quat, .normalise
-    v0 = qnorm(quat1)
-    v1 = qnorm(quat2)
-
-    #dot = vector4.dot(v0, v1)
-    # in np.components, in pyrbricks quat, lin.vector(quat[0:])
-    dot = lin.dot(q2vec(v0), q2vec(v1))
-
-    # If the inputs are too close for comfort,
-    # linearly interpolate and normalize the result.
-    if abs(dot) > 0.9995:
-        #print("LERP!")
-        lerpquat = (quat2-quat1)/2 + quat1
-        return qnorm(lerpquat)
-        #raise Exception("narf!")
-
-    # something better here maybe?
-    # https://en.wikipedia.org/wiki/Spherical_law_of_cosines
-    # https://www.movable-type.co.uk/scripts/latlong.html
-
-    # If the dot product is negative, the quaternions
-    # have opposite handed-ness and slerp won't take
-    # the shorter path. Fix by reversing one quaternion.
-    if dot < 0.0:
-        v1 = -v1
-        dot = -dot
-
-    # clamp
-    dot = clamp(dot, -1.0, 1.0)
-    theta = m.acos(dot) * t
-
-    v2 = v1 - v0 * dot
-    res = v0 * m.cos(theta) + v2 * m.sin(theta)
-    return res
 
 #https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles    
 def to_euler( q):

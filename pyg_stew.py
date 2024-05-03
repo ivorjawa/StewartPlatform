@@ -303,40 +303,120 @@ def on_draw():
     window.clear()
     #oldbatch.draw()
     
+    """ 
+    [0, 0, 0], # Y+
+    [0, 1, 0], 
+    #[0, 0, 0],         
+
+    [0, 0, 0],  # Y-
+    [0, -1, 0], 
+    #[0, 0, 0],         
+
+    [0, 0, 0], # X+
+    [1, 0, 0], 
+    #[0, 0, 0],         
+
+    [0, 0, 0], # X-
+    [-1, 0, 0], 
+    #[0, 0, 0],         
+
+    [0, 0, 0], # Z+
+    [0, 0, 1], 
+    #[0, 0, 0],
+
+    [0, 0, 0], # Z-
+    [0, 0, -1], 
+    #[0, 0, 0]
+           
+    """
+
     cube = lin.Matrix([
-        [0, 0, 0], 
-        [1, 0, 0], 
-        [1, 1, 0],        
-        [0, 1, 0], 
-         
-        [1, 1, 0],
-        [1, 1, 1],
-        [1, 0, 1],
-        [0, 0, 1],
+
+        
+        [0, 0, -.5],  # slide 1
+        [-1, -1, .1], 
+        #[0, 0, 0],
+        
+        [0, 0, -.5], # slide 2
+        [1, 1, .1], 
+        #[0, 0, 0],
+        
+        [0, 0, -.5], # slide 3
+        [1, -1, .1], 
+        #[0, 0, 0],
+        
+        [0, 0, -.5], # slide4
+        [-1, 1, .1], 
+        #[0, 0, 0],
+        
 
     ])
+
+    """        
+    [0, 0, 0], 
+    [0, 0, 0], 
+    #[0, 0, 0], 
+
+    [0, 0, 0], 
+    [0, 0, 0], 
+    #[0, 0, 0],  
+  
+    [0, 0, 0], 
+    [0, 0, 0], 
+    #[0, 0, 0],
+
+    [0, 0, 0], 
+    [0, 0, 0], 
+    #[0, 0, 0],
+
+  
+    [0, 0, 0], 
+    [0, 0, 0], 
+    #[0, 0, 0],
+
+    [0, 0, 0], 
+    [0, 0, 0], 
+    #[0, 0, 0]
+    """
 
     # heading, pitch, roll
-    xrcube = lin.Matrix([
+    rcube = lin.Matrix([
+
+        
+                
+        [0, 0, 0], # slide 1
         [0, 15, 15], 
         #[0, 0, 0],
-        [0, -15, -15],
+        
+        [0, 0, 0], # slide 2
+        [0, -15, -15], 
         #[0, 0, 0],
         
-        #[0, 15, 15], 
+        [0, 0, 0], # slide 3
+        [0, -15, 15], 
+        #[0, 0, 0],
         
+        [0, 0, 0], # slide 4
+        [0, 15, -15], 
+        #[0, 0, 0],
+      
     ])
-    rcube = cube * 15 # 15 or so
-    scube = cube - lin.vector(.5, .5, 0)
-    scube = scube * .75
-    scube = scube + lin.vector(0, 0, .5)
+    #rcube = cube * 15 # 15 or so
+    #scube = cube - lin.vector(.5, .5, 0) # center it
+    #print(f"rcube.shape: {rcube.shape}")
+    #rcube = rcube[12:]
+    #scube = cube[12:]
+    scube = cube
+    scube = scube * .75 # scale it down a bit.
+    scube = scube + lin.vector(0, 0, 1) # give it room to move at 0 collective
     
     now = time.time()
     inow = int(now)
     cubedex1 = inow % len(cube)
     cubedex2 = (inow + 1) % len(cube)
     fnow = now - inow
-    framedex = (int(fnow*11) % 11)/10.0 # should be 0.0..1.0
+    #framedex = (int(fnow*11) % 11)/10.0 # should be 0.0..1.0
+    framedex = fnow
     
     #if(framedex == 0) and (cubedex1 == 0):
     #    print("-"*40)
