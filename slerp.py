@@ -13,15 +13,18 @@ try:
     clamp = np.clip
     np.set_printoptions(suppress=True, formatter={'float_kind':'{:3.2f}'.format})
     # A rotation quaternion is a unit quaternion i.e. magnitude == 1
-    def RotatorQ(theta=0, x=0, y=0, z=0):
+    def rotator_quat(theta=0, x=0, y=0, z=0):
+        print(f"rotator theta: {theta} @ ({x}, {y}, {z})")
         s = m.sin(theta/2)
-        m = m.sqrt(x*x + y*y + z*z)  # Convert to unit vector
-        if m > 0:
-            return np.quaternion(cos(theta/2), s*x/m, s*y/m, s*z/m)
+        print(f"s: {s}")
+        mm = m.sqrt(x*x + y*y + z*z)  # Convert to unit vector
+        print(f"mm: {mm}")
+        if mm > 0:
+            return np.quaternion(m.cos(theta/2), s*x/mm, s*y/mm, s*z/mm)
         else:
             return np.quaternion(1, 0, 0, 0)  # Identity quaternion
 
-    def EulerQ(heading, pitch, roll):
+    def euler_quat(heading, pitch, roll):
         cy = m.cos(heading * 0.5);
         sy = m.sin(heading * 0.5);
         cp = m.cos(pitch * 0.5);
@@ -33,16 +36,22 @@ try:
         x = sr * cp * cy - cr * sp * sy;
         y = cr * sp * cy + sr * cp * sy;
         z = cr * cp * sy - sr * sp * cy;
-        return np.quaternion(w, x, y, z)  # Tait-Bryan angles but z == towards sky  
+        return np.quaternion(w, x, y, z)  # Tait-Bryan angles but z == towards sky 
+    def qrotate(q, p):
+        return (q * p * q.conjugate())
+        
+    
 except Exception as e:
     import umath as m
     import quat
     is_pybrics = True
     make_quat = quat.Quaternion
-    RotatorQ = quat.Rotator
-    EuelerQ = quat.Euler
+    rotator_quat = quat.Rotator
+    euler_quat = quat.Euler
     qnorm = lambda q: q.normalise()
     q2vec = lambda q: lin.vec4(*q)
+    def qrotate(q, p):
+        return p @ q # matmul
     def clamp(n, min, max): 
         if n < min: 
             return min
@@ -54,9 +63,19 @@ except Exception as e:
 
 # https://stackoverflow.com/questions/44706591/how-to-test-quaternion-slerp
 
+def quat2vec3(q):
+    return lin.vector(q.x, q.y, q.z)
 
-        
-def slerp(quat1, quat2, t):
+def point(x, y, z):
+    return make_quat(0, x, y, z)
+ 
+def slerp(one, two, t):
+    #https://splines.readthedocs.io/en/latest/rotation/slerp.html
+    """Spherical Linear intERPolation."""
+    return (two * one.inverse())**t * one
+           
+def slarp(quat1, quat2, t):
+    # this is shit
     """Spherically interpolates between quat1 and quat2 by t.
     The parameter t is clamped to the range [0, 1]
     """
@@ -73,11 +92,15 @@ def slerp(quat1, quat2, t):
     # in np.components, in pyrbricks quat, lin.vector(quat[0:])
     dot = lin.dot(q2vec(v0), q2vec(v1))
 
-    # TODO: fixlater
     # If the inputs are too close for comfort,
     # linearly interpolate and normalize the result.
-    # if abs(dot) > 0.9995:
-    #     pass
+    if abs(dot) > 0.9995:
+        #print("LERP!")
+        lerpquat = (quat2-quat1)/2 + quat1
+        return qnorm(lerpquat)
+        #raise Exception("narf!")
+
+    # something better here maybe?
     # https://en.wikipedia.org/wiki/Spherical_law_of_cosines
     # https://www.movable-type.co.uk/scripts/latlong.html
 
@@ -95,7 +118,26 @@ def slerp(quat1, quat2, t):
     v2 = v1 - v0 * dot
     res = v0 * m.cos(theta) + v2 * m.sin(theta)
     return res
-    
+
+#https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles    
+def to_euler( q):
+
+    # roll (x-axis rotation)
+    sinr_cosp = 2 * (q.w * q.x + q.y * q.z)
+    cosr_cosp = 1 - 2 * (q.x * q.x + q.y * q.y)
+    roll = m.atan2(sinr_cosp, cosr_cosp)
+
+    # pitch (y-axis rotation)
+    sinp = m.sqrt(1 + 2 * (q.w * q.y - q.x * q.z))
+    cosp = m.sqrt(1 - 2 * (q.w * q.y - q.x * q.z))
+    pitch = 2 * m.atan2(sinp, cosp) - (m.pi / 2);
+
+    # yaw (z-axis rotation)
+    siny_cosp = 2 * (q.w * q.z + q.x * q.y)
+    cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
+    yaw = m.atan2(siny_cosp, cosy_cosp)
+
+    return (roll, pitch, yaw)
     
 """
 >>> import numpy as np
@@ -123,12 +165,32 @@ def ident():
     print(f"Version Info: {usys.version_info}")
     print(f"Battery Voltage: {hub.battery.voltage()}mv") 
 
+def fq(q):
+    return f"w: {q.w: 6.3f}, x: {q.x: 6.3f}, y: {q.y: 6.3f}, z: {q.z: 6.3f}"
+    
 # pybricksdev run ble -n bubble slerp.py    
 if __name__ == "__main__":
-    q1 = make_quat(1, 0, 0, 0)
-    q2 = make_quat(0, 1, 0, 0)
+    #r = rotator_quat(m.pi/2, 0, 0, 1)
+    #print(f"r: {r}")
+    #p = point(1, 0, 0)
+    #print(f"p: {p}")
+    #p2 = qrotate(r, p)
+    #x = p2.x
+    #y = p2.y
+    #z = p2.z
+    #print(f"p2: ({x:3.3f}, {y:3.3f}, {z:3.3f})")
+    
+    q1 = euler_quat(m.radians(0), m.radians(15), m.radians(15))
+    q2 = euler_quat(m.radians(0), m.radians(-15), m.radians(-15))
+    #q1 = make_quat(1, 0, 0, 0)
+    #q2 = make_quat(0, 1, 0, 0)
+    #q1 = make_quat(0, .13, .13, -0.02)
+    #q2 = make_quat(0, -.13, -.13, -0.02)
+    print(f"q1: {fq(q1)}")
     for i in range(11):
-        print(f"{i}: {slerp(q1, q2, i/10)}")
+        print(f"{i}: {fq(slerp(q1, q2, i/10))}")
+    print(f"q2: {fq(q2)}")
+    
     #a = lin.vector(1, 2, 3)
     #b = lin.Matrix([[1, 2, 3, 4]]).T
     #b = lin.vec4(1, 2, 3, 4)

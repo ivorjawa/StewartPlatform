@@ -7,6 +7,7 @@ import time
 
 from linear import xaxis, yaxis, zaxis, rotate, vector
 import linear as lin
+import slerp
 
 from StewartPlatform import StewartPlatform
 
@@ -16,10 +17,10 @@ twod = lambda p: [int(p[0]), int(p[1])]
  
 #from pyglet.gl import *
 
-joysticks = pyglet.input.get_joysticks()
-assert joysticks, 'No joystick device is connected'
-joystick = joysticks[0]
-joystick.open()
+#joysticks = pyglet.input.get_joysticks()
+#assert joysticks, 'No joystick device is connected'
+#joystick = joysticks[0]
+#joystick.open()
 
 
 window = pyglet.window.Window(width=800, height=800)
@@ -223,8 +224,8 @@ Stew = Stewart(40, 120, 120, 240, 308) #inner, outer radius, footprint, min, max
 
 #line2 = pyglet.shapes.Line(0, 0, window.width/2, window.height/2, width=4, color=(200, 20, 20), batch=textbatch)
 
-@window.event
-def on_draw():
+#@window.event
+def on_drawl():
     #global textbatch
     window.clear()
     #oldbatch.draw()
@@ -296,7 +297,75 @@ def on_draw():
         rect = button_shapes[i]
         rect.color = (0, 255, 0) if joystick.buttons[i] else (255, 0, 0)"""
 
+@window.event
+def on_draw():
+    #global textbatch
+    window.clear()
+    #oldbatch.draw()
+    
+    cube = lin.Matrix([
+        [0, 0, 0], 
+        [1, 0, 0], 
+        [1, 1, 0],        
+        [0, 1, 0], 
+         
+        [1, 1, 0],
+        [1, 1, 1],
+        [1, 0, 1],
+        [0, 0, 1],
 
+    ])
+
+    # heading, pitch, roll
+    xrcube = lin.Matrix([
+        [0, 15, 15], 
+        #[0, 0, 0],
+        [0, -15, -15],
+        #[0, 0, 0],
+        
+        #[0, 15, 15], 
+        
+    ])
+    rcube = cube * 15 # 15 or so
+    scube = cube - lin.vector(.5, .5, 0)
+    scube = scube * .75
+    scube = scube + lin.vector(0, 0, .5)
+    
+    now = time.time()
+    inow = int(now)
+    cubedex1 = inow % len(cube)
+    cubedex2 = (inow + 1) % len(cube)
+    fnow = now - inow
+    framedex = (int(fnow*11) % 11)/10.0 # should be 0.0..1.0
+    
+    #if(framedex == 0) and (cubedex1 == 0):
+    #    print("-"*40)
+    
+    rcube1 = rcube[cubedex1]
+    rcube2 = rcube[cubedex2]
+    
+    #euler_quat(heading, pitch, roll) yaw, pitch, roll
+    rotor1 = slerp.euler_quat(m.radians(rcube1[0]), m.radians(rcube1[1]), m.radians(rcube1[2]))
+    rotor2 = slerp.euler_quat(m.radians(rcube2[0]), m.radians(rcube2[1]), m.radians(rcube2[2]))
+
+    scube1 = scube[cubedex1]
+    scube2 = scube[cubedex2]
+    cubefract = (scube2-scube1)
+    
+    rotor = slerp.slerp(rotor1, rotor2, framedex)
+    (r, p, y) = slerp.to_euler(rotor) # (roll, pitch, yaw)
+    r = m.degrees(r)
+    p = m.degrees(p)
+    y = m.degrees(y)
+    #print(f"cubedex1: {cubedex1:5}, cubedex2: {cubedex2:5}, framedex: {framedex:5.2f} r: {r:5.2f} p: {p:5.2f} y: {y:5.2f}", end='\n')
+    #print(f"r1: {slerp.fq(rotor1)}\nr2: {slerp.fq(rotor2)}\nrr: {slerp.fq(rotor)}")
+    #print(f"r1: ({rotor1.x:5.3f}, {rotor1.y:5.3f}, {rotor1.z:5.3f}), r2: ({rotor2.x:5.3f}, {rotor2.y:5.3f}, {rotor2.z:5.3f}), framedex: {framedex:5.2f} rx: {rotor.x:5.3f} ry: {rotor.y:5.3f} rz: {rotor.z:5.3f}", end='\n')
+    
+    lerpcube = scube1 + framedex*cubefract
+    colspokes = Stew.solve4(rotor, *lerpcube)
+    if len(colspokes) == 4:
+        coll_v, sa, sb, sc = colspokes
+        Stew.draw(coll_v, sa, sb, sc)
 
 
 pyglet.app.run()

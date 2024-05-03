@@ -1,6 +1,7 @@
 import linear as lin
 m = lin.m
 from linear import xaxis, yaxis, zaxis, rotate, vector
+import slerp
 
 cSA = 24
 cSB = 40
@@ -64,9 +65,11 @@ class StewartPlatform(object): # millimeters
         max_height_hyp = m.sqrt( max_cyl**2 - (footprint/2.0)**2  )
         self.max_height = m.sqrt( max_height_hyp**2 - (outer_r-inner_r)**2  )
         self.plat_range = self.max_height - self.min_height
+        self.cube_unit_guess = min(self.inner_r, self.plat_range) # guess at limit for expanding unit xyz movement
         print(f"min_cyl: {min_cyl} max_cyl: {max_cyl} inner_r: {inner_r} outer_r: {outer_r}")
         print(f"min_height_hyp: {min_height_hyp} min_height: {self.min_height}")
         print(f"max_height_hyp: {max_height_hyp} max_height: {self.max_height}")
+        print(f"cube unit guess: {self.cube_unit_guess}")
         #sys.exit(0)
 
         
@@ -74,18 +77,16 @@ class StewartPlatform(object): # millimeters
         # three spokes of outer wheel are s1-s6
         # three feet of outer wheel are fA, fB, fC
         
+        # starting disk positions
         rotoff = 30 # align with roll and pitch: B -- front, C -- port, A -- starboard
         self.sA = rotate(zaxis, m.radians(30+rotoff), small_line)
         self.sB = rotate(zaxis, m.radians(150+rotoff), small_line)
         self.sC = rotate(zaxis, m.radians(-90+rotoff), small_line)
-        self.old_sA = self.sA
-        self.old_sB = self.sB
-        self.old_sC = self.sC
-        self.old_coll_v = self.p0 *(self.min_height + .5 * self.plat_range)
-        #self.old_Vp = lin.vector(0, 0, 0)
-        #self.old_Vr = lin.vector(0, 0, 0)
-        #self.old_Vq = lin.vector(0, 0, 0)
         
+        # default cylinder positions
+        self.cyls = [self.Cmin + .5* self.Crange for i in range(6)]
+        
+        # fixed ends of cylinders
         self.s1 = rotate(zaxis, m.radians(-60+rotoff), fp_line) + outer_r*lin.normalize(self.sA)
         self.s2 = rotate(zaxis, m.radians(120+rotoff), fp_line) + outer_r*lin.normalize(self.sA)
         self.s3 = rotate(zaxis, m.radians(60+rotoff), fp_line) + outer_r*lin.normalize(self.sB)
@@ -93,11 +94,36 @@ class StewartPlatform(object): # millimeters
         self.s5 = rotate(zaxis, m.radians(180+rotoff), fp_line) + outer_r*lin.normalize(self.sC)
         self.s6 = rotate(zaxis, m.radians(0+rotoff), fp_line) + outer_r*lin.normalize(self.sC)
         
-        self.cyls = [self.Cmin + .5* self.Crange for i in range(6)]
+        # caching stuff, this needs to be handled better, should be in motor actuate function in subclass
+        self.old_sA = self.sA
+        self.old_sB = self.sB
+        self.old_sC = self.sC
+        self.old_coll_v = self.p0 *(self.min_height + .5 * self.plat_range)
         self.old_cyls = self.cyls.copy()
-        # circle(self, center, radius, color, lw=1):   
-        
-        
+    
+    def solve6(self, roll, pitch, yaw, x, y, z):
+        "rpy in degrees, xyz -1.0..1.0"
+        #(heading, pitch, roll)
+        rotor = slerp.euler_quat(m.radians(yaw), m.radians(pitch), m.radians(roll))
+        return self.solve4(rotor, x, y, z)
+    def solve4(self, rotor, x, y, z):
+        saq = slerp.point(*self.sA)
+        sbq = slerp.point(*self.sB)
+        scq = slerp.point(*self.sC)
+        sa = slerp.quat2vec3(slerp.qrotate(rotor, saq))
+        sb = slerp.quat2vec3(slerp.qrotate(rotor, sbq))
+        sc = slerp.quat2vec3(slerp.qrotate(rotor, scq))
+        coll_v = (lin.vector(x, y, z) * self.cube_unit_guess) + lin.vector(0, 0, self.min_height)
+        sa += coll_v
+        sb += coll_v
+        sc += coll_v
+        spokecyls = self.spoke_solve(sa, sb, sc)
+        if len(spokecyls) == 4:
+            sa, sb, sc, cyls = spokecyls
+            return ((coll_v, sa, sb, sc))
+        else:
+            return (())
+    
     def solve(self, roll, pitch, yaw, coll, glyph): 
         """
         https://stackoverflow.com/questions/26289972/use-numpy-to-multiply-a-matrix-across-an-array-of-points
@@ -132,8 +158,11 @@ class StewartPlatform(object): # millimeters
         Vdisk = lin.cross(Vp, Vr) 
         Vdisk_n = lin.normalize(Vdisk)
         
+        # starts like helicopter rotor, straight up and down at selected percent of range
         coll_p = coll*self.plat_range+self.min_height
         #print(f"plat_range: {self.plat_range} min_height: {self.min_height}, collective: {coll} coll_p: {coll_p}")
+        
+        # bend that vector by the disk deflection
         coll_v = coll_p * Vdisk_n         
         
 
