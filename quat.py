@@ -5,6 +5,7 @@
 
 from umath import sqrt, sin, cos, acos, asin, atan2, pi
 from isclose import isclose
+import umath as m
 
 #from array import array
 import linear as lin
@@ -39,41 +40,44 @@ def euler(q):  # Return (heading, pitch, roll)
     #hdg = atan2(2*(w*z + x*y), 1 - 2 *(y*y + z*z))
     return hdg, pitch, roll
 
-"""    @property
-    def w(self):
-        return self[0]
+        
+""" 
+        @property
+        def w(self):
+            return self[0]
 
-    @w.setter
-    def w(self, v):
-        self[0] = v
+        @w.setter
+        def w(self, v):
+            self[0] = v
 
-    @property
-    def x(self):
-        return self[1]
+        @property
+        def x(self):
+            return self[1]
 
-    @x.setter
-    def x(self, v):
-        self[1] = v
+        @x.setter
+        def x(self, v):
+            self[1] = v
 
-    @property
-    def y(self):
-        return self[2]
+        @property
+        def y(self):
+            return self[2]
 
-    @y.setter
-    def y(self, v):
-        self[2] = v
+        @y.setter
+        def y(self, v):
+            self[2] = v
 
-    @property
-    def z(self):
-        return self[3]
+        @property
+        def z(self):
+            return self[3]
 
-    @z.setter
-    def z(self, v):
-        self[3] = v
+        @z.setter
+        def z(self, v):
+            self[3] = v   
 """
     
 class Quaternion:
-
+    
+        
     def __init__(self, w=1, x=0, y=0, z=0):  # Default: the identity quaternion
         #self.d = array('f', (w, x, y, z))
         self.d = lin.vec4(w, x, y, z)
@@ -88,7 +92,21 @@ class Quaternion:
         return Quaternion(*(a/m for a in self))
 
     def __getitem__(self, key):
-        return self.d[key]
+        #print(f"key: {key} d: {type(self.d)}")
+        #print(dir(self.d))
+        try:
+            ret =  self.d[key]
+        except TypeError as e:
+            #ql = [x for x in self.d] # this REVERSES it???
+            ql = []
+            for i in range(lin.vlen(self.d)): # oh what the actual HELL???
+                ql.append(self.d[i])
+                #print(f"d[{i}]: {self.d[i]}")
+                #print(f"ql[{i}]: {ql[i]}")
+            #print(f"ql: {ql}")
+            ret = ql[key]
+        #print(f"key: {key} ret: {ret}")
+        return ret
 
     def __setitem__(self, key, v):
         try:
@@ -217,7 +235,52 @@ class Quaternion:
 
     def rrot(self, rot):
         return rot.conjugate() * self * rot
+        
+    #https://github.com/Kent-H/blue3D/blob/master/Blue3D/src/blue3D/type/QuaternionF.java
+    #https://math.stackexchange.com/questions/939229/unit-quaternion-to-a-scalar-power
+    def scale(self, n):
+        return Quaternion(*(n*self.d))
+        
+    def ln(self): 
+        #w, x, y, z = self.d
+        w = self.d[0]
+        x = self.d[1]
+        y = self.d[2]
+        z = self.d[3]
+        #print("ln wxyz:",w,x,y,z)
+        r  = m.sqrt(x*x+y*y+z*z)
+        #print(f"r: {r}")
+        #print(f"w: {w}")
+        t  = (r>0.00001) and (m.atan2(r,w)/r) or 0
+        #print(f"t: {t}")
+        #w = 0.5*m.log(lin.dot(self.d, self.d));
+        w = 0.5*m.log(w*w+x*x+y*y+z*z);
+        #w = 0.5*m.log(abs(self))
+        x = x*t
+        y = y*t
+        z = z*t
+        return Quaternion(w, x, y, z)
 
+    def exp(self):
+        #w, x, y, z = self.d
+        w = self.d[0]
+        x = self.d[1]
+        y = self.d[2]
+        z = self.d[3]
+        #print("exp wxyz:",w,x,y,z)
+        r  = m.sqrt(x*x+y*y+z*z)
+        et = m.exp(w)
+        s  = (r>=0.00001) and (et*m.sin(r)/r) or 0
+
+        w = et*m.cos(r)
+        x = x*s
+        y = y*s
+        z = z*s
+        return Quaternion(w, x, y, z)
+        
+    def __pow__(self, n):
+        return self.ln().scale(n).exp()
+        
 # A vector quaternion has real part 0. It can represent a point in space.
 def Vector(x, y, z):
     return Quaternion(0, x, y, z)
@@ -246,3 +309,67 @@ def Euler(heading, pitch, roll):
     y = cr * sp * cy + sr * cp * sy;
     z = cr * cp * sy - sr * sp * cy;
     return Quaternion(w, x, y, z)  # Tait-Bryan angles but z == towards sky
+    
+if __name__ == "__main__":
+    def sgn(P):
+        a = abs(p)
+        if a != 0:
+            return P/a            
+        else:
+            return 0
+    
+    def arg(P):
+        a = p.d[0]
+        return m.acos(a/abs(p))
+    def exp(P):
+        pbar = P.conjugate()
+        uv = (P-pbar)/2   
+        a = P.d[0] 
+        expa = m.exp(a)
+        absu = abs(uv) 
+        cosu = m.cos(absu)
+        sgnu = sgn(uv) 
+        sinu = m.sin(absu)
+        ret = expa*cosu+sgnu*sinu
+        #print(f"P: {P}, pbar: {pbar} uv: {uv} a: {a} expa: {expa} absu: {absu} cosu: {cosu} sgnu: {sgnu} sinu: {sinu} ret: {ret}")
+        return ret 
+    def ln(P):
+        lnpa = m.log(abs(P))
+        
+        pbar = P.conjugate()
+        uv = (P-pbar)/2 
+        sgnu = sgn(uv) 
+        argp = arg(P)
+        
+        ret = lnpa + sgnu * argp
+        #print(f"lnpa: {lnpa} sgnu: {sgnu} argp: {argp} ret: {ret}")
+        return ret
+          
+        
+    #v = lin.vec4(5, 5, 5, 5)
+    #w, x, y, z = v
+    #p = Quaternion(1, 1, 1, 1)
+    p = Rotator(m.radians(45), 1, 0, 1)
+    print(f"p: {p}")
+    pbar = p.conjugate()
+    print(f"pbar: {pbar}")
+    uv = (p-pbar)/2
+    print(f"uv: {uv}")
+    
+    sp = sgn(p)
+    print(f"sgn(p): {sp}")
+    ap = arg(p)
+    print(f"arg(p): {ap}")
+    expp = exp(p)
+    print(f"exp(p): {expp}")
+    lnp = ln(p)
+    print(f"ln(p): {lnp}")
+    n = .1
+    pn = exp(n*ln(p))
+    print(f"pn: {pn}")
+    
+    
+    
+    #qs = q.scale(5)
+    #print(qs)
+    #print(qs.ln())

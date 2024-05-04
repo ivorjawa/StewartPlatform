@@ -36,7 +36,9 @@ try:
         x = sr * cp * cy - cr * sp * sy;
         y = cr * sp * cy + sr * cp * sy;
         z = cr * cp * sy - sr * sp * cy;
-        return np.quaternion(w, x, y, z)  # Tait-Bryan angles but z == towards sky 
+        return np.quaternion(w, x, y, z)  # Tait-Bryan angles but z == towards sky
+    def fq(q):
+        return f"w: {q.w: 6.3f}, x: {q.x: 6.3f}, y: {q.y: 6.3f}, z: {q.z: 6.3f}" 
     def qrotate(q, p):
         return (q * p * q.conjugate())
         
@@ -50,6 +52,8 @@ except Exception as e:
     euler_quat = quat.Euler
     qnorm = lambda q: q.normalise()
     q2vec = lambda q: lin.vec4(*q)
+    def fq(q):  
+        return f"w: {q.d[0]: 6.3f}, x: {q.d[1]: 6.3f}, y: {q.d[2]: 6.3f}, z: {q.d[3]: 6.3f}"
     def qrotate(q, p):
         return p @ q # matmul
     def clamp(n, min, max): 
@@ -77,23 +81,37 @@ def slerp(one, two, t):
 
 #https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles    
 def to_euler( q):
-
+    try:
+        w = q.w
+        x = q.x
+        y = q.y
+        z = q.z
+    except Exception as e:
+        w = q.d[0]
+        x = q.d[1]
+        y = q.d[2]
+        z = q.d[3]
     # roll (x-axis rotation)
-    sinr_cosp = 2 * (q.w * q.x + q.y * q.z)
-    cosr_cosp = 1 - 2 * (q.x * q.x + q.y * q.y)
+    sinr_cosp = 2 * (w * x + y * z)
+    cosr_cosp = 1 - 2 * (x * x + y * y)
     roll = m.atan2(sinr_cosp, cosr_cosp)
 
     # pitch (y-axis rotation)
-    sinp = m.sqrt(1 + 2 * (q.w * q.y - q.x * q.z))
-    cosp = m.sqrt(1 - 2 * (q.w * q.y - q.x * q.z))
+    sinp = m.sqrt(1 + 2 * (w * y - x * z))
+    cosp = m.sqrt(1 - 2 * (w * y - x * z))
     pitch = 2 * m.atan2(sinp, cosp) - (m.pi / 2);
 
     # yaw (z-axis rotation)
-    siny_cosp = 2 * (q.w * q.z + q.x * q.y)
-    cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
+    siny_cosp = 2 * (w * z + x * y)
+    cosy_cosp = 1 - 2 * (y * y + z * z)
     yaw = m.atan2(siny_cosp, cosy_cosp)
 
     return (roll, pitch, yaw)
+    
+def to_euler_d(q):
+    rpy = to_euler(q)
+    return [m.degrees(a) for a in rpy]
+
     
 """
 >>> import numpy as np
@@ -121,8 +139,8 @@ def ident():
     print(f"Version Info: {usys.version_info}")
     print(f"Battery Voltage: {hub.battery.voltage()}mv") 
 
-def fq(q):
-    return f"w: {q.w: 6.3f}, x: {q.x: 6.3f}, y: {q.y: 6.3f}, z: {q.z: 6.3f}"
+
+
     
 # pybricksdev run ble -n bubble slerp.py    
 if __name__ == "__main__":
@@ -138,14 +156,17 @@ if __name__ == "__main__":
     
     q1 = euler_quat(m.radians(0), m.radians(15), m.radians(15))
     q2 = euler_quat(m.radians(0), m.radians(-15), m.radians(-15))
-    #q1 = make_quat(1, 0, 0, 0)
-    #q2 = make_quat(0, 1, 0, 0)
+    #q1 = make_quat(0, 1, 0, 0)
+    #print(f"q1: {q1} q1.d: {q1.d.T}")
+    #2 = make_quat(0, 0, 1, 0)
+    #print(f"q2: {q2} q2.d: {q2.d.T}")
+    
     #q1 = make_quat(0, .13, .13, -0.02)
     #q2 = make_quat(0, -.13, -.13, -0.02)
-    print(f"q1: {fq(q1)}")
+    print(f"q1: {fq(q1)} euler: {to_euler_d(q1)}")
     for i in range(11):
         print(f"{i}: {fq(slerp(q1, q2, i/10))}")
-    print(f"q2: {fq(q2)}")
+    print(f"q2: {fq(q2)} euler: {to_euler_d(q2)}")
     
     #a = lin.vector(1, 2, 3)
     #b = lin.Matrix([[1, 2, 3, 4]]).T

@@ -106,6 +106,7 @@ class StewartPlatform(object): # millimeters
         #(heading, pitch, roll)
         rotor = slerp.euler_quat(m.radians(yaw), m.radians(pitch), m.radians(roll))
         return self.solve4(rotor, x, y, z)
+        
     def solve4(self, rotor, x, y, z):
         saq = slerp.point(*self.sA)
         sbq = slerp.point(*self.sB)

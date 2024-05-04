@@ -273,14 +273,14 @@ def run_remote():
             except Exception as e:
                 print("failure in main loop:")
                 print(e)
-            
-            try:
-                Stew.actuate()
-            except Exception as e:
-                print("actuate failed: ", e)
-                print(f"<goodbye/>")
-                return None
-            msm.tick()
+        
+        try:
+            Stew.actuate()
+        except Exception as e:
+            print("actuate failed: ", e)
+            print(f"<goodbye/>")
+            return None
+        msm.tick()
                 
 if __name__ == "__main__":
     # pybricksdev run ble -n rotor rotor.py
