@@ -160,15 +160,15 @@ class MoveSM(object):
                 print(f"elapsed {millis() - self.start_time}")
                 print("<taskdone/>")
             else:
-                #pass
-                print("<notdoneyet/>") # gets stuck if I don't report FIXME
+                pass
+                #print("<notdoneyet/>") # gets stuck if I don't report FIXME
         else:
             # state is finished
             pass
     def moveto(self):
         self.start_time = millis()
         self.state = self.states.started
-        print(f"moveto() start_time: {self.start_time}")
+        #print(f"moveto() start_time: {self.start_time}")
         
 class Stewart(StewartPlatform):
     def __init__(self, inner_r, outer_r, footprint, min_cyl, max_cyl, threshang):
@@ -274,12 +274,12 @@ def run_remote():
                 print("failure in main loop:")
                 print(e)
         
-        try:
-            Stew.actuate()
-        except Exception as e:
-            print("actuate failed: ", e)
-            print(f"<goodbye/>")
-            return None
+            try:
+                Stew.actuate()
+            except Exception as e:
+                print("actuate failed: ", e)
+                print(f"<goodbye/>")
+                return None
         msm.tick()
                 
 if __name__ == "__main__":

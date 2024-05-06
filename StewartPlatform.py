@@ -201,7 +201,9 @@ class StewartPlatform(object): # millimeters
             sc = rotate(Vdisk_n, m.radians(yaw), sc)
         
         spokes = self.spoke_solve(sa, sb, sc)
+        #print(f"solved spokes: {spokes}")
         if len(spokes) == 4:
+            #print("have new spokes")
             sa, sb, sc, cyls = spokes
             self.old_sA = sa
             self.old_sB = sb
@@ -209,11 +211,13 @@ class StewartPlatform(object): # millimeters
             self.old_coll_v = coll_v
             self.old_cyls = cyls
         else:
+            #print("usikng old spokes")
             sa = self.old_sA
             sb = self.old_sB
             sc = self.old_sC
             coll_v = self.old_coll_v
             cyls = self.old_cyls
+        self.cyls = cyls
         return (coll_v, sa, sb, sc)
         
     def spoke_solve(self, sa, sb, sc):
