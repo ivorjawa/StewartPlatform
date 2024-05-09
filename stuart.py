@@ -159,16 +159,17 @@ class SlerpSM(StateMachine):
         self.register(self.states.advance, self.advance)
         self.rcube = slerpdat.rcube # cube rotations
         self.scube = slerpdat.scube # cube positions
-        self.cubescale = .6
+        #self.cubescale = .6
         #self.scube = scube * .75 # scale it down a bit.
-        self.coll_offset = lin.vector(0, 0, 1) 
+        #self.coll_offset = lin.vector(0, 0, 1) 
         #self.scube = scube + offset # give it room to move at 0 collective
-        self.cubelength = len(self.scube)
+        self.cubelength = len(self.scube)-8
         self.stew = stew
         self.cubedex = 0
         self.framedex = 0
         self.rotor1 = None
         self.rotor2 = None
+        self.segstime = millis()
         print(f"rcube: {self.rcube}")
         print("SlerpSM()")
     def loadframe(self):
@@ -181,20 +182,24 @@ class SlerpSM(StateMachine):
         self.rotor1 = slerp.euler_quat(m.radians(rcube1[0]), m.radians(rcube1[1]), m.radians(rcube1[2]))
         self.rotor2 = slerp.euler_quat(m.radians(rcube2[0]), m.radians(rcube2[1]), m.radians(rcube2[2]))
         
-        self.scube1 = self.cubescale*(self.scube[cubedex1]) + self.coll_offset
-        self.scube2 = self.cubescale*(self.scube[cubedex2]) + self.coll_offset
+        #self.scube1 = self.cubescale*(self.scube[cubedex1]) + self.coll_offset
+        #self.scube2 = self.cubescale*(self.scube[cubedex2]) + self.coll_offset        
+        self.scube1 = self.scube[cubedex1]
+        self.scube2 = self.scube[cubedex2]
         
         self.cubefract = (self.scube2-self.scube1)
         self.state = self.states.segstart
         
     def segstart(self):
         print("segstart")
-        lerpcube = self.scube1 + (self.framedex/10.0)*self.cubefract
+        self.segstime = millis()
+        lerpcube = self.scube1 + (self.framedex/25.0)*self.cubefract
         rotor = slerp.slerp(self.rotor1, self.rotor2, self.framedex)
         (r, p, y) = slerp.to_euler(rotor) # (roll, pitch, yaw)
         r = m.degrees(r)
         p = m.degrees(p)
         y = m.degrees(y)
+        
         print(f"r: {r:5.2f} p: {p:5.2f} y: {y:5.2f}")
         try:    
             colspokes = self.stew.solve4(rotor, *lerpcube)
@@ -211,19 +216,25 @@ class SlerpSM(StateMachine):
         self.state = self.states.segend
     def segend(self):
         print(f"segend {self.framedex}")
-        if self.stew.is_moved():
+        dt = millis()-self.segstime
+        timeout = False
+        if(dt) > 100:
+            print(f"move timeout: {dt}")
+            timeout = True
+        if self.stew.is_moved() or timeout:
             self.framedex += 1
-            if self.framedex == 11:
+            if self.framedex == 26:
                 self.framedex = 0
                 self.state = self.states.advance
             else:
                 self.state = self.states.segstart
+            print(f"next state: {self.state}")
     def advance(self):
         print("advance")
         self.cubedex += 1
         if(self.cubedex == self.cubelength):
             self.cubedex = 0
-            #raise(Exception("moopsy!"))
+            raise(Exception("moopsy!"))
         self.state = self.states.loadframe
                         
 class MoveSM(object):
@@ -320,8 +331,8 @@ def run_remote():
     
     threshold = memory_calibrate() # max travel of cylinders, degrees
     # arm radius, min cylinder, max cylinder
-    Stew = Stewart(40, 120, 120, 240, 308, threshold) #inner, outer radius, footprint, min, max cylinder extension
-    
+    #Stew = Stewart(40, 120, 120, 240, 308, threshold) #inner, outer radius, footprint, min, max cylinder extension
+    Stew = Stewart(57, 98, 120, 250, 314, threshold)
     identify()
     print("<awake/>")    
     msm = MoveSM(Stew.is_moved)
@@ -354,6 +365,8 @@ def run_remote():
                     if((glyph & 24) == 24):
                         print("switch a on")
                         sm = ssm
+                        while True:
+                            sm.tick()
                     else:
                         sm = msm
                         Stew.calculate(roll, pitch, yaw, coll, glyph)
