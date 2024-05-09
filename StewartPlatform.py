@@ -121,6 +121,7 @@ class StewartPlatform(object): # millimeters
         spokecyls = self.spoke_solve(sa, sb, sc)
         if len(spokecyls) == 4:
             sa, sb, sc, cyls = spokecyls
+            self.cyls = cyls # necessary for movement.
             return ((coll_v, sa, sb, sc))
         else:
             return (())

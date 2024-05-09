@@ -18,6 +18,9 @@ import linear as lin
 
 from joycode import JoyProtocol
 from StewartPlatform import StewartPlatform
+from statemachine import StateMachine
+import dataforslerp as slerpdat
+import slerp
 
 millis = StopWatch().time
 
@@ -74,9 +77,9 @@ def runtostall(cmots, spd, reset=True):
 def calib_core(cmots):
     # runs motors until stalled at fully retracted, resets zero
     
-    st = [40, 30] # degrees a second, time ms
-    for cm in cmots:
-        cm.control.stall_tolerances(*st)
+    #st = [30, 30] # degrees a second, time ms
+    #for cm in cmots:
+    #    cm.control.stall_tolerances(*st)
     
 
     print(f"Starting motor test, stall tolerances: {M1.control.stall_tolerances()}")
@@ -144,7 +147,85 @@ class Enum(object):
         self.__enumname = enumname
         for i, e in enumerate(enums):
             setattr(self, e, i+start)
+
+class SlerpSM(StateMachine):
+    def __init__(self, stew):
+        super().__init__()
+        self.states =  Enum("slerpstate", ['loadframe', 'segstart', 'segend', 'advance'])
+        self.state = self.states.loadframe
+        self.register(self.states.loadframe, self.loadframe)
+        self.register(self.states.segstart, self.segstart)
+        self.register(self.states.segend, self.segend)
+        self.register(self.states.advance, self.advance)
+        self.rcube = slerpdat.rcube # cube rotations
+        self.scube = slerpdat.scube # cube positions
+        self.cubescale = .6
+        #self.scube = scube * .75 # scale it down a bit.
+        self.coll_offset = lin.vector(0, 0, 1) 
+        #self.scube = scube + offset # give it room to move at 0 collective
+        self.cubelength = len(self.scube)
+        self.stew = stew
+        self.cubedex = 0
+        self.framedex = 0
+        self.rotor1 = None
+        self.rotor2 = None
+        print(f"rcube: {self.rcube}")
+        print("SlerpSM()")
+    def loadframe(self):
+        print(f"loadframe {self.cubedex}")
+        cubedex1 = self.cubedex
+        cubedex2 = (self.cubedex+1) % self.cubelength
+        rcube1 = self.rcube[cubedex1] 
+        rcube2 = self.rcube[cubedex2]
+        
+        self.rotor1 = slerp.euler_quat(m.radians(rcube1[0]), m.radians(rcube1[1]), m.radians(rcube1[2]))
+        self.rotor2 = slerp.euler_quat(m.radians(rcube2[0]), m.radians(rcube2[1]), m.radians(rcube2[2]))
+        
+        self.scube1 = self.cubescale*(self.scube[cubedex1]) + self.coll_offset
+        self.scube2 = self.cubescale*(self.scube[cubedex2]) + self.coll_offset
+        
+        self.cubefract = (self.scube2-self.scube1)
+        self.state = self.states.segstart
+        
+    def segstart(self):
+        print("segstart")
+        lerpcube = self.scube1 + (self.framedex/10.0)*self.cubefract
+        rotor = slerp.slerp(self.rotor1, self.rotor2, self.framedex)
+        (r, p, y) = slerp.to_euler(rotor) # (roll, pitch, yaw)
+        r = m.degrees(r)
+        p = m.degrees(p)
+        y = m.degrees(y)
+        print(f"r: {r:5.2f} p: {p:5.2f} y: {y:5.2f}")
+        try:    
+            colspokes = self.stew.solve4(rotor, *lerpcube)
             
+            if len(colspokes) == 4:
+                
+                (coll_v, sa, sb, sc) = colspokes
+                self.stew.actuate()
+                
+        except ValueError as e:
+            label = f"Range Error solve6: RPY:({m.radians(roll)},{m.radians(pitch)},{m.radians(yaw)}) {e}"
+            print(label)
+            
+        self.state = self.states.segend
+    def segend(self):
+        print(f"segend {self.framedex}")
+        if self.stew.is_moved():
+            self.framedex += 1
+            if self.framedex == 11:
+                self.framedex = 0
+                self.state = self.states.advance
+            else:
+                self.state = self.states.segstart
+    def advance(self):
+        print("advance")
+        self.cubedex += 1
+        if(self.cubedex == self.cubelength):
+            self.cubedex = 0
+            #raise(Exception("moopsy!"))
+        self.state = self.states.loadframe
+                        
 class MoveSM(object):
     def __init__(self, testfn):
         print("new MoveSM")
@@ -204,7 +285,13 @@ class Stewart(StewartPlatform):
             done[i] = mathdone
             #print(f"cyl: {i} target: {target} current: {current} speed: {speed} motord: {motordone} mathd: {mathdone} d:{done[i]}")
         return sum(done) == len(self.cyls)
-        
+     
+    def calculate6(self, roll, pitch, yaw, x, y, z):
+        try:
+            (coll_v, sa, sb, sc) = self.solve6(roll, pitch, yaw, x, y, z) # sets self.cyls  
+        except ValueError as e:
+            label = f"Range Error solve6: RPY:({m.radians(roll)},{m.radians(pitch)},{m.radians(yaw)}) {e}"
+            print(label)
     def calculate(self, roll, pitch, yaw, coll, glyph):
         try:
             #print(f"calculate roll: {roll}, pitch: {pitch} yaw: {yaw} glyph: {glyph}")
@@ -238,7 +325,8 @@ def run_remote():
     identify()
     print("<awake/>")    
     msm = MoveSM(Stew.is_moved)
-        
+    ssm = SlerpSM(Stew)
+    sm = msm    
     while True:
         if wirep.poll():
             try:    
@@ -258,13 +346,18 @@ def run_remote():
                     # keepalive
                     pass
                 else:
-                    Stew.calculate(roll, pitch, yaw, coll, glyph)
-                    msm.moveto()
+
                     #print(f"roll:{roll: 3.1f}, pitch:{pitch: 3.1f}, yaw:{yaw: 3.1f} coll:{coll: 3.1f} glyph:{glyph}", end="\n")
                     #for i, cyl in enumerate(Stew.cyls):
                     #    print(f" Cyl {i}:{cyl: 3.1f}mm", end="")
                     #print("")
-                
+                    if((glyph & 24) == 24):
+                        print("switch a on")
+                        sm = ssm
+                    else:
+                        sm = msm
+                        Stew.calculate(roll, pitch, yaw, coll, glyph)
+                        msm.moveto()
                     if((glyph & 40) == 40): # X '0b0101000' SB
                         print(f"<goodbye/>")
                         return None
@@ -274,13 +367,19 @@ def run_remote():
                 print("failure in main loop:")
                 print(e)
         
-            try:
-                Stew.actuate()
-            except Exception as e:
-                print("actuate failed: ", e)
-                print(f"<goodbye/>")
-                return None
-        msm.tick()
+            # this should be one level out, triggering on every runthrough,
+            # instead of just when data are received, but that lugs down the
+            # processor, so we have to keep in step with controller commands
+            # and rely on the controller to send frames regularly.
+            # this won't be an issue with slerp for now, I don't think.
+            if sm == msm:
+                try:
+                    Stew.actuate()
+                except Exception as e:
+                    print("actuate failed: ", e)
+                    print(f"<goodbye/>")
+                    return None
+        sm.tick()
                 
 if __name__ == "__main__":
     # pybricksdev run ble -n rotor rotor.py

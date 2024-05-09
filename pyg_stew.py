@@ -434,9 +434,9 @@ def on_draw():
     
     rotor = slerp.slerp(rotor1, rotor2, framedex)
     (r, p, y) = slerp.to_euler(rotor) # (roll, pitch, yaw)
-    r = m.degrees(r)
-    p = m.degrees(p)
-    y = m.degrees(y)
+    roll = m.degrees(r)
+    pitch = m.degrees(p)
+    yaw = m.degrees(y)
     #print(f"cubedex1: {cubedex1:5}, cubedex2: {cubedex2:5}, framedex: {framedex:5.2f} r: {r:5.2f} p: {p:5.2f} y: {y:5.2f}", end='\n')
     #print(f"r1: {slerp.fq(rotor1)}\nr2: {slerp.fq(rotor2)}\nrr: {slerp.fq(rotor)}")
     #print(f"r1: ({rotor1.x:5.3f}, {rotor1.y:5.3f}, {rotor1.z:5.3f}), r2: ({rotor2.x:5.3f}, {rotor2.y:5.3f}, {rotor2.z:5.3f}), framedex: {framedex:5.2f} rx: {rotor.x:5.3f} ry: {rotor.y:5.3f} rz: {rotor.z:5.3f}", end='\n')
@@ -447,5 +447,17 @@ def on_draw():
         coll_v, sa, sb, sc = colspokes
         Stew.draw(coll_v, sa, sb, sc)
 
-
+    l = pyglet.text.Label(f"coll_v: ({coll_v[0]: 3.1f}, {coll_v[1]: 3.1f}, {coll_v[2]: 3.1f})", x=15, y=window.height - 25, font_size=14, batch=Stew.textbatch)
+    Stew.labels.append(l)
+    l = pyglet.text.Label(f"roll: {roll: 3.1f}", x=15, y=window.height - 45, font_size=14, batch=Stew.textbatch)
+    Stew.labels.append(l)    
+    l = pyglet.text.Label(f"pitch: {pitch: 3.1f}", x=15, y=window.height - 65, font_size=14, batch=Stew.textbatch)
+    Stew.labels.append(l)    
+    l = pyglet.text.Label(f"yaw: {yaw: 3.1f}", x=15, y=window.height - 85, font_size=14, batch=Stew.textbatch)
+    Stew.labels.append(l)
+    for i, cyl in enumerate(Stew.cyls):
+        l = pyglet.text.Label(f"Cyl {i}: {cyl: 3.1f}mm", x=15, y=window.height - (140+i*20), font_size=14, batch=Stew.textbatch)
+        Stew.labels.append(l)
+    Stew.textbatch.draw()
+    
 pyglet.app.run()

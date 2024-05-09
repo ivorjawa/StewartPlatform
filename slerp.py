@@ -37,6 +37,8 @@ try:
         y = cr * sp * cy + sr * cp * sy;
         z = cr * cp * sy - sr * sp * cy;
         return np.quaternion(w, x, y, z)  # Tait-Bryan angles but z == towards sky
+    def quat2vec3(q):
+        return lin.vector(q.x, q.y, q.z)
     def fq(q):
         return f"w: {q.w: 6.3f}, x: {q.x: 6.3f}, y: {q.y: 6.3f}, z: {q.z: 6.3f}" 
     def qrotate(q, p):
@@ -56,6 +58,8 @@ except Exception as e:
         return f"w: {q.d[0]: 6.3f}, x: {q.d[1]: 6.3f}, y: {q.d[2]: 6.3f}, z: {q.d[3]: 6.3f}"
     def qrotate(q, p):
         return p @ q # matmul
+    def quat2vec3(q):
+        return lin.vector(q.d[1], q.d[2], q.d[3])
     def clamp(n, min, max): 
         if n < min: 
             return min
@@ -67,8 +71,7 @@ except Exception as e:
 
 # https://stackoverflow.com/questions/44706591/how-to-test-quaternion-slerp
 
-def quat2vec3(q):
-    return lin.vector(q.x, q.y, q.z)
+
 
 def point(x, y, z):
     return make_quat(0, x, y, z)
