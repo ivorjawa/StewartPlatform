@@ -220,7 +220,8 @@ joystick_rect.anchor_position = joystick_rect.width // 2, joystick_rect.height /
 d_pad_rect = pyglet.shapes.Rectangle(window.width - 75, window.height - 100, 10, 10, color=(0, 0, 255), batch=batch)"""
 
 
-Stew = Stewart(40, 120, 120, 240, 308) #inner, outer radius, footprint, min, max cylinder extension
+#Stew = Stewart(40, 120, 120, 240, 308) #inner, outer radius, footprint, min, max cylinder extension
+Stew = Stewart(57, 98, 120, 250, 314) #inner, outer radius, footprint, min, max cylinder extension
 
 #line2 = pyglet.shapes.Line(0, 0, window.width/2, window.height/2, width=4, color=(200, 20, 20), batch=textbatch)
 
@@ -309,44 +310,44 @@ def on_draw():
     """
 
     cube = lin.Matrix([
-        [0, 0, 0], # Y+
-        [0, 1, 0], 
+        [0, 0, .5], # Y+
+        [0, 1, .5], 
         #[0, 0, 0],         
 
-        [0, 0, 0],  # Y-
-        [0, -1, 0], 
+        [0, 0, .5],  # Y-
+        [0, -1, .5], 
         #[0, 0, 0],         
 
-        [0, 0, 0], # X+
-        [1, 0, 0], 
+        [0, 0, .5], # X+
+        [1, 0, 0.5], 
         #[0, 0, 0],         
 
-        [0, 0, 0], # X-
-        [-1, 0, 0], 
+        [0, 0, 0.5], # X-
+        [-1, 0, 0.5], 
         #[0, 0, 0],         
 
-        [0, 0, 0], # Z+
+        [0, 0, .5], # Z+
         [0, 0, 1], 
         #[0, 0, 0],
 
-        [0, 0, 0], # Z-
-        [0, 0, -1], 
+        [0, 0, .5], # Z-
+        [0, 0, 0], 
         #[0, 0, 0]
         
-        [0, 0, -.5],  # slide 1
-        [-1, -1, .1], 
+        [0, 0, 0.1],  # slide 1
+        [-1, -1, .5], 
         #[0, 0, 0],
         
-        [0, 0, -.5], # slide 2
-        [1, 1, .1], 
+        [0, 0, 0.1], # slide 2
+        [1, 1, .5], 
         #[0, 0, 0],
         
-        [0, 0, -.5], # slide 3
-        [1, -1, .1], 
+        [0, 0, 0.1], # slide 3
+        [1, -1, .5], 
         #[0, 0, 0],
         
-        [0, 0, -.5], # slide4
-        [-1, 1, .1], 
+        [0, 0, 0.1], # slide4
+        [-1, 1, .5], 
         #[0, 0, 0],
         
 
@@ -385,19 +386,19 @@ def on_draw():
         #[0, 0, 0]
                 
         [0, 0, 0], # slide 1
-        [0, 15, 15], 
+        [0, 6, 6], 
         #[0, 0, 0],
         
         [0, 0, 0], # slide 2
-        [0, -15, -15], 
+        [0, -6, -6], 
         #[0, 0, 0],
         
         [0, 0, 0], # slide 3
-        [0, -15, 15], 
+        [0, -6, 6], 
         #[0, 0, 0],
         
         [0, 0, 0], # slide 4
-        [0, 15, -15], 
+        [0, 6, -6], 
         #[0, 0, 0],
       
     ])
@@ -407,8 +408,8 @@ def on_draw():
     #rcube = rcube[12:]
     #scube = cube[12:]
     scube = cube
-    scube = scube * .75 # scale it down a bit.
-    scube = scube + lin.vector(0, 0, 1) # give it room to move at 0 collective
+    #scube = scube * .75 # scale it down a bit.
+    #scube = scube + lin.vector(0, 0, 1) # give it room to move at 0 collective
     
     now = time.time()
     inow = int(now)
@@ -447,17 +448,17 @@ def on_draw():
         coll_v, sa, sb, sc = colspokes
         Stew.draw(coll_v, sa, sb, sc)
 
-    l = pyglet.text.Label(f"coll_v: ({coll_v[0]: 3.1f}, {coll_v[1]: 3.1f}, {coll_v[2]: 3.1f})", x=15, y=window.height - 25, font_size=14, batch=Stew.textbatch)
-    Stew.labels.append(l)
-    l = pyglet.text.Label(f"roll: {roll: 3.1f}", x=15, y=window.height - 45, font_size=14, batch=Stew.textbatch)
-    Stew.labels.append(l)    
-    l = pyglet.text.Label(f"pitch: {pitch: 3.1f}", x=15, y=window.height - 65, font_size=14, batch=Stew.textbatch)
-    Stew.labels.append(l)    
-    l = pyglet.text.Label(f"yaw: {yaw: 3.1f}", x=15, y=window.height - 85, font_size=14, batch=Stew.textbatch)
-    Stew.labels.append(l)
-    for i, cyl in enumerate(Stew.cyls):
-        l = pyglet.text.Label(f"Cyl {i}: {cyl: 3.1f}mm", x=15, y=window.height - (140+i*20), font_size=14, batch=Stew.textbatch)
+        l = pyglet.text.Label(f"coll_v: ({coll_v[0]: 3.1f}, {coll_v[1]: 3.1f}, {coll_v[2]: 3.1f})", x=15, y=window.height - 25, font_size=14, batch=Stew.textbatch)
         Stew.labels.append(l)
+        l = pyglet.text.Label(f"roll: {roll: 3.1f}", x=15, y=window.height - 45, font_size=14, batch=Stew.textbatch)
+        Stew.labels.append(l)    
+        l = pyglet.text.Label(f"pitch: {pitch: 3.1f}", x=15, y=window.height - 65, font_size=14, batch=Stew.textbatch)
+        Stew.labels.append(l)    
+        l = pyglet.text.Label(f"yaw: {yaw: 3.1f}", x=15, y=window.height - 85, font_size=14, batch=Stew.textbatch)
+        Stew.labels.append(l)
+        for i, cyl in enumerate(Stew.cyls):
+            l = pyglet.text.Label(f"Cyl {i}: {cyl: 3.1f}mm", x=15, y=window.height - (140+i*20), font_size=14, batch=Stew.textbatch)
+            Stew.labels.append(l)
     Stew.textbatch.draw()
     
 pyglet.app.run()
