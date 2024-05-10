@@ -147,6 +147,8 @@ def ident():
     
 # pybricksdev run ble -n bubble slerp.py    
 if __name__ == "__main__":
+    def fv3(q):
+        return f"({q[0]: 6.3f}, {q[1]: 6.3f}, {q[2]: 6.3f})"
     #r = rotator_quat(m.pi/2, 0, 0, 1)
     #print(f"r: {r}")
     #p = point(1, 0, 0)
@@ -166,10 +168,10 @@ if __name__ == "__main__":
     
     #q1 = make_quat(0, .13, .13, -0.02)
     #q2 = make_quat(0, -.13, -.13, -0.02)
-    print(f"q1: {fq(q1)} euler: {to_euler_d(q1)}")
+    print(f"q1: {fq(q1)} euler: {fv3(to_euler_d(q1))}")
     for i in range(11):
         print(f"{i}: {fq(slerp(q1, q2, i/10))}")
-    print(f"q2: {fq(q2)} euler: {to_euler_d(q2)}")
+    print(f"q2: {fq(q2)} euler: {fv3(to_euler_d(q2))}")
     
     #a = lin.vector(1, 2, 3)
     #b = lin.Matrix([[1, 2, 3, 4]]).T

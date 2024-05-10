@@ -298,6 +298,8 @@ def on_drawl():
         rect = button_shapes[i]
         rect.color = (0, 255, 0) if joystick.buttons[i] else (255, 0, 0)"""
 
+import dataforslerp as slerpdata
+
 @window.event
 def on_draw():
     #global textbatch
@@ -352,7 +354,7 @@ def on_draw():
         
 
     ])
-
+    cube = slerpdata.scube
     """        
     
     """
@@ -402,6 +404,7 @@ def on_draw():
         #[0, 0, 0],
       
     ])
+    rcube = slerpdata.rcube
     #rcube = cube * 15 # 15 or so
     #scube = cube - lin.vector(.5, .5, 0) # center it
     #print(f"rcube.shape: {rcube.shape}")

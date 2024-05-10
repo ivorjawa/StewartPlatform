@@ -163,7 +163,7 @@ class SlerpSM(StateMachine):
         #self.scube = scube * .75 # scale it down a bit.
         #self.coll_offset = lin.vector(0, 0, 1) 
         #self.scube = scube + offset # give it room to move at 0 collective
-        self.cubelength = len(self.scube)-8
+        self.cubelength = len(self.scube) #-8
         self.stew = stew
         self.cubedex = 0
         self.framedex = 0
