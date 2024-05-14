@@ -112,12 +112,17 @@ def galvatron():
         
         tvx = lin.vector(tsr, 0, 0)
         tvy  = lin.vector(0, tsr, 0)
+        tvix = lin.vector(tsir, 0, 0)
+        tviy  = lin.vector(0, tsir, 0)
         # ArUco is upside down when red27 is up
         ur = (tsv+tvx-tvy)
         lr = (tsv+tvx+tvy)
         ul = (tsv-tvx-tvy)
         ll = (tsv-tvx+tvy)
-        
+        uri = (tsv+tvix-tviy)
+        lri = (tsv+tvix+tviy)
+        uli = (tsv-tvix-tviy)
+        lli = (tsv-tvix+tviy)        
         for i in range(3):
             tang = i*120
             print(f"target angle: {tang}")
@@ -128,6 +133,10 @@ def galvatron():
             llp = rot2deg(tang, ll)+cea
             urp = rot2deg(tang, ur)+cea
             lrp = rot2deg(tang, lr)+cea
+            ulip = rot2deg(tang, uli)+cea
+            llip = rot2deg(tang, lli)+cea
+            urip = rot2deg(tang, uri)+cea
+            lrip = rot2deg(tang, lri)+cea
             tpoints = [ulp, llp, lrp, urp]
             txmin = axismin(0, tpoints)
             txmax = axismax(0, tpoints)
@@ -141,6 +150,8 @@ def galvatron():
             #acenter = (awidth/2, aheight/2)
             #print(f"acenter: {acenter}")
             aruco = arucos[i]
+            #aruco_1bp = aruco[1]
+            #print(aruco_1bp)
             aruco_s = cv2.resize(aruco, np.intp((tsir*2, tsir*2)))
             print(f"aruco_s.shape: {aruco_s.shape}")
             
@@ -165,7 +176,7 @@ def galvatron():
             cv2.line(canvas, np.intp(llp), np.intp(lrp), white, 1)
             cv2.line(canvas, np.intp(lrp), np.intp(urp), white, 1)
             cv2.line(canvas, np.intp(urp), np.intp(ulp), white, 1)
-            cv2.circle(canvas, np.intp(ulp), 5, green)
+            cv2.circle(canvas, np.intp(ulip), 5, green)
         
         # checker board 
         cbw = (105/2)*scale
