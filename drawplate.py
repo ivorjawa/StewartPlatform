@@ -138,8 +138,8 @@ def galvatron():
             print(f"txmin: {txmin}, txmax: {txmax}, tymin: {tymin}, tymax: {tymax}, twidth: {twidth}, theight: {theight}")
 
             
-            acenter = (awidth/2, aheight/2)
-            print(f"acenter: {acenter}")
+            #acenter = (awidth/2, aheight/2)
+            #print(f"acenter: {acenter}")
             aruco = arucos[i]
             aruco_s = cv2.resize(aruco, np.intp((tsir*2, tsir*2)))
             print(f"aruco_s.shape: {aruco_s.shape}")
@@ -150,14 +150,14 @@ def galvatron():
             rotated = imutils.rotate_bound(aruco_s, tang+90)
             print(f"rotated.shape: {rotated.shape}")
             #targc = (lrp-ulp)/2
-            asv = lin.vector(*aruco_s.shape[:2])/2
+            asv = lin.vector(*rotated.shape[:2])/2
             targo = tscenter - asv
             targo = np.intp(targo)
             x_offset = targo[0]
             y_offset = targo[1]
             #x_offset = int(txmin)
             #y_offset = int(tymin)
-            print(f"targo: {targo}, x_off: {x_offset}, y_off: {y_offset}")
+            print(f"tcenter: {lin.fv(tscenter)}, targo: {targo}, x_off: {x_offset}, y_off: {y_offset}")
             canvas[y_offset:y_offset+rotated.shape[0], x_offset:x_offset+rotated.shape[1]] = rotated
             
             cv2.line(canvas, np.intp(ulp), np.intp(llp), white, 1)
