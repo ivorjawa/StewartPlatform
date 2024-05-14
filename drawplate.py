@@ -158,6 +158,7 @@ def galvatron():
             #x_offset = int(txmin)
             #y_offset = int(tymin)
             print(f"tcenter: {lin.fv(tscenter)}, targo: {targo}, x_off: {x_offset}, y_off: {y_offset}")
+            cv2.fillPoly(canvas, [np.intp(tpoints)], white)
             canvas[y_offset:y_offset+rotated.shape[0], x_offset:x_offset+rotated.shape[1]] = rotated
             
             cv2.line(canvas, np.intp(ulp), np.intp(llp), white, 1)
