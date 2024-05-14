@@ -104,7 +104,9 @@ def galvatron():
         cv2.circle(canvas, center, int(tscr), white)
         
         
-        tsr = (13/2)*scale # exactly 13mm on a side for printed ArUco squares
+        tsr = (13/2)*scale # boarder exactly 13mm on a side for printed ArUco squares
+        tsir = (10/2)*scale # with the squares themselves exactly 10cm
+        
         tsv = lin.vector(0, tscr, 0) # starts offset 90deg
         print(f"target square radius  {tsr}")
         
@@ -138,22 +140,23 @@ def galvatron():
             
             acenter = (awidth/2, aheight/2)
             print(f"acenter: {acenter}")
-            red27 = arucos[i]
-            r27s = cv2.resize(red27, np.intp((tsr*2, tsr*2)))
-            print(f"r27s.shape: {r27s.shape}")
+            aruco = arucos[i]
+            aruco_s = cv2.resize(aruco, np.intp((tsir*2, tsir*2)))
+            print(f"aruco_s.shape: {aruco_s.shape}")
             
             #aM = cv2.getRotationMatrix2D(acenter, tang, 1.0)
-            #rotated = cv2.warpAffine(r27s, aM, np.intp((tsr*2, tsr*2)))
-            #rotated = cv2.warpAffine(red27, aM, np.intp((twidth, theight)), 1/scale)
-            rotated = imutils.rotate_bound(r27s, tang+90)
+            #rotated = cv2.warpAffine(aruco_s, aM, np.intp((tsr*2, tsr*2)))
+            #rotated = cv2.warpAffine(aruco, aM, np.intp((twidth, theight)), 1/scale)
+            rotated = imutils.rotate_bound(aruco_s, tang+90)
             print(f"rotated.shape: {rotated.shape}")
             #targc = (lrp-ulp)/2
-            targo = tscenter - lin.vector(tsr,tsr)
+            asv = lin.vector(*aruco_s.shape[:2])/2
+            targo = tscenter - asv
             targo = np.intp(targo)
-            #x_offset = targo[0]
-            #y_offset = targo[1]
-            x_offset = int(txmin)
-            y_offset = int(tymin)
+            x_offset = targo[0]
+            y_offset = targo[1]
+            #x_offset = int(txmin)
+            #y_offset = int(tymin)
             print(f"targo: {targo}, x_off: {x_offset}, y_off: {y_offset}")
             canvas[y_offset:y_offset+rotated.shape[0], x_offset:x_offset+rotated.shape[1]] = rotated
             
