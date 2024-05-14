@@ -35,11 +35,7 @@ def rot2deg(deg, pt):
 #cv2.circle(frame,(x,y),2,(255,255,255),3)
 # circle(img, center, radius, color[, thickness[, lineType[, shift]]]) -> img
 
-"aruco/markers/aruco_blue03_3.png"	
-"aruco/markers/aruco_green15_15.png"	
-red27 = cv2.imread("aruco/markers/aruco_red27_27.png")
-aheight, awidth = red27.shape[:2]
-print(f"red27.shape: {red27.shape}")
+	
 
 def axismin(axis, points):
     pa = [p[axis] for p in points]
@@ -66,6 +62,13 @@ def galvatron():
     cv2.namedWindow("output", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("output", width, height) 
     canvas = np.zeros((height, width, 3), np.uint8)
+    
+    red27 = cv2.imread("aruco/markers/aruco_red27_27.png")
+    green15 = cv2.imread("aruco/markers/aruco_green15_15.png")
+    blue03 = cv2.imread("aruco/markers/aruco_blue03_3.png")
+    arucos = [red27, green15, blue03]
+    aheight, awidth = red27.shape[:2]
+    print(f"red27.shape: {red27.shape}")
 
     while 1:
         # crosshairs
@@ -135,13 +138,14 @@ def galvatron():
             
             acenter = (awidth/2, aheight/2)
             print(f"acenter: {acenter}")
+            red27 = arucos[i]
             r27s = cv2.resize(red27, np.intp((tsr*2, tsr*2)))
             print(f"r27s.shape: {r27s.shape}")
             
             #aM = cv2.getRotationMatrix2D(acenter, tang, 1.0)
             #rotated = cv2.warpAffine(r27s, aM, np.intp((tsr*2, tsr*2)))
             #rotated = cv2.warpAffine(red27, aM, np.intp((twidth, theight)), 1/scale)
-            rotated = imutils.rotate_bound(r27s, tang)
+            rotated = imutils.rotate_bound(r27s, tang+90)
             print(f"rotated.shape: {rotated.shape}")
             #targc = (lrp-ulp)/2
             targo = tscenter - lin.vector(tsr,tsr)
