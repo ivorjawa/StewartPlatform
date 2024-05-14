@@ -167,25 +167,21 @@ def galvatron():
             cv2.circle(canvas, np.intp(ulp), 5, green)
         
         # checker board 
-        # FIXME I'm too tired to figure the offset correctly
         cbw = (105/2)*scale
         cbh = (75/2)*scale
         cs = (15)*scale
         cbxo = xc-cbw
         cbyo = yc-cbh
-        tvx = np.array((cs, 0))
-        tvy = np.array((0, cs))
-        for xi in range(6):
-            for yi in range(4):
-                tsv = np.array((cbxo + cs*xi, cbyo + cs*yi))
-                ur = (tsv+tvx-tvy)
-                lr = (tsv+tvx+tvy)
-                ul = (tsv-tvx-tvy)
-                ll = (tsv-tvx+tvy)
-                cv2.line(canvas, np.intp(ul), np.intp(ll), green, 1)
-                cv2.line(canvas, np.intp(ll), np.intp(lr), green, 1)
-                cv2.line(canvas, np.intp(lr), np.intp(ur), green, 1)
-                cv2.line(canvas, np.intp(ur), np.intp(ul), green, 1)
+        cbxm = xc+cbw
+        cbym = yc+cbh
+        #cv2.rectangle(canvas, np.intp((cbxo, cbyo)), np.intp((cbxm, cbym)), green)
+        
+        for i in range(8):
+            cv2.line(canvas, np.intp((cbxo+(i*cs), cbyo)), np.intp((cbxo+i*cs, cbym)), green)
+        for i in range(6):
+            cv2.line(canvas, np.intp((cbxo, cbyo+(i*cs))), np.intp((cbxm, cbyo+i*cs)), green)
+            
+
 
         
         
