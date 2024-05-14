@@ -8,6 +8,7 @@ from rich import print as rp
 
 import numpy as np
 import cv2
+import imutils
 
 import linear as lin
 
@@ -33,6 +34,21 @@ def rot2deg(deg, pt):
 #rectangle(img, pt1, pt2, color[, thickness[, lineType[, shift]]]) -> img
 #cv2.circle(frame,(x,y),2,(255,255,255),3)
 # circle(img, center, radius, color[, thickness[, lineType[, shift]]]) -> img
+
+"aruco/markers/aruco_blue03_3.png"	
+"aruco/markers/aruco_green15_15.png"	
+red27 = cv2.imread("aruco/markers/aruco_red27_27.png")
+aheight, awidth = red27.shape[:2]
+print(f"red27.shape: {red27.shape}")
+
+def axismin(axis, points):
+    pa = [p[axis] for p in points]
+    return np.min(pa)
+    
+def axismax(axis, points):
+    pa = [p[axis] for p in points]
+    return np.max(pa)
+    
 def galvatron():
     width = 800
     height = 800
@@ -87,6 +103,7 @@ def galvatron():
         
         tsr = (13/2)*scale # exactly 13mm on a side for printed ArUco squares
         tsv = lin.vector(0, tscr, 0) # starts offset 90deg
+        print(f"target square radius  {tsr}")
         
         tvx = lin.vector(tsr, 0, 0)
         tvy  = lin.vector(0, tsr, 0)
@@ -97,21 +114,80 @@ def galvatron():
         ll = (tsv-tvx+tvy)
         
         for i in range(3):
-            ulp = rot2deg(i*120, ul)+cea
-            llp = rot2deg(i*120, ll)+cea
-            urp = rot2deg(i*120, ur)+cea
-            lrp = rot2deg(i*120, lr)+cea
+            tang = i*120
+            print(f"target angle: {tang}")
+            tscrv = lin.vector(0, tscr, 0)
+            tscenter = rot2deg(tang, tscrv)+cea
+            print(f"tscenter:{lin.fv(tscenter)}")
+            ulp = rot2deg(tang, ul)+cea
+            llp = rot2deg(tang, ll)+cea
+            urp = rot2deg(tang, ur)+cea
+            lrp = rot2deg(tang, lr)+cea
+            tpoints = [ulp, llp, lrp, urp]
+            txmin = axismin(0, tpoints)
+            txmax = axismax(0, tpoints)
+            tymin = axismin(1, tpoints)
+            tymax = axismax(1, tpoints)
+            twidth = txmax - txmin
+            theight = tymax - tymin
+            print(f"txmin: {txmin}, txmax: {txmax}, tymin: {tymin}, tymax: {tymax}, twidth: {twidth}, theight: {theight}")
+
+            
+            acenter = (awidth/2, aheight/2)
+            print(f"acenter: {acenter}")
+            r27s = cv2.resize(red27, np.intp((tsr*2, tsr*2)))
+            print(f"r27s.shape: {r27s.shape}")
+            
+            #aM = cv2.getRotationMatrix2D(acenter, tang, 1.0)
+            #rotated = cv2.warpAffine(r27s, aM, np.intp((tsr*2, tsr*2)))
+            #rotated = cv2.warpAffine(red27, aM, np.intp((twidth, theight)), 1/scale)
+            rotated = imutils.rotate_bound(r27s, tang)
+            print(f"rotated.shape: {rotated.shape}")
+            #targc = (lrp-ulp)/2
+            targo = tscenter - lin.vector(tsr,tsr)
+            targo = np.intp(targo)
+            #x_offset = targo[0]
+            #y_offset = targo[1]
+            x_offset = int(txmin)
+            y_offset = int(tymin)
+            print(f"targo: {targo}, x_off: {x_offset}, y_off: {y_offset}")
+            canvas[y_offset:y_offset+rotated.shape[0], x_offset:x_offset+rotated.shape[1]] = rotated
+            
             cv2.line(canvas, np.intp(ulp), np.intp(llp), white, 1)
             cv2.line(canvas, np.intp(llp), np.intp(lrp), white, 1)
             cv2.line(canvas, np.intp(lrp), np.intp(urp), white, 1)
             cv2.line(canvas, np.intp(urp), np.intp(ulp), white, 1)
             cv2.circle(canvas, np.intp(ulp), 5, green)
         
+        # checker board 
+        # FIXME I'm too tired to figure the offset correctly
+        cbw = (105/2)*scale
+        cbh = (75/2)*scale
+        cs = (15)*scale
+        cbxo = xc-cbw
+        cbyo = yc-cbh
+        tvx = np.array((cs, 0))
+        tvy = np.array((0, cs))
+        for xi in range(6):
+            for yi in range(4):
+                tsv = np.array((cbxo + cs*xi, cbyo + cs*yi))
+                ur = (tsv+tvx-tvy)
+                lr = (tsv+tvx+tvy)
+                ul = (tsv-tvx-tvy)
+                ll = (tsv-tvx+tvy)
+                cv2.line(canvas, np.intp(ul), np.intp(ll), green, 1)
+                cv2.line(canvas, np.intp(ll), np.intp(lr), green, 1)
+                cv2.line(canvas, np.intp(lr), np.intp(ur), green, 1)
+                cv2.line(canvas, np.intp(ur), np.intp(ul), green, 1)
+
+        
+        
         
         
         cv2.imshow('output', canvas)
-        if cv2.waitKey(1000) == 27:
+        if cv2.waitKey(10000) == 27:
             break
         
 if __name__ == "__main__":
+    print()
     galvatron() 
