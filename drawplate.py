@@ -3,6 +3,7 @@
 import sys
 import time
 import math as m
+import pickle
 
 from rich import print as rp
 
@@ -67,6 +68,7 @@ def galvatron():
     green15 = cv2.imread("aruco/markers/aruco_green15_15.png")
     blue03 = cv2.imread("aruco/markers/aruco_blue03_3.png")
     arucos = [red27, green15, blue03]
+    aruco_ids = [27, 15, 3]
     aheight, awidth = red27.shape[:2]
     print(f"red27.shape: {red27.shape}")
 
@@ -122,13 +124,14 @@ def galvatron():
         uri = (tsv+tvix-tviy)
         lri = (tsv+tvix+tviy)
         uli = (tsv-tvix-tviy)
-        lli = (tsv-tvix+tviy)        
+        lli = (tsv-tvix+tviy)
+        out_corners = []        
         for i in range(3):
             tang = i*120
-            print(f"target angle: {tang}")
+            #print(f"target angle: {tang}")
             tscrv = lin.vector(0, tscr, 0)
             tscenter = rot2deg(tang, tscrv)+cea
-            print(f"tscenter:{lin.fv(tscenter)}")
+            #print(f"tscenter:{lin.fv(tscenter)}")
             ulp = rot2deg(tang, ul)+cea
             llp = rot2deg(tang, ll)+cea
             urp = rot2deg(tang, ur)+cea
@@ -144,7 +147,7 @@ def galvatron():
             tymax = axismax(1, tpoints)
             twidth = txmax - txmin
             theight = tymax - tymin
-            print(f"txmin: {txmin}, txmax: {txmax}, tymin: {tymin}, tymax: {tymax}, twidth: {twidth}, theight: {theight}")
+            #print(f"txmin: {txmin}, txmax: {txmax}, tymin: {tymin}, tymax: {tymax}, twidth: {twidth}, theight: {theight}")
 
             
             #acenter = (awidth/2, aheight/2)
@@ -153,13 +156,13 @@ def galvatron():
             #aruco_1bp = aruco[1]
             #print(aruco_1bp)
             aruco_s = cv2.resize(aruco, np.intp((tsir*2, tsir*2)))
-            print(f"aruco_s.shape: {aruco_s.shape}")
+            #print(f"aruco_s.shape: {aruco_s.shape}")
             
             #aM = cv2.getRotationMatrix2D(acenter, tang, 1.0)
             #rotated = cv2.warpAffine(aruco_s, aM, np.intp((tsr*2, tsr*2)))
             #rotated = cv2.warpAffine(aruco, aM, np.intp((twidth, theight)), 1/scale)
             rotated = imutils.rotate_bound(aruco_s, tang+90)
-            print(f"rotated.shape: {rotated.shape}")
+            #print(f"rotated.shape: {rotated.shape}")
             #targc = (lrp-ulp)/2
             asv = lin.vector(*rotated.shape[:2])/2
             targo = tscenter - asv
@@ -168,7 +171,7 @@ def galvatron():
             y_offset = targo[1]
             #x_offset = int(txmin)
             #y_offset = int(tymin)
-            print(f"tcenter: {lin.fv(tscenter)}, targo: {targo}, x_off: {x_offset}, y_off: {y_offset}")
+            #print(f"tcenter: {lin.fv(tscenter)}, targo: {targo}, x_off: {x_offset}, y_off: {y_offset}")
             cv2.fillPoly(canvas, [np.intp(tpoints)], white)
             canvas[y_offset:y_offset+rotated.shape[0], x_offset:x_offset+rotated.shape[1]] = rotated
             
@@ -177,6 +180,15 @@ def galvatron():
             cv2.line(canvas, np.intp(lrp), np.intp(urp), white, 1)
             cv2.line(canvas, np.intp(urp), np.intp(ulp), white, 1)
             cv2.circle(canvas, np.intp(urip), 5, green) # actually "upper left"
+            
+            corners = [urip, ulip, llip, lrip]
+            corners = np.array([lin.vector(*x, 0) for x in corners])
+            print(f"Aruco id: {aruco_ids[i]} corners: {corners}")
+            out_corners.append(corners)
+        corner_info = {"ids": np.array(aruco_ids), "corners": np.array(out_corners)}
+        pfilename = "corner_info.pickle"
+        with open(pfilename, "wb") as f:
+            pickle.dump(corner_info, f)
         
         # checker board 
         cbw = (105/2)*scale

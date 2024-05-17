@@ -84,7 +84,8 @@ vdegrees = lambda v: np.array([np.degrees(x) for x in v])
 cb_valid = [False, False, False]
 circle_buf = [[], [], []]
 cb_times = [time.time(), time.time(), time.time()]
-def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coefficients, width, height):
+
+def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, distortion_coefficients, width, height):
     global circle_buf, cb_valid, cb_times
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -98,6 +99,62 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
         #cameraMatrix=matrix_coefficients,
         #distCoeff=distortion_coefficients)
 
+    """
+        getIds(...) method of cv2.aruco.Board instance
+            getIds() -> retval
+            .   @brief vector of the identifiers of the markers in the board (should be the same size as objPoints)
+            .        * @return vector of the identifiers of the markers
+        getObjPoints(...) method of cv2.aruco.Board instance
+            getObjPoints() -> retval
+            .   @brief return array of object points of all the marker corners in the board.
+            .        *
+            .        * Each marker include its 4 corners in this order:
+            .        * -   objPoints[i][0] - left-top point of i-th marker
+            .        * -   objPoints[i][1] - right-top point of i-th marker
+            .        * -   objPoints[i][2] - right-bottom point of i-th marker
+            .        * -   objPoints[i][3] - left-bottom point of i-th marker
+            .        *
+            .        * Markers are placed in a certain order - row by row, left to right in every row. For M markers, the size is Mx4.
+        
+        matchImagePoints(...) method of cv2.aruco.Board instance
+            matchImagePoints(detectedCorners, detectedIds[, objPoints[, imgPoints]]) -> objPoints, imgPoints
+            .   @brief Given a board configuration and a set of detected markers, returns the corresponding
+            .        * image points and object points, can be used in solvePnP()
+            .        *
+            .        * @param detectedCorners List of detected marker corners of the board.
+            .        * For cv::Board and cv::GridBoard the method expects std::vector<std::vector<Point2f>> or std::vector<Mat> with Aruco marker corners.
+            .        * For cv::CharucoBoard the method expects std::vector<Point2f> or Mat with ChAruco corners (chess board corners matched with Aruco markers).
+            .        *
+            .        * @param detectedIds List of identifiers for each marker or charuco corner.
+            .        * For any Board class the method expects std::vector<int> or Mat.
+            .        *
+            .        * @param objPoints Vector of marker points in the board coordinate space.
+            .        * For any Board class the method expects std::vector<cv::Point3f> objectPoints or cv::Mat
+            .        *
+            .        * @param imgPoints Vector of marker points in the image coordinate space.
+            .        * For any Board class the method expects std::vector<cv::Point2f> objectPoints or cv::Mat
+            .        *
+            .        * @sa solvePnP
+        
+        // Get object and image points for the solvePnP function
+         cv::Mat objPoints, imgPoints;
+         board.matchImagePoints(corners, ids, objPoints, imgPoints);
+        
+        // Find pose
+         cv::solvePnP(objPoints, imgPoints, camMatrix, distCoeffs, rvec, tvec);
+        """
+    try:
+        objPoints, imgPoints = ArucoBoard.matchImagePoints(corners, ids)
+        #print(f"objPoints: {objPoints.shape}, imgPoints: {imgPoints.shape}")
+        ret,rvecs, tvecs = cv2.solvePnP(objPoints, imgPoints, matrix_coefficients, distortion_coefficients) 
+        if ret:
+            r,p,y = [m.degrees(x) for x in rvecs]
+            print(f"solvePnP orientation: ({r:4.3f}, {p:4.3f}, {y:4.3f}, )") #  tvecs: {tvecs[:3]}
+        else:
+            print("solvePnP failed")  
+    except cv2.error as e:
+        print(f"Match failed: {e}")
+         
     tags = {
         'red27': 27,
         'blue03': 3,
@@ -281,7 +338,17 @@ def go():
         caminfo = pickle.load(f)
         cam_mtx = caminfo['cam_mtx']
         distortion = caminfo['distortion']
+        
+        
+    with open('corner_info.pickle', 'rb') as f:
+        corner_info = pickle.load(f)
+        aruco_ids = corner_info['ids']
+        aruco_corners = corner_info['corners']
+    print(f"aruco_ids: {aruco_ids}")
+    print(f"aruco_corners: {aruco_corners}")
+    ArucoBoard=cv2.aruco.Board(aruco_corners.astype(np.float32), arucoDict, aruco_ids)
 
+    
     cap = cv2.VideoCapture(0)
 
     width = 640
@@ -299,14 +366,14 @@ def go():
     #cap.set(cv2.CAP_PROP_FOCUS, 0) 
 
 
-
+    
     while cap.isOpened():
     
         ret, img = cap.read()
     
         canvas = np.zeros((height, width*2, 3), np.uint8)
     
-        output, rblur = pose_estimation(img, ARUCO_DICT[aruco_type], cam_mtx, distortion, width, height)
+        output, rblur = pose_estimation(img, ArucoBoard, ARUCO_DICT[aruco_type], cam_mtx, distortion, width, height)
 
         cv2.line(output, (int(0),int(height/2)), (int(width), int(height/2)), (0, 0, 255), 1)
         cv2.line(output, (int(width/2),int(0)), (int(width/2), int(height)), (0, 0, 255), 1)
