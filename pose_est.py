@@ -100,42 +100,7 @@ def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, dis
         #distCoeff=distortion_coefficients)
 
     """
-        getIds(...) method of cv2.aruco.Board instance
-            getIds() -> retval
-            .   @brief vector of the identifiers of the markers in the board (should be the same size as objPoints)
-            .        * @return vector of the identifiers of the markers
-        getObjPoints(...) method of cv2.aruco.Board instance
-            getObjPoints() -> retval
-            .   @brief return array of object points of all the marker corners in the board.
-            .        *
-            .        * Each marker include its 4 corners in this order:
-            .        * -   objPoints[i][0] - left-top point of i-th marker
-            .        * -   objPoints[i][1] - right-top point of i-th marker
-            .        * -   objPoints[i][2] - right-bottom point of i-th marker
-            .        * -   objPoints[i][3] - left-bottom point of i-th marker
-            .        *
-            .        * Markers are placed in a certain order - row by row, left to right in every row. For M markers, the size is Mx4.
-        
-        matchImagePoints(...) method of cv2.aruco.Board instance
-            matchImagePoints(detectedCorners, detectedIds[, objPoints[, imgPoints]]) -> objPoints, imgPoints
-            .   @brief Given a board configuration and a set of detected markers, returns the corresponding
-            .        * image points and object points, can be used in solvePnP()
-            .        *
-            .        * @param detectedCorners List of detected marker corners of the board.
-            .        * For cv::Board and cv::GridBoard the method expects std::vector<std::vector<Point2f>> or std::vector<Mat> with Aruco marker corners.
-            .        * For cv::CharucoBoard the method expects std::vector<Point2f> or Mat with ChAruco corners (chess board corners matched with Aruco markers).
-            .        *
-            .        * @param detectedIds List of identifiers for each marker or charuco corner.
-            .        * For any Board class the method expects std::vector<int> or Mat.
-            .        *
-            .        * @param objPoints Vector of marker points in the board coordinate space.
-            .        * For any Board class the method expects std::vector<cv::Point3f> objectPoints or cv::Mat
-            .        *
-            .        * @param imgPoints Vector of marker points in the image coordinate space.
-            .        * For any Board class the method expects std::vector<cv::Point2f> objectPoints or cv::Mat
-            .        *
-            .        * @sa solvePnP
-        
+
         // Get object and image points for the solvePnP function
          cv::Mat objPoints, imgPoints;
          board.matchImagePoints(corners, ids, objPoints, imgPoints);
@@ -145,11 +110,29 @@ def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, dis
         """
     try:
         objPoints, imgPoints = ArucoBoard.matchImagePoints(corners, ids)
-        #print(f"objPoints: {objPoints.shape}, imgPoints: {imgPoints.shape}")
+        for i in range(objPoints.shape[0]):
+            print(f"{i} {objPoints[i]}, {imgPoints[i]}")
+        print(f"objPoints: {objPoints.shape}, imgPoints: {imgPoints.shape}")
         ret,rvecs, tvecs = cv2.solvePnP(objPoints, imgPoints, matrix_coefficients, distortion_coefficients) 
         if ret:
             r,p,y = [m.degrees(x) for x in rvecs]
-            print(f"solvePnP orientation: ({r:4.3f}, {p:4.3f}, {y:4.3f}, )") #  tvecs: {tvecs[:3]}
+            x,y,z = tvecs # this is the origin
+            x = x[0]
+            y = y[0]
+            z = z[0]
+            #print(f"x: {x}")
+            print(f"solvePnP orientation: ({r:4.3f}, {p:4.3f}, {y:4.3f}) offset: ({x:4.3f}, {y:4.3f}, {z:4.3f})") #  tvecs: {tvecs[:3]}
+            
+            testpts = np.float32([[x,y,z], [0,0,z], [400,400,z]]).reshape(-1,3)
+            imgpts, jac = cv2.projectPoints(testpts, rvecs, tvecs, matrix_coefficients, distortion_coefficients)
+            for i, pt in enumerate(imgpts):
+                print(f"testpt: {testpts[i]} imgpt: {imgpts[i]}")
+                print(f"pt: {pt[0]} {frame.shape}")
+                x, y = pt[0]
+                # this is drawing on pre-processed frame
+                cv2.circle(frame, np.intp((x, y)), 10, (255, 255, 255), -1)
+                
+                
         else:
             print("solvePnP failed")  
     except cv2.error as e:
