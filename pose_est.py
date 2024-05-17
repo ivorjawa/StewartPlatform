@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 import sys
 import os
 import time
@@ -61,6 +62,8 @@ def aruco_display(corners, ids, rejected, image):
 			cX = int((topLeft[0] + bottomRight[0]) / 2.0)
 			cY = int((topLeft[1] + bottomRight[1]) / 2.0)
 			cv2.circle(image, (cX, cY), 4, (0, 0, 255), -1)
+			cv2.circle(image, topLeft, 4, (255, 0, 255), -1)
+            
 			
 			cv2.putText(image, str(markerID),(topLeft[0]+30, topLeft[1] - 30), cv2.FONT_HERSHEY_SIMPLEX,
 				1.5, (255, 0, 255), 2)

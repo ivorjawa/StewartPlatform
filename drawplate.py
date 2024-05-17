@@ -176,7 +176,7 @@ def galvatron():
             cv2.line(canvas, np.intp(llp), np.intp(lrp), white, 1)
             cv2.line(canvas, np.intp(lrp), np.intp(urp), white, 1)
             cv2.line(canvas, np.intp(urp), np.intp(ulp), white, 1)
-            cv2.circle(canvas, np.intp(ulip), 5, green)
+            cv2.circle(canvas, np.intp(urip), 5, green) # actually "upper left"
         
         # checker board 
         cbw = (105/2)*scale
