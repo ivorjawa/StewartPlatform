@@ -123,7 +123,7 @@ def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, dis
             #print(f"x: {x}")
             print(f"solvePnP orientation: ({r:4.3f}, {p:4.3f}, {y:4.3f}) offset: ({x:4.3f}, {y:4.3f}, {z:4.3f})") #  tvecs: {tvecs[:3]}
             
-            testpts = np.float32([[x,y,z], [0,0,z], [400,400,z]]).reshape(-1,3)
+            testpts = np.float32([[183, 0, 0], [0,183,0], [0,0,0], [183,183,0]]).reshape(-1,3)
             imgpts, jac = cv2.projectPoints(testpts, rvecs, tvecs, matrix_coefficients, distortion_coefficients)
             for i, pt in enumerate(imgpts):
                 print(f"testpt: {testpts[i]} imgpt: {imgpts[i]}")

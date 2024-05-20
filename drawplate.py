@@ -79,8 +79,10 @@ def galvatron():
         
         #plate
         pl = 183*scale
-        cv2.rectangle(canvas, origin, np.intp((xo+pl, yo+pl)), yellow)
-        
+        extents = np.intp((xo+pl, yo+pl))
+        cv2.rectangle(canvas, origin, extents, yellow)
+        ucstents = (extents - ora) / scale
+        print(f"Extents: {extents} ucstents: {ucstents}")
         # circles
         ocr = (166/2)*scale # outer
         cv2.circle(canvas, center, int(ocr), yellow)
@@ -181,10 +183,14 @@ def galvatron():
             cv2.line(canvas, np.intp(urp), np.intp(ulp), white, 1)
             cv2.circle(canvas, np.intp(urip), 5, green) # actually "upper left"
             
+            ora3 = lin.vector(*ora, 0)
             corners = [urip, ulip, llip, lrip]
             corners = np.array([lin.vector(*x, 0) for x in corners])
-            print(f"Aruco id: {aruco_ids[i]} corners: {corners}")
-            out_corners.append(corners)
+            uncorners = (corners-ora3)/scale #unscaled corners
+            #uncorners = np.array([(x-ora)/scale for x in corners])
+            #print(f"Aruco id: {aruco_ids[i]} corners: {corners}\nuncorners: {uncorners}")
+            print(f"Aruco id: {aruco_ids[i]} uncorners:\n{uncorners}")
+            out_corners.append(uncorners)
         corner_info = {"ids": np.array(aruco_ids), "corners": np.array(out_corners)}
         pfilename = "corner_info.pickle"
         with open(pfilename, "wb") as f:
