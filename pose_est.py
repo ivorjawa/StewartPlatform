@@ -88,6 +88,9 @@ cb_times = [time.time(), time.time(), time.time()]
 def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, distortion_coefficients, width, height):
     global circle_buf, cb_valid, cb_times
 
+    w_tvec = None
+    w_rvec = None
+    
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     #cv2.aruco_dict = cv2.aruco.Dictionary_get(aruco_dict_type)
     #parameters = cv2.aruco.DetectorParameters_create()
@@ -111,26 +114,21 @@ def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, dis
     try:
         objPoints, imgPoints = ArucoBoard.matchImagePoints(corners, ids)
         for i in range(objPoints.shape[0]):
-            print(f"{i} {objPoints[i]}, {imgPoints[i]}")
-        print(f"objPoints: {objPoints.shape}, imgPoints: {imgPoints.shape}")
-        ret,rvecs, tvecs = cv2.solvePnP(objPoints, imgPoints, matrix_coefficients, distortion_coefficients) 
+            #print(f"{i} {objPoints[i]}, {imgPoints[i]}")
+            pass
+        #print(f"objPoints: {objPoints.shape}, imgPoints: {imgPoints.shape}")
+        ret,rvecs, tvecs = cv2.solvePnP(objPoints, imgPoints, matrix_coefficients, distortion_coefficients)
+        w_tvec = tvecs
+        w_rvec = rvecs 
         if ret:
             r,p,y = [m.degrees(x) for x in rvecs]
-            x,y,z = tvecs # this is the origin
-            x = x[0]
-            y = y[0]
-            z = z[0]
+            #x,y,z = tvecs # this is the origin
+            #x = x[0]
+            #y = y[0]
+            #z = z[0]
             #print(f"x: {x}")
-            print(f"solvePnP orientation: ({r:4.3f}, {p:4.3f}, {y:4.3f}) offset: ({x:4.3f}, {y:4.3f}, {z:4.3f})") #  tvecs: {tvecs[:3]}
-            
-            testpts = np.float32([[183, 0, 0], [0,183,0], [0,0,0], [183,183,0]]).reshape(-1,3)
-            imgpts, jac = cv2.projectPoints(testpts, rvecs, tvecs, matrix_coefficients, distortion_coefficients)
-            for i, pt in enumerate(imgpts):
-                print(f"testpt: {testpts[i]} imgpt: {imgpts[i]}")
-                print(f"pt: {pt[0]} {frame.shape}")
-                x, y = pt[0]
-                # this is drawing on pre-processed frame
-                cv2.circle(frame, np.intp((x, y)), 10, (255, 255, 255), -1)
+            #print(f"solvePnP orientation: ({r:4.3f}, {p:4.3f}, {y:4.3f}) offset: ({x:4.3f}, {y:4.3f}, {z:4.3f})") 
+            print(f"solvePnP orientation: ({r:5.1f}, {p:5.1f}, {y:5.1f})") 
                 
                 
         else:
@@ -154,7 +152,36 @@ def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, dis
     # save for later ball-seeking
     rin = frame[:, :, 2].copy()
     rblur = cv2.medianBlur(rin,5)
-      
+    
+    if not (w_tvec is None):
+        testpts = np.float32([
+            [183, 0, 0], 
+            [0,183,0], 
+            [0,0,0], 
+            [183,183,0], 
+            [91.5, 91.5, 0],
+            [0, 91.5, 0],
+            [183, 91.5, 0],
+            [91.5, 0, 0],
+            [91.5, 183, 0],
+        ]).reshape(-1,3)
+        imgpts, jac = cv2.projectPoints(testpts, rvecs, tvecs, matrix_coefficients, distortion_coefficients)
+        #print(f"imgpts: {imgpts.shape} {imgpts}")
+        try:
+            for i, pt in enumerate(imgpts):
+                #print(f"testpt: {testpts[i]} imgpt: {imgpts[i]}")
+                #print(f"pt: {pt} {frame.shape}")
+                #x, y = pt[0]
+                #cv2.circle(frame, np.intp((x, y)), 10, (255, 255, 255), -1)
+                cv2.circle(frame, np.intp(pt[0]), 5, (255, 255, 255), -1)
+            cv2.line(frame, np.intp(imgpts[5][0]), np.intp(imgpts[6][0]), (0, 255, 0), 1)
+            cv2.line(frame, np.intp(imgpts[7][0]), np.intp(imgpts[8][0]), (0, 255, 0), 1)
+            #cv2.circle(frame,np.intp(imgpts[1][0]),crplen+30,(0,255,255),2)
+            cv2.circle(frame,np.intp(imgpts[4][0]),166,(0,255,255),2)
+        except cv2.error as e:
+            print(f"oops: {e}")
+            
+          
     if len(corners) > 0:
         mask_circs = []
         mask_rads = [] # 145 - 235
@@ -196,7 +223,7 @@ def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, dis
             else:
                 centeray = np.float32([[0, 0, 0], [-crlen, 0, 0]]).reshape(-1,3)
             imgpts, jac = cv2.projectPoints(centeray, rvec, tvec, matrix_coefficients, distortion_coefficients)
-            cv2.line(frame, np.intp(imgpts[0][0]), np.intp(imgpts[1][0]), (0, 255, 255), 2)
+            #cv2.line(frame, np.intp(imgpts[0][0]), np.intp(imgpts[1][0]), (0, 255, 255), 2)
             crp0 = lin.vector(imgpts[0][0])
             crp1 = lin.vector(imgpts[1][0])
             
@@ -206,7 +233,7 @@ def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, dis
             if (crplen > 145) and (crplen < 235):
                 mask_circs.append(np.intp(imgpts[1][0]))
                 mask_rads.append(crplen)
-            cv2.circle(frame,np.intp(imgpts[1][0]),crplen+30,(0,255,255),2)
+            #cv2.circle(frame,np.intp(imgpts[1][0]),crplen+30,(0,255,255),2)
             for j in range(len(centeray)):
                 pass
                 #print(f"cpoint: {centeray[j]} projected: {imgpts[j]}")
