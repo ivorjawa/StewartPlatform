@@ -45,7 +45,123 @@ def axismin(axis, points):
 def axismax(axis, points):
     pa = [p[axis] for p in points]
     return np.max(pa)
+
+class SquareBoard(object):
+    def __init__(self, sidesize=800, activesize=700, activemm=183):
+        self.width = sidesize
+        self.height = sidesize
+        self.scale = activesize/activemm
+        self.offsetlen = (sidesize-activesize)/2
+        xo = self.offsetlen
+        yo = self.offsetlen
+        xc = int(self.width/2)
+        yc = int(self.height/2)
+        self.origin = (xo, yo)
+        self.center = (xc, yc)
+        self.origin_n = np.array(self.origin)
+        self.center_n = np.array(self.center)
+        #print(f"scale: {scale} red: {red}")
+        cv2.namedWindow("output", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("output", self.width, self.height) 
+        self.canvas = np.zeros((self.height, self.width, 3), np.uint8)
+        
+    def crosshairs(self):
+        cv2.line(self.canvas, np.intp((0, self.height/2)), np.intp((self.width, self.height/2)), red, 1)
+        cv2.line(self.canvas, np.intp((self.width/2, 0)), np.intp((self.width/2, self.height)), red, 1)
+        
+    def tp(self, p):
+        return np.intp(np.array(p)*self.scale + self.origin_n)
+        
+    def line(self, p1, p2, color, width=1):
+        cv2.line(self.canvas, self.tp(p1), self.tp(p2), color, width)
+        
+    def rectangle(self, p1, p2, color, width=1):
+        cv2.rectangle(self.canvas, self.tp(p1), self.tp(p2), color, width)
+        
+    def circle(self, center, radius, color, width=1):
+        #print(f"circle c:{center}")
+        cv2.circle(self.canvas, self.tp(center), int(radius*self.scale), color, width)
     
+    def fillPoly(self, points, color):
+        print(f"fillPoly points: {points}")
+        tpoints = np.array([self.tp(p) for p in points])
+        print(f"fillPoly tpoints: {tpoints}")
+        
+        cv2.fillPoly(self.canvas, [tpoints], color)
+        
+    def show(self):
+        cv2.imshow('output', self.canvas)
+        
+        
+        
+def rot_square(radius, angle):
+    tvx = lin.vector(radius, 0, 0)
+    tvy  = lin.vector(0, radius, 0) 
+    
+    ul = (-tvx+tvy)
+    ur = (tvx+tvy)
+    lr = (tvx-tvy)
+    ll = (-tvx-tvy)
+    
+    ulp = rot2deg(angle, ul)
+    urp = rot2deg(angle, ur)
+    lrp = rot2deg(angle, lr) 
+    llp = rot2deg(angle, ll)
+    
+    return np.array((ulp[:2], urp[:2], lrp[:2], llp[:2]))
+
+def galivate():
+    grid_mm = 183
+    grid = SquareBoard(800, 700, grid_mm)
+    
+    red27 = cv2.imread("aruco/markers/aruco_red27_27.png")
+    green15 = cv2.imread("aruco/markers/aruco_green15_15.png")
+    blue03 = cv2.imread("aruco/markers/aruco_blue03_3.png")
+    arucos = [red27, green15, blue03]
+    aruco_ids = [27, 15, 3]
+    aheight, awidth = red27.shape[:2]
+    print(f"red27.shape: {red27.shape}")
+    
+    grid.crosshairs()
+    
+    center = np.array((grid_mm/2, grid_mm/2))
+    grid.rectangle((0,0), (grid_mm, grid_mm), yellow)
+    ocr = 166/2
+    grid.circle(center, ocr, yellow) # outer circle
+    icr = 138/2
+    grid.circle(center, icr, yellow) # inner circle
+    
+    ccr = 159.3/2
+    grid.circle(center, ccr, red)
+    
+    hole_rad = 4.77/2
+    hole_v = lin.vector(ccr, 0, 0)
+    for i in range(4): # secures big paper square to platform
+        hvr = rot2deg(i*90, hole_v)
+        grid.circle(hvr+center, hole_rad, green)       
+    for i in range(3): # secures ring to gear
+        hvr = rot2deg(i*120+30, hole_v)
+        grid.circle(hvr+center, hole_rad, red)
+    
+    tscr = (ocr - icr)/2 + icr # target square circle radius
+    grid.circle(center, tscr, white)
+    
+    tsr = 13/2
+    tsir = 10/2
+    
+    for i in range(3):
+        tang = i*120
+        tsc = rot2deg(tang, lin.vector(ccr, 0, 0))
+        tpoints = rot_square(tsr, tang)+center+tsc
+        grid.fillPoly(tpoints, white)
+            
+    grid.show()
+
+    while(1):
+        if cv2.waitKey(10000) == 27:
+            break
+        
+                   
 def galvatron():
     width = 800
     height = 800
@@ -174,7 +290,9 @@ def galvatron():
             #x_offset = int(txmin)
             #y_offset = int(tymin)
             #print(f"tcenter: {lin.fv(tscenter)}, targo: {targo}, x_off: {x_offset}, y_off: {y_offset}")
-            cv2.fillPoly(canvas, [np.intp(tpoints)], white)
+            fpp = [np.intp(tpoints)]
+            print(f"filly: {fpp}")
+            cv2.fillPoly(canvas, fpp, white)
             canvas[y_offset:y_offset+rotated.shape[0], x_offset:x_offset+rotated.shape[1]] = rotated
             
             cv2.line(canvas, np.intp(ulp), np.intp(llp), white, 1)
@@ -223,4 +341,5 @@ def galvatron():
         
 if __name__ == "__main__":
     print()
-    galvatron() 
+    #galvatron()     
+    galivate() 
