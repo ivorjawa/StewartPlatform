@@ -105,13 +105,22 @@ class SquareBoard(object):
         
     def rectangle(self, p1, p2, color, width=1):
         cv2.rectangle(self.canvas, self.tp(p1), self.tp(p2), color, width)
+    
+    def bgr2hexrgb(self, bgr):
+        b, g, r = bgr
+        hexstring = f"#{r:02x}{g:02x}{b:02x}"
+        print(f"b: {b} g: {g} r: {r} hexstring: {hexstring}")
+        return hexstring
         
     def circle(self, center, radius, color, width=1):
         print(f"circle c:{center}, self.center: {self.center}")
         cv2.circle(self.canvas, self.tp(center), int(radius*self.scale), color, width)
         centered = lin.vector(center) + lin.vector(self.pcx-(183/2), self.pcy-(183/2))
         print(f"centered: {centered}")
-        circle = self.lines.add(self.dwg.circle(*centered, radius)).fill('white').stroke("black", width="1pt")
+        if width > 0:
+            circle = self.lines.add(self.dwg.circle(*centered, radius)).fill('white').stroke(self.bgr2hexrgb(color), width=f"{width}pt")
+        else:
+            circle = self.lines.add(self.dwg.circle(*centered, radius)).fill(self.bgr2hexrgb(color)).stroke(self.bgr2hexrgb(color), width="1pt")
     
     def polylines(self, points, isClosed, color, thickness=1):
         tpoints = np.array([self.tp(p) for p in points])
