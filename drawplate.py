@@ -72,16 +72,22 @@ class SquareBoard(object):
         print(f"paper width: {self.pwidth:5.3f}mm, height: {self.pheight:5.3f}mm")
         self.pcx = self.pwidth/2
         self.pcy = self.pheight/2
-        print(f"paper center: {self.pcx:5.3f}, {self.pcy:5.3f}")
+        self.origin_p = lin.vector(self.pcx-(self.activemm/2), self.pcy-(self.activemm/2))
+        print(f"paper center: {self.pcx:5.3f}, {self.pcy:5.3f} origin_p: {self.origin_p}")
         self.dwg = svgwrite.Drawing(
             "plate.svg", 
             size=(f"{self.pwidth:5.3f}mm", f"{self.pheight:5.3f}mm"),
+            #size=(f"{self.pwidth:5.3f}", f"{self.pheight:5.3f}"),
             viewBox=(f"0 0 {self.pwidth:5.3f} {self.pheight:5.3f}"),
             debug=True
         )
-        self.lines = self.dwg.add(self.dwg.g(id='lines', stroke='black'))
-        paragraph = self.dwg.add(self.dwg.g(font_size=14))
-        paragraph.add(self.dwg.text("This is a Test", x=[10], y=[40, 45, 50, 55, 60]))
+        #self.lines = self.dwg.add(self.dwg.g(id='lines', stroke='black'))
+
+        
+        self.lines = self.dwg.add(self.dwg.g(id='lines'))
+        #self.lines.add(self.dwg.rect(insert=(0, 0), size=('100%', '100%'), rx=None, ry=None, fill='rgb(50,50,50)'))
+        #paragraph = self.dwg.add(self.dwg.g(font_size=14))
+        #paragraph.add(self.dwg.text("This is a Test", x=[10], y=[40, 45, 50, 55, 60]))
         #print(f"scale: {scale} red: {red}")
         cv2.namedWindow("output", cv2.WINDOW_NORMAL)
         cv2.resizeWindow("output", self.width, self.height) 
@@ -96,6 +102,10 @@ class SquareBoard(object):
         flipped = lin.vector(p[0], self.activemm-p[1]) 
         #print(f"p: {p}, flipped: {flipped}")
         return np.intp(flipped*self.scale + self.origin_n)
+    def tpsvg(self, p):
+        retval = lin.vector(p[0], p[1]) + self.origin_p
+        return retval
+        #lin.vector(self.pcx-(183/2), self.pcy-(183/2))
         
     def line(self, p1, p2, color, width=1):
         cv2.line(self.canvas, self.tp(p1), self.tp(p2), color, width)
@@ -105,22 +115,38 @@ class SquareBoard(object):
         
     def rectangle(self, p1, p2, color, width=1):
         cv2.rectangle(self.canvas, self.tp(p1), self.tp(p2), color, width)
+        p1v = lin.vector(*p1)
+        p2v = lin.vector(*p2)
+        insert = p1v 
+        size = p2v - p1v
+        print(f"insert: {insert} size: {size}")
+        # px means mm?  what the hell?
+        r = self.dwg.rect(insert=self.tpsvg(insert), size=(size[0]*svgwrite.px, size[1]*svgwrite.px))
+        if width > 0:
+            print("ring rect")
+            self.lines.add(r).fill('white', opacity=0.0).stroke(self.bgr2hexrgb(color), width=f"{width}px")
+        else:
+            print("filled rect")
+            self.lines.add(r).fill(self.bgr2hexrgb(color)).stroke(self.bgr2hexrgb(color), width="1pt")
     
     def bgr2hexrgb(self, bgr):
         b, g, r = bgr
         hexstring = f"#{r:02x}{g:02x}{b:02x}"
-        print(f"b: {b} g: {g} r: {r} hexstring: {hexstring}")
+        #print(f"b: {b} g: {g} r: {r} hexstring: {hexstring}")
         return hexstring
+    
         
     def circle(self, center, radius, color, width=1):
         print(f"circle c:{center}, self.center: {self.center}")
         cv2.circle(self.canvas, self.tp(center), int(radius*self.scale), color, width)
-        centered = lin.vector(center) + lin.vector(self.pcx-(183/2), self.pcy-(183/2))
+        centered = self.tpsvg(center) 
         print(f"centered: {centered}")
         if width > 0:
-            circle = self.lines.add(self.dwg.circle(*centered, radius)).fill('white').stroke(self.bgr2hexrgb(color), width=f"{width}pt")
+            print("ring circle")
+            circle = self.lines.add(self.dwg.circle(centered, radius)).fill('white', opacity=0.0).stroke(self.bgr2hexrgb(color), width=f"{width}px")
         else:
-            circle = self.lines.add(self.dwg.circle(*centered, radius)).fill(self.bgr2hexrgb(color)).stroke(self.bgr2hexrgb(color), width="1pt")
+            print("filled circle")
+            circle = self.lines.add(self.dwg.circle(centered, radius)).fill(self.bgr2hexrgb(color)).stroke(self.bgr2hexrgb(color), width="1px")
     
     def polylines(self, points, isClosed, color, thickness=1):
         tpoints = np.array([self.tp(p) for p in points])
