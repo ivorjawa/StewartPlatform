@@ -142,16 +142,24 @@ def rot_square(radius, angle):
     return np.array((ulp[:2], urp[:2], lrp[:2], llp[:2]))
 
 def galivate():
+    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
+    marker_size = 200
+    #marker_image = cv2.aruco.generateImageMarker(aruco_dict, marker_id, marker_size)
+    def gm(marker_id):
+        marker_image = cv2.aruco.generateImageMarker(aruco_dict, marker_id, marker_size)
+        return cv2.cvtColor(marker_image,cv2.COLOR_GRAY2RGB)
     grid_mm = 183
     grid = SquareBoard(800, 700, grid_mm)
     
-    red27 = cv2.imread("aruco/markers/aruco_red27_27.png")
-    green15 = cv2.imread("aruco/markers/aruco_green15_15.png")
-    blue03 = cv2.imread("aruco/markers/aruco_blue03_3.png")
-    arucos = [blue03, green15, red27]
+    #red27 = cv2.imread("aruco/markers/aruco_red27_27.png")
+    #green15 = cv2.imread("aruco/markers/aruco_green15_15.png")
+    #blue03 = cv2.imread("aruco/markers/aruco_blue03_3.png")
+    #arucos = [blue03, green15, red27]
     aruco_ids = [3, 15, 27]
-    aheight, awidth = red27.shape[:2]
-    print(f"red27.shape: {red27.shape}")
+    arucos = [gm(mid) for mid in aruco_ids]
+    aheight, awidth = arucos[0].shape[:2]
+    print(f"arucos[0].shape: {arucos[0].shape}")
+    #print(f"red27.shape: {red27.shape}")
     
     grid.crosshairs()
     grid.circle((0,0), 5, white)
@@ -180,7 +188,7 @@ def galivate():
     tsr = 13/2
     tsir = 10/2
     
-    for i in range(3):
+    for i in range(len(arucos)):
         tang = i*120+30
         tsc = rot2deg(tang, lin.vector(tscr, 0, 0))
         tpoints = rot_square(tsr, tang)+center+tsc
