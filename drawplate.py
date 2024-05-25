@@ -204,7 +204,7 @@ def new_6_marker_board():
         #grid.fillarc(center, icr, ocr, (i+1)*120+60, (i+1)*120+119.99, cyan)
         #grid.fillarc(center, icr, ocr, (i+1)*120+90, (i+1)*120+119.999, cyan)
         grid.fillarc(center, icr, ocr, (i)*120+7.5, (i)*120+52.5, white)
-        #grid.fillarc(center, icr, ocr, (i)*120+30, (i)*120+60, white)
+        grid.fillarc(center, icr, ocr, (i)*120+22.5, (i)*120+37.5, cyan)
         
     grid.circle(center, ocr, yellow) # outer circle
     grid.circle(center, icr, black) # inner circle
@@ -249,7 +249,7 @@ def new_6_marker_board():
         #print(f"aruco id {aid}, tang: {tang}")
         # rotate stamp in opposite direction
         grid.rotstamp(arucos[i], -tang, tsir*2, tsir*2, tsc+center)
-        grid.circle(np.intp(tpoints[0]), 1.5, green, 2) # upper left, not quite on fp rounding
+        grid.circle(tpoints[0], 1.5, red, 2) # upper left, not quite on fp roundin
         
     
     # checker board 
@@ -275,7 +275,7 @@ def new_6_marker_board():
             y1 = cbyo+y*cs
             x2 = cbxo+(x+1)*cs
             y2 = cbyo+(y+1)*cs
-            print(f"x: {x}, y: {y}, x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}")
+            #print(f"x: {x}, y: {y}, x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}")
             grid.rectangle((x1, y1), (x2, y2), black, -1)    
         for x in range(1, 7, 2):
             for y in range(1, 5, 2):
@@ -283,7 +283,7 @@ def new_6_marker_board():
                 y1 = cbyo+y*cs
                 x2 = cbxo+(x+1)*cs
                 y2 = cbyo+(y+1)*cs
-                print(f"x: {x}, y: {y}, x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}")
+                #print(f"x: {x}, y: {y}, x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}")
                 grid.rectangle((x1, y1), (x2, y2), black, -1)
     """
             uncorners = (corners-ora3)/scale #unscaled corners
