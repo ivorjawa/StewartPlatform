@@ -28,6 +28,7 @@ white = c(255, 255, 255)
 purple = c(255, 0, 255)
 blue = c(255, 0, 0)
 orange = c(0, 165, 255)
+black = c(0, 0, 0)
 
 def rot2deg(deg, pt):
     return lin.rotate(lin.zaxis, m.radians(deg), np.array(pt))[:2]
@@ -48,6 +49,7 @@ def axismax(axis, points):
 
 class SquareBoard(object):
     def __init__(self, sidesize=800, activesize=700, activemm=183):
+        self.activemm = activemm
         self.width = sidesize
         self.height = sidesize
         self.scale = activesize/activemm
@@ -70,7 +72,10 @@ class SquareBoard(object):
         cv2.line(self.canvas, np.intp((self.width/2, 0)), np.intp((self.width/2, self.height)), red, 1)
         
     def tp(self, p):
-        return np.intp(np.array(p)*self.scale + self.origin_n)
+        "translate point from mm to screen pixels, accounting for orientation"
+        flipped = lin.vector(p[0], self.activemm-p[1]) 
+        #print(f"p: {p}, flipped: {flipped}")
+        return np.intp(flipped*self.scale + self.origin_n)
         
     def line(self, p1, p2, color, width=1):
         cv2.line(self.canvas, self.tp(p1), self.tp(p2), color, width)
@@ -82,15 +87,41 @@ class SquareBoard(object):
         #print(f"circle c:{center}")
         cv2.circle(self.canvas, self.tp(center), int(radius*self.scale), color, width)
     
-    def fillPoly(self, points, color):
-        print(f"fillPoly points: {points}")
+    def polylines(self, points, isClosed, color, thickness=1):
         tpoints = np.array([self.tp(p) for p in points])
-        print(f"fillPoly tpoints: {tpoints}")
+        cv2.polylines(self.canvas, [tpoints], isClosed, color, thickness) 
+        
+    def fillPoly(self, points, color):
+        #print(f"fillPoly points: {points}")
+        tpoints = np.array([self.tp(p) for p in points])
+        #print(f"fillPoly tpoints: {tpoints}")
         
         cv2.fillPoly(self.canvas, [tpoints], color)
         
     def show(self):
         cv2.imshow('output', self.canvas)
+        
+    def rotstamp(self, image, angle, width, height, point):
+        px = point[0]
+        py = point[1]
+        print(f"image shape: {image.shape}, angle: {angle}, width: {width}, height: {height} point: ({px:4.1f}, {py:4.1f})")
+        #tpoint = point*self.scale + self.center_n
+        #flipped = lin.vector(p[0], self.activemm-p[1])
+        tpoint = self.tp(point)
+        
+        #aruco = arucos[i]
+        #aruco_s = cv2.resize(aruco, np.intp((tsir*2, tsir*2)))
+        #rotated = imutils.rotate_bound(aruco_s, tang+90)        
+        
+        image_s = cv2.resize(image, np.intp((width*self.scale, height*self.scale)))
+        rotated = imutils.rotate_bound(image_s, angle)
+        asv = lin.vector(*rotated.shape[:2])/2 # offset by half
+        targo = tpoint - asv
+        targo = np.intp(targo)
+        print(f"transcaled point: ({tpoint[0]:4.1f}, {tpoint[1]:4.1f}) rotated shape: {rotated.shape}, asv: {asv} targo: {targo}")
+        x_offset = targo[0]
+        y_offset = targo[1]
+        self.canvas[y_offset:y_offset+rotated.shape[0], x_offset:x_offset+rotated.shape[1]] = rotated
         
         
         
@@ -117,13 +148,13 @@ def galivate():
     red27 = cv2.imread("aruco/markers/aruco_red27_27.png")
     green15 = cv2.imread("aruco/markers/aruco_green15_15.png")
     blue03 = cv2.imread("aruco/markers/aruco_blue03_3.png")
-    arucos = [red27, green15, blue03]
-    aruco_ids = [27, 15, 3]
+    arucos = [blue03, green15, red27]
+    aruco_ids = [3, 15, 27]
     aheight, awidth = red27.shape[:2]
     print(f"red27.shape: {red27.shape}")
     
     grid.crosshairs()
-    
+    grid.circle((0,0), 5, white)
     center = np.array((grid_mm/2, grid_mm/2))
     grid.rectangle((0,0), (grid_mm, grid_mm), yellow)
     ocr = 166/2
@@ -150,10 +181,22 @@ def galivate():
     tsir = 10/2
     
     for i in range(3):
-        tang = i*120
-        tsc = rot2deg(tang, lin.vector(ccr, 0, 0))
+        tang = i*120+30
+        tsc = rot2deg(tang, lin.vector(tscr, 0, 0))
         tpoints = rot_square(tsr, tang)+center+tsc
-        grid.fillPoly(tpoints, white)
+        #grid.fillPoly(tpoints, white) 
+        grid.fillPoly(tpoints, black)        
+               
+        #tpoints = rot_square(tsir, tang)+center+tsc
+        #grid.fillPoly(tpoints, black)
+        
+        tpoints = rot_square(tsr, tang)+center+tsc
+        grid.polylines(tpoints, True, white,5)
+        
+        #image, angle, width, height, point
+        print(f"aruco id {aruco_ids[i]}, tang: {tang}")
+        # rotate stamp in opposite direction
+        grid.rotstamp(arucos[i], -tang, tsir*2, tsir*2, tsc+center)
             
     grid.show()
 
