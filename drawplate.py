@@ -158,8 +158,20 @@ def galivate():
     #green15 = cv2.imread("aruco/markers/aruco_green15_15.png")
     #blue03 = cv2.imread("aruco/markers/aruco_blue03_3.png")
     #arucos = [blue03, green15, red27]
-    aruco_ids = [3, 15, 27]
-    arucos = [gm(mid) for mid in aruco_ids]
+    ang_dict = {
+        15: 1,
+        #30: 3,
+        45: 4,
+        135: 13,
+        #150: 15,
+        165: 16,
+        255: 25,
+        #270: 27,
+        285: 38,
+    }
+    #aruco_ids = [3, 15, 27]
+    aruco_angs = ang_dict.keys() # insertion order is guaranteed in python 3.7+
+    arucos = [gm(ang_dict[ang]) for ang in aruco_angs]
     aheight, awidth = arucos[0].shape[:2]
     print(f"arucos[0].shape: {arucos[0].shape}")
     #print(f"red27.shape: {red27.shape}")
@@ -191,8 +203,10 @@ def galivate():
     tsr = 13/2
     tsir = 10/2
     
-    for i in range(len(arucos)):
-        tang = i*120+30
+    for (i, tang) in enumerate(aruco_angs):
+        #tang = i*120+30
+        aid = ang_dict[tang]
+        #tang = ang_dict[aid]
         tsc = rot2deg(tang, lin.vector(tscr, 0, 0))
         tpoints = rot_square(tsr, tang)+center+tsc
         grid.fillPoly(tpoints, white) 
@@ -205,7 +219,7 @@ def galivate():
         #grid.polylines(tpoints, True, white,5)
         
         #image, angle, width, height, point
-        print(f"aruco id {aruco_ids[i]}, tang: {tang}")
+        print(f"aruco id {aid}, tang: {tang}")
         # rotate stamp in opposite direction
         grid.rotstamp(arucos[i], -tang, tsir*2, tsir*2, tsc+center)
             
