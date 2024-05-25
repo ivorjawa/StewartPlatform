@@ -29,6 +29,8 @@ purple = c(255, 0, 255)
 blue = c(255, 0, 0)
 orange = c(0, 165, 255)
 black = c(0, 0, 0)
+cyan = c(255, 255, 0)
+magenta = c(255, 0, 255)
 
 def rot2deg(deg, pt):
     return lin.rotate(lin.zaxis, m.radians(deg), np.array(pt))[:2]
@@ -98,21 +100,41 @@ class SquareBoard(object):
         
         cv2.fillPoly(self.canvas, [tpoints], color)
         
+    def fillarc(self, centerpt, inner_r, outer_r, start_angle, end_angle, color, segs=30):
+        start_angle = start_angle % 360
+        end_angle = end_angle % 360
+        min_angle = m.radians(min([start_angle, end_angle]))
+        max_angle = m.radians(max([start_angle, end_angle]))
+        delta = max_angle - min_angle
+        da = delta/segs
+        #print(f"center: {centerpt}, inner_r: {inner_r} outer_r: {outer_r} start_angle: {start_angle} end_angle: {end_angle}")
+        #print(f"min_angle: {min_angle}, max_angle: {max_angle}, delta: {delta}, da: {da}")
+        points = []
+        for i in range(segs+1):
+            angle = min_angle + da*i
+            x = inner_r * m.cos(angle)
+            y = inner_r * m.sin(angle)
+            #print(f"i: {i} angle: {m.degrees(angle):4.3f} ({x:4.3f}, {y:4.3f})")
+            points.append(lin.vector(x,y)+centerpt)
+        for i in range(segs+1):
+            #i = (segs)-i
+            angle = max_angle - da*i
+            x = outer_r * m.cos(angle)
+            y = outer_r * m.sin(angle)
+            #print(f"i: {i} angle: {m.degrees(angle):4.3f} ({x:4.3f}, {y:4.3f})")
+            points.append(lin.vector(x,y)+centerpt)
+        #print(f"points: {points}")    
+        self.fillPoly(points, color)
+        
+            
     def show(self):
         cv2.imshow('output', self.canvas)
         
     def rotstamp(self, image, angle, width, height, point):
         px = point[0]
         py = point[1]
-        print(f"image shape: {image.shape}, angle: {angle}, width: {width}, height: {height} point: ({px:4.1f}, {py:4.1f})")
-        #tpoint = point*self.scale + self.center_n
-        #flipped = lin.vector(p[0], self.activemm-p[1])
+        #print(f"image shape: {image.shape}, angle: {angle}, width: {width}, height: {height} point: ({px:4.1f}, {py:4.1f})")
         tpoint = self.tp(point)
-        
-        #aruco = arucos[i]
-        #aruco_s = cv2.resize(aruco, np.intp((tsir*2, tsir*2)))
-        #rotated = imutils.rotate_bound(aruco_s, tang+90)        
-        
         
         image_s = cv2.resize(image, np.intp((width*self.scale, height*self.scale)))
         rotated = imutils.rotate_bound(image_s, angle)
@@ -121,7 +143,7 @@ class SquareBoard(object):
         asv = lin.vector(*rotated.shape[:2])/2 # offset by half
         targo = tpoint - asv
         targo = np.intp(targo)
-        print(f"transcaled point: ({tpoint[0]:4.1f}, {tpoint[1]:4.1f}) rotated shape: {rotated.shape}, asv: {asv} targo: {targo}")
+        #print(f"transcaled point: ({tpoint[0]:4.1f}, {tpoint[1]:4.1f}) rotated shape: {rotated.shape}, asv: {asv} targo: {targo}")
         x_offset = targo[0]
         y_offset = targo[1]
         self.canvas[y_offset:y_offset+rotated.shape[0], x_offset:x_offset+rotated.shape[1]] |= rotated
@@ -144,20 +166,15 @@ def rot_square(radius, angle):
     
     return np.array((ulp[:2], urp[:2], lrp[:2], llp[:2]))
 
-def galivate():
+def new_6_marker_board():
     aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
-    marker_size = 200
-    #marker_image = cv2.aruco.generateImageMarker(aruco_dict, marker_id, marker_size)
     def gm(marker_id):
+        marker_size = 200
         marker_image = cv2.aruco.generateImageMarker(aruco_dict, marker_id, marker_size)
         return cv2.cvtColor(marker_image,cv2.COLOR_GRAY2RGB)
     grid_mm = 183
     grid = SquareBoard(800, 700, grid_mm)
     
-    #red27 = cv2.imread("aruco/markers/aruco_red27_27.png")
-    #green15 = cv2.imread("aruco/markers/aruco_green15_15.png")
-    #blue03 = cv2.imread("aruco/markers/aruco_blue03_3.png")
-    #arucos = [blue03, green15, red27]
     ang_dict = {
         15: 1,
         #30: 3,
@@ -169,32 +186,41 @@ def galivate():
         #270: 27,
         285: 38,
     }
-    #aruco_ids = [3, 15, 27]
     aruco_angs = ang_dict.keys() # insertion order is guaranteed in python 3.7+
     arucos = [gm(ang_dict[ang]) for ang in aruco_angs]
     aheight, awidth = arucos[0].shape[:2]
     print(f"arucos[0].shape: {arucos[0].shape}")
-    #print(f"red27.shape: {red27.shape}")
     
-    grid.crosshairs()
-    grid.circle((0,0), 5, white)
+    grid.circle((0,0), 5, white) # origin
     center = np.array((grid_mm/2, grid_mm/2))
     grid.rectangle((0,0), (grid_mm, grid_mm), yellow)
-    ocr = 166/2
-    grid.circle(center, ocr, yellow) # outer circle
-    icr = 138/2
-    grid.circle(center, icr, yellow) # inner circle
     
-    ccr = 159.3/2
+    ocr = 166/2 # outer circle
+    grid.circle(center, ocr, cyan, -1) # outer circle
+    
+    icr = 138/2 # inner circle
+    for i in range(3):
+        #grid.fillarc(center, icr, ocr, (i+1)*120+60, (i+1)*120+119.99, cyan)
+        #grid.fillarc(center, icr, ocr, (i+1)*120+90, (i+1)*120+119.999, cyan)
+        grid.fillarc(center, icr, ocr, (i)*120+7.5, (i)*120+52.5, white)
+        #grid.fillarc(center, icr, ocr, (i)*120+30, (i)*120+60, white)
+        
+    grid.circle(center, ocr, yellow) # outer circle
+    grid.circle(center, icr, black) # inner circle
+        
+    
+    ccr = 159.3/2 # center of lego pin holes
     grid.circle(center, ccr, red)
     
     hole_rad = 4.77/2
     hole_v = lin.vector(ccr, 0, 0)
     for i in range(4): # secures big paper square to platform
         hvr = rot2deg(i*90, hole_v)
+        grid.circle(hvr+center, hole_rad, black, -1)       
         grid.circle(hvr+center, hole_rad, green)       
     for i in range(3): # secures ring to gear
         hvr = rot2deg(i*120+30, hole_v)
+        grid.circle(hvr+center, hole_rad, black, -1)
         grid.circle(hvr+center, hole_rad, red)
     
     tscr = (ocr - icr)/2 + icr # target square circle radius
@@ -203,28 +229,59 @@ def galivate():
     tsr = 13/2
     tsir = 10/2
     
+    corners = []
     for (i, tang) in enumerate(aruco_angs):
-        #tang = i*120+30
         aid = ang_dict[tang]
-        #tang = ang_dict[aid]
         tsc = rot2deg(tang, lin.vector(tscr, 0, 0))
         tpoints = rot_square(tsr, tang)+center+tsc
         grid.fillPoly(tpoints, white) 
         #grid.fillPoly(tpoints, black)        
-               
-        tpoints = rot_square(tsir, tang)+center+tsc
+        
+        inner_square = rot_square(tsir, tang)  
+        corners.append(inner_square)   
+        tpoints = inner_square+center+tsc
         grid.fillPoly(tpoints, black)
         
         #tpoints = rot_square(tsr, tang)+center+tsc
         #grid.polylines(tpoints, True, white,5)
         
         #image, angle, width, height, point
-        print(f"aruco id {aid}, tang: {tang}")
+        #print(f"aruco id {aid}, tang: {tang}")
         # rotate stamp in opposite direction
         grid.rotstamp(arucos[i], -tang, tsir*2, tsir*2, tsc+center)
-        grid.circle(np.intp(tpoints[0]), 1.5, green, 2) # upper left
+        grid.circle(np.intp(tpoints[0]), 1.5, green, 2) # upper left, not quite on fp rounding
         
-            
+    
+    # checker board 
+    xc = grid_mm/2
+    yc = grid_mm/2
+    cbw = (105/2)
+    cbh = (75/2)
+    cs = (15)
+    cbxo = xc-cbw
+    cbyo = yc-cbh
+    cbxm = xc+cbw
+    cbym = yc+cbh
+    #cv2.rectangle(canvas, np.intp((cbxo, cbyo)), np.intp((cbxm, cbym)), green)
+    
+    for i in range(8):
+        grid.line(np.intp((cbxo+(i*cs), cbyo)), np.intp((cbxo+i*cs, cbym)), black)
+    for i in range(6):
+        grid.line(np.intp((cbxo, cbyo+(i*cs))), np.intp((cbxm, cbyo+i*cs)), black)
+    
+    """
+            uncorners = (corners-ora3)/scale #unscaled corners
+            #uncorners = np.array([(x-ora)/scale for x in corners])
+            #print(f"Aruco id: {aruco_ids[i]} corners: {corners}\nuncorners: {uncorners}")
+            print(f"Aruco id: {aruco_ids[i]} uncorners:\n{uncorners}")
+            out_corners.append(uncorners)
+        corner_info = {"ids": np.array(aruco_ids), "corners": np.array(out_corners)}
+        pfilename = "corner_info.pickle"
+        with open(pfilename, "wb") as f:
+            pickle.dump(corner_info, f)
+    """  
+    grid.crosshairs()
+              
     grid.show()
 
     while(1):
@@ -232,7 +289,7 @@ def galivate():
             break
         
                    
-def galvatron():
+def old_3_marker_board():
     width = 800
     height = 800
     scale = 700/183
@@ -411,5 +468,5 @@ def galvatron():
         
 if __name__ == "__main__":
     print()
-    #galvatron()     
-    galivate() 
+    #old_3_marker_board()     
+    new_6_marker_board() 
