@@ -222,6 +222,8 @@ def galivate():
         print(f"aruco id {aid}, tang: {tang}")
         # rotate stamp in opposite direction
         grid.rotstamp(arucos[i], -tang, tsir*2, tsir*2, tsc+center)
+        grid.circle(np.intp(tpoints[0]), 1.5, green, 2) # upper left
+        
             
     grid.show()
 
