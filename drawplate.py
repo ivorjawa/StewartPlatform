@@ -113,15 +113,18 @@ class SquareBoard(object):
         #aruco_s = cv2.resize(aruco, np.intp((tsir*2, tsir*2)))
         #rotated = imutils.rotate_bound(aruco_s, tang+90)        
         
+        
         image_s = cv2.resize(image, np.intp((width*self.scale, height*self.scale)))
         rotated = imutils.rotate_bound(image_s, angle)
+        #rotated = cv2.bitwise_not(rotated)
+
         asv = lin.vector(*rotated.shape[:2])/2 # offset by half
         targo = tpoint - asv
         targo = np.intp(targo)
         print(f"transcaled point: ({tpoint[0]:4.1f}, {tpoint[1]:4.1f}) rotated shape: {rotated.shape}, asv: {asv} targo: {targo}")
         x_offset = targo[0]
         y_offset = targo[1]
-        self.canvas[y_offset:y_offset+rotated.shape[0], x_offset:x_offset+rotated.shape[1]] = rotated
+        self.canvas[y_offset:y_offset+rotated.shape[0], x_offset:x_offset+rotated.shape[1]] |= rotated
         
         
         
@@ -192,14 +195,14 @@ def galivate():
         tang = i*120+30
         tsc = rot2deg(tang, lin.vector(tscr, 0, 0))
         tpoints = rot_square(tsr, tang)+center+tsc
-        #grid.fillPoly(tpoints, white) 
-        grid.fillPoly(tpoints, black)        
+        grid.fillPoly(tpoints, white) 
+        #grid.fillPoly(tpoints, black)        
                
-        #tpoints = rot_square(tsir, tang)+center+tsc
-        #grid.fillPoly(tpoints, black)
+        tpoints = rot_square(tsir, tang)+center+tsc
+        grid.fillPoly(tpoints, black)
         
-        tpoints = rot_square(tsr, tang)+center+tsc
-        grid.polylines(tpoints, True, white,5)
+        #tpoints = rot_square(tsr, tang)+center+tsc
+        #grid.polylines(tpoints, True, white,5)
         
         #image, angle, width, height, point
         print(f"aruco id {aruco_ids[i]}, tang: {tang}")
