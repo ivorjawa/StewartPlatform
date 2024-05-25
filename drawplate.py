@@ -68,7 +68,7 @@ class SquareBoard(object):
         cv2.namedWindow("output", cv2.WINDOW_NORMAL)
         cv2.resizeWindow("output", self.width, self.height) 
         self.canvas = np.zeros((self.height, self.width, 3), np.uint8)
-        
+        cv2.rectangle(self.canvas, (0,0), (self.width, self.height), white, -1)
     def crosshairs(self):
         cv2.line(self.canvas, np.intp((0, self.height/2)), np.intp((self.width, self.height/2)), red, 1)
         cv2.line(self.canvas, np.intp((self.width/2, 0)), np.intp((self.width/2, self.height)), red, 1)
@@ -193,6 +193,7 @@ def new_6_marker_board():
     
     grid.circle((0,0), 5, white) # origin
     center = np.array((grid_mm/2, grid_mm/2))
+    grid.rectangle((0,0), (grid_mm, grid_mm), black, -1)
     grid.rectangle((0,0), (grid_mm, grid_mm), yellow)
     
     ocr = 166/2 # outer circle
