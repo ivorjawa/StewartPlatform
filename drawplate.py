@@ -246,7 +246,6 @@ def new_6_marker_board():
         #tpoints = rot_square(tsr, tang)+center+tsc
         #grid.polylines(tpoints, True, white,5)
         
-        #image, angle, width, height, point
         #print(f"aruco id {aid}, tang: {tang}")
         # rotate stamp in opposite direction
         grid.rotstamp(arucos[i], -tang, tsir*2, tsir*2, tsc+center)
@@ -265,11 +264,27 @@ def new_6_marker_board():
     cbym = yc+cbh
     #cv2.rectangle(canvas, np.intp((cbxo, cbyo)), np.intp((cbxm, cbym)), green)
     
-    for i in range(8):
-        grid.line(np.intp((cbxo+(i*cs), cbyo)), np.intp((cbxo+i*cs, cbym)), black)
-    for i in range(6):
-        grid.line(np.intp((cbxo, cbyo+(i*cs))), np.intp((cbxm, cbyo+i*cs)), black)
-    
+    #for i in range(8):
+    #    grid.line(np.intp((cbxo+(i*cs), cbyo)), np.intp((cbxo+i*cs, cbym)), black)
+    #for i in range(6):
+    #    grid.line(np.intp((cbxo, cbyo+(i*cs))), np.intp((cbxm, cbyo+i*cs)), black)
+
+    for x in range(0, 8, 2):
+        for y in range(0, 6, 2):
+            x1 = cbxo+x*cs
+            y1 = cbyo+y*cs
+            x2 = cbxo+(x+1)*cs
+            y2 = cbyo+(y+1)*cs
+            print(f"x: {x}, y: {y}, x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}")
+            grid.rectangle((x1, y1), (x2, y2), black, -1)    
+        for x in range(1, 7, 2):
+            for y in range(1, 5, 2):
+                x1 = cbxo+x*cs
+                y1 = cbyo+y*cs
+                x2 = cbxo+(x+1)*cs
+                y2 = cbyo+(y+1)*cs
+                print(f"x: {x}, y: {y}, x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}")
+                grid.rectangle((x1, y1), (x2, y2), black, -1)
     """
             uncorners = (corners-ora3)/scale #unscaled corners
             #uncorners = np.array([(x-ora)/scale for x in corners])
