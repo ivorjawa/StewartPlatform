@@ -11,6 +11,8 @@ import numpy as np
 import cv2
 import imutils
 
+import svgwrite
+
 import linear as lin
 
 tags = {
@@ -64,6 +66,22 @@ class SquareBoard(object):
         self.center = (xc, yc)
         self.origin_n = np.array(self.origin)
         self.center_n = np.array(self.center)
+        
+        self.pheight = 11*25.4 #paper height, mm
+        self.pwidth = 8.5*25.4 #paper width, mm
+        print(f"paper width: {self.pwidth:5.3f}mm, height: {self.pheight:5.3f}mm")
+        self.pcx = self.pwidth/2
+        self.pcy = self.pheight/2
+        print(f"paper center: {self.pcx:5.3f}, {self.pcy:5.3f}")
+        self.dwg = svgwrite.Drawing(
+            "plate.svg", 
+            size=(f"{self.pwidth:5.3f}mm", f"{self.pheight:5.3f}mm"),
+            viewBox=(f"0 0 {self.pwidth:5.3f} {self.pheight:5.3f}"),
+            debug=True
+        )
+        self.lines = self.dwg.add(self.dwg.g(id='lines', stroke='black'))
+        paragraph = self.dwg.add(self.dwg.g(font_size=14))
+        paragraph.add(self.dwg.text("This is a Test", x=[10], y=[40, 45, 50, 55, 60]))
         #print(f"scale: {scale} red: {red}")
         cv2.namedWindow("output", cv2.WINDOW_NORMAL)
         cv2.resizeWindow("output", self.width, self.height) 
@@ -81,13 +99,19 @@ class SquareBoard(object):
         
     def line(self, p1, p2, color, width=1):
         cv2.line(self.canvas, self.tp(p1), self.tp(p2), color, width)
+        print(p1, p2)
+        self.lines.add(self.dwg.line(start=f"{p1}mm", end=f"{p2}mm"))
+        print("also", p1, p2)
         
     def rectangle(self, p1, p2, color, width=1):
         cv2.rectangle(self.canvas, self.tp(p1), self.tp(p2), color, width)
         
     def circle(self, center, radius, color, width=1):
-        #print(f"circle c:{center}")
+        print(f"circle c:{center}, self.center: {self.center}")
         cv2.circle(self.canvas, self.tp(center), int(radius*self.scale), color, width)
+        centered = lin.vector(center) + lin.vector(self.pcx-(183/2), self.pcy-(183/2))
+        print(f"centered: {centered}")
+        circle = self.lines.add(self.dwg.circle(*centered, radius)).fill('white').stroke("black", width="1pt")
     
     def polylines(self, points, isClosed, color, thickness=1):
         tpoints = np.array([self.tp(p) for p in points])
@@ -128,6 +152,9 @@ class SquareBoard(object):
         
             
     def show(self):
+        self.dwg.save(pretty=True)
+        #with open('plate.svg', 'w', encoding='utf-8') as f:
+        #    self.dwg.write(f, pretty=True)
         cv2.imshow('output', self.canvas)
         
     def rotstamp(self, image, angle, width, height, point):
