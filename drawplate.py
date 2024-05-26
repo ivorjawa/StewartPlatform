@@ -89,7 +89,10 @@ class SquareBoard(object):
         #self.lines = self.dwg.add(self.dwg.g(id='lines', stroke='black'))
 
         
-        self.lines = self.dwg.add(self.dwg.g(id='lines'))
+        #self.lines = self.dwg.add(self.dwg.g(id='lines'))
+        self.print_layer = self.dwg.add(self.dwg.g(id='print_layer'))
+        self.cut_layer = self.dwg.add(self.dwg.g(id='cut_layer'))
+        self.debug_layer = self.dwg.add(self.dwg.g(id='debug_layer'))
         #self.lines.add(self.dwg.rect(insert=(0, 0), size=('100%', '100%'), rx=None, ry=None, fill='rgb(50,50,50)'))
         #paragraph = self.dwg.add(self.dwg.g(font_size=14))
         #paragraph.add(self.dwg.text("This is a Test", x=[10], y=[40, 45, 50, 55, 60]))
@@ -108,6 +111,7 @@ class SquareBoard(object):
         #print(f"p: {p}, flipped: {flipped}")
         return np.intp(flipped*self.scale + self.origin_n)
     def tpsvg(self, p):
+        # FIXME output is mirrored!
         #flipped = lin.vector(p[0], self.pheight-p[1]) 
         #flipped = lin.vector(p[0], self.activemm-p[1]) 
         #retval = flipped + self.origin_p
@@ -115,13 +119,17 @@ class SquareBoard(object):
         return retval
         #lin.vector(self.pcx-(183/2), self.pcy-(183/2))
         
-    def line(self, p1, p2, color, width=1):
+    def line(self, p1, p2, color, width=1, layer=None):
+        if layer is None:
+            layer=self.print_layer
         cv2.line(self.canvas, self.tp(p1), self.tp(p2), color, width)
         print(p1, p2)
-        self.lines.add(self.dwg.line(start=f"{p1}mm", end=f"{p2}mm"))
+        layer.add(self.dwg.line(start=f"{p1}mm", end=f"{p2}mm"))
         print("also", p1, p2)
         
-    def rectangle(self, p1, p2, color, width=1):
+    def rectangle(self, p1, p2, color, width=1, layer=None):
+        if layer is None:
+            layer=self.print_layer
         cv2.rectangle(self.canvas, self.tp(p1), self.tp(p2), color, width)
         p1v = lin.vector(*p1)
         p2v = lin.vector(*p2)
@@ -132,11 +140,14 @@ class SquareBoard(object):
         r = self.dwg.rect(insert=self.tpsvg(insert), size=(size[0]*svgwrite.px, size[1]*svgwrite.px))
         if width > 0:
             print("ring rect")
-            self.lines.add(r).fill('white', opacity=0.0).stroke(self.bgr2hexrgb(color), width=f"{width*.1}px")
+            r.fill('white', opacity=0.0)
+            r.stroke(self.bgr2hexrgb(color), width=f"{width*.1}px")
         else:
             print("filled rect")
-            self.lines.add(r).fill(self.bgr2hexrgb(color)).stroke(self.bgr2hexrgb(color), width="0.2px")
-    
+            r.fill(self.bgr2hexrgb(color))
+            r.stroke(self.bgr2hexrgb(color), width="0.2px")
+        layer.add(r)
+        
     def bgr2hexrgb(self, bgr):
         b, g, r = bgr
         hexstring = f"#{r:02x}{g:02x}{b:02x}"
@@ -144,30 +155,47 @@ class SquareBoard(object):
         return hexstring
     
         
-    def circle(self, center, radius, color, width=1):
+    def circle(self, center, radius, color, width=1, layer=None):
+        if layer is None:
+            layer=self.print_layer
         print(f"circle c:{center}, self.center: {self.center}")
         cv2.circle(self.canvas, self.tp(center), int(radius*self.scale), color, width)
+        
         centered = self.tpsvg(center) 
         print(f"centered: {centered}")
+        circle = self.dwg.circle(centered, radius)
         if width > 0:
             print("ring circle")
-            circle = self.lines.add(self.dwg.circle(centered, radius)).fill('white', opacity=0.0).stroke(self.bgr2hexrgb(color), width=f"{width*0.1}px")
+            circle.fill('white', opacity=0.0)
+            circle.stroke(self.bgr2hexrgb(color), width=f"{width*0.3}px")
         else:
             print("filled circle")
-            circle = self.lines.add(self.dwg.circle(centered, radius)).fill(self.bgr2hexrgb(color)).stroke(self.bgr2hexrgb(color), width="0.2px")
+            circle.fill(self.bgr2hexrgb(color))
+            circle.stroke(self.bgr2hexrgb(color), width="0.3px")
+        layer.add(circle)
+        
     
     def polylines(self, points, isClosed, color, thickness=1):
         tpoints = np.array([self.tp(p) for p in points])
         cv2.polylines(self.canvas, [tpoints], isClosed, color, thickness) 
         
-    def fillPoly(self, points, color):
+    def fillPoly(self, points, color, layer=None):
+        if layer is None:
+            layer=self.print_layer
         #print(f"fillPoly points: {points}")
         tpoints = np.array([self.tp(p) for p in points])
         #print(f"fillPoly tpoints: {tpoints}")
         
         cv2.fillPoly(self.canvas, [tpoints], color)
         
-    def fillarc(self, centerpt, inner_r, outer_r, start_angle, end_angle, color, segs=30):
+        ppoints = np.array([self.tpsvg(p) for p in points])
+        poly = self.dwg.polygon(ppoints)
+        poly.fill(self.bgr2hexrgb(color))
+        layer.add(poly)
+        
+    def fillarc(self, centerpt, inner_r, outer_r, start_angle, end_angle, color, segs=30, layer=None):
+        if layer is None:
+            layer=self.print_layer
         start_angle = start_angle % 360
         end_angle = end_angle % 360
         min_angle = m.radians(min([start_angle, end_angle]))
@@ -191,7 +219,7 @@ class SquareBoard(object):
             #print(f"i: {i} angle: {m.degrees(angle):4.3f} ({x:4.3f}, {y:4.3f})")
             points.append(lin.vector(x,y)+centerpt)
         #print(f"points: {points}")    
-        self.fillPoly(points, color)
+        self.fillPoly(points, color, layer)
         
             
     def show(self):
@@ -202,7 +230,9 @@ class SquareBoard(object):
         #    self.dwg.write(f, pretty=True)
         cv2.imshow('output', self.canvas)
         
-    def rotstamp(self, image, angle, width, height, point):
+    def rotstamp(self, image, angle, width, height, point, layer=None):
+        if layer is None:
+            layer=self.print_layer
         #img_encode = cv.imencode('.png', img)[1]
         # Converting the image into numpy array 
         #data_encode = np.array(img_encode) 
@@ -224,7 +254,7 @@ class SquareBoard(object):
         #ximage.scale(sx=10, sy=10)
         #ximage.translate(*point)
         ximage.rotate(-angle, center=ppoint)
-        self.dwg.add(ximage)
+        layer.add(ximage)
         
         px = point[0]
         py = point[1]
@@ -286,41 +316,41 @@ def new_6_marker_board():
     aheight, awidth = arucos[0].shape[:2]
     print(f"arucos[0].shape: {arucos[0].shape}")
     
-    grid.circle((0,0), 5, white) # origin
+    grid.circle((0,0), 5, white, layer=grid.debug_layer) # origin
     center = np.array((grid_mm/2, grid_mm/2))
-    grid.rectangle((0,0), (grid_mm, grid_mm), black, -1)
-    grid.rectangle((0,0), (grid_mm, grid_mm), yellow)
+    grid.rectangle((0,0), (grid_mm, grid_mm), black, -1, layer=grid.print_layer)
+    grid.rectangle((0,0), (grid_mm, grid_mm), yellow, layer=grid.cut_layer)
     
     ocr = 166/2 # outer circle
-    grid.circle(center, ocr, cyan, -1) # outer circle
+    grid.circle(center, ocr, cyan, -1, layer=grid.print_layer) # outer circle
     
     icr = 138/2 # inner circle
     for i in range(3):
         #grid.fillarc(center, icr, ocr, (i+1)*120+60, (i+1)*120+119.99, cyan)
         #grid.fillarc(center, icr, ocr, (i+1)*120+90, (i+1)*120+119.999, cyan)
-        grid.fillarc(center, icr, ocr, (i)*120+7.5, (i)*120+52.5, white)
-        grid.fillarc(center, icr, ocr, (i)*120+22.5, (i)*120+37.5, cyan)
+        grid.fillarc(center, icr, ocr, (i)*120+7.5, (i)*120+52.5, white, layer=grid.print_layer)
+        grid.fillarc(center, icr, ocr, (i)*120+22.5, (i)*120+37.5, cyan, layer=grid.print_layer)
         
-    grid.circle(center, ocr, yellow) # outer circle
-    grid.circle(center, icr, black) # inner circle
+    grid.circle(center, ocr, yellow, layer=grid.cut_layer) # outer circle
+    grid.circle(center, icr, black, layer=grid.cut_layer) # inner circle
         
     
     ccr = 159.3/2 # center of lego pin holes
-    grid.circle(center, ccr, red)
+    grid.circle(center, ccr, red, layer=grid.debug_layer)
     
     hole_rad = 4.77/2
     hole_v = lin.vector(ccr, 0, 0)
     for i in range(4): # secures big paper square to platform
         hvr = rot2deg(i*90, hole_v)
-        grid.circle(hvr+center, hole_rad, black, -1)       
-        grid.circle(hvr+center, hole_rad, green)       
+        grid.circle(hvr+center, hole_rad, black, -1, layer=grid.print_layer)       
+        grid.circle(hvr+center, hole_rad, green, layer=grid.cut_layer)       
     for i in range(3): # secures ring to gear
         hvr = rot2deg(i*120+30, hole_v)
-        grid.circle(hvr+center, hole_rad, black, -1)
-        grid.circle(hvr+center, hole_rad, red)
+        grid.circle(hvr+center, hole_rad, black, -1, layer=grid.print_layer)
+        grid.circle(hvr+center, hole_rad, red, layer=grid.cut_layer)
     
     tscr = (ocr - icr)/2 + icr # target square circle radius
-    grid.circle(center, tscr, white)
+    grid.circle(center, tscr, white, layer=grid.debug_layer)
     
     tsr = 13/2
     tsir = 10/2
@@ -330,21 +360,21 @@ def new_6_marker_board():
         aid = ang_dict[tang]
         tsc = rot2deg(tang, lin.vector(tscr, 0, 0))
         tpoints = rot_square(tsr, tang)+center+tsc
-        grid.fillPoly(tpoints, white) 
+        grid.fillPoly(tpoints, white, layer=grid.print_layer) 
         #grid.fillPoly(tpoints, black)        
         
         inner_square = rot_square(tsir, tang)  
         corners.append(inner_square)   
         tpoints = inner_square+center+tsc
-        grid.fillPoly(tpoints, black)
+        grid.fillPoly(tpoints, black, layer=grid.print_layer)
         
         #tpoints = rot_square(tsr, tang)+center+tsc
         #grid.polylines(tpoints, True, white,5)
         
         #print(f"aruco id {aid}, tang: {tang}")
         # rotate stamp in opposite direction
-        grid.rotstamp(arucos[i], -tang, tsir*2, tsir*2, tsc+center)
-        grid.circle(tpoints[0], 1.5, red, 2) # upper left, not quite on fp roundin
+        grid.rotstamp(arucos[i], -tang, tsir*2, tsir*2, tsc+center, layer=grid.print_layer)
+        grid.circle(tpoints[0], 1.5, red, 2, layer=grid.debug_layer) # upper left
         
     
     # checker board 
@@ -371,7 +401,7 @@ def new_6_marker_board():
             x2 = cbxo+(x+1)*cs
             y2 = cbyo+(y+1)*cs
             #print(f"x: {x}, y: {y}, x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}")
-            grid.rectangle((x1, y1), (x2, y2), black, -1)    
+            grid.rectangle((x1, y1), (x2, y2), black, -1, layer=grid.print_layer)    
         for x in range(1, 7, 2):
             for y in range(1, 5, 2):
                 x1 = cbxo+x*cs
@@ -379,7 +409,7 @@ def new_6_marker_board():
                 x2 = cbxo+(x+1)*cs
                 y2 = cbyo+(y+1)*cs
                 #print(f"x: {x}, y: {y}, x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}")
-                grid.rectangle((x1, y1), (x2, y2), black, -1)
+                grid.rectangle((x1, y1), (x2, y2), black, -1, layer=grid.print_layer)
     """
             uncorners = (corners-ora3)/scale #unscaled corners
             #uncorners = np.array([(x-ora)/scale for x in corners])
