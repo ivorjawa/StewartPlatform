@@ -105,6 +105,9 @@ class SquareBoard(object):
         #print(f"p: {p}, flipped: {flipped}")
         return np.intp(flipped*self.scale + self.origin_n)
     def tpsvg(self, p):
+        #flipped = lin.vector(p[0], self.pheight-p[1]) 
+        #flipped = lin.vector(p[0], self.activemm-p[1]) 
+        #retval = flipped + self.origin_p
         retval = lin.vector(p[0], p[1]) + self.origin_p
         return retval
         #lin.vector(self.pcx-(183/2), self.pcy-(183/2))
@@ -126,10 +129,10 @@ class SquareBoard(object):
         r = self.dwg.rect(insert=self.tpsvg(insert), size=(size[0]*svgwrite.px, size[1]*svgwrite.px))
         if width > 0:
             print("ring rect")
-            self.lines.add(r).fill('white', opacity=0.0).stroke(self.bgr2hexrgb(color), width=f"{width}px")
+            self.lines.add(r).fill('white', opacity=0.0).stroke(self.bgr2hexrgb(color), width=f"{width*.1}px")
         else:
             print("filled rect")
-            self.lines.add(r).fill(self.bgr2hexrgb(color)).stroke(self.bgr2hexrgb(color), width="1pt")
+            self.lines.add(r).fill(self.bgr2hexrgb(color)).stroke(self.bgr2hexrgb(color), width="0.2px")
     
     def bgr2hexrgb(self, bgr):
         b, g, r = bgr
@@ -145,10 +148,10 @@ class SquareBoard(object):
         print(f"centered: {centered}")
         if width > 0:
             print("ring circle")
-            circle = self.lines.add(self.dwg.circle(centered, radius)).fill('white', opacity=0.0).stroke(self.bgr2hexrgb(color), width=f"{width}px")
+            circle = self.lines.add(self.dwg.circle(centered, radius)).fill('white', opacity=0.0).stroke(self.bgr2hexrgb(color), width=f"{width*0.1}px")
         else:
             print("filled circle")
-            circle = self.lines.add(self.dwg.circle(centered, radius)).fill(self.bgr2hexrgb(color)).stroke(self.bgr2hexrgb(color), width="1px")
+            circle = self.lines.add(self.dwg.circle(centered, radius)).fill(self.bgr2hexrgb(color)).stroke(self.bgr2hexrgb(color), width="0.2px")
     
     def polylines(self, points, isClosed, color, thickness=1):
         tpoints = np.array([self.tp(p) for p in points])
