@@ -13,6 +13,8 @@ import cv2
 import imutils
 
 import svgwrite
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPDF
 
 import linear as lin
 
@@ -75,8 +77,9 @@ class SquareBoard(object):
         self.pcy = self.pheight/2
         self.origin_p = lin.vector(self.pcx-(self.activemm/2), self.pcy-(self.activemm/2))
         print(f"paper center: {self.pcx:5.3f}, {self.pcy:5.3f} origin_p: {self.origin_p}")
+        self.dwgfilename = "plate.svg"
         self.dwg = svgwrite.Drawing(
-            "plate.svg", 
+            self.dwgfilename, 
             size=(f"{self.pwidth:5.3f}mm", f"{self.pheight:5.3f}mm"),
             #size=(f"{self.pwidth:5.3f}", f"{self.pheight:5.3f}"),
             viewBox=(f"0 0 {self.pwidth:5.3f} {self.pheight:5.3f}"),
@@ -193,6 +196,8 @@ class SquareBoard(object):
             
     def show(self):
         self.dwg.save(pretty=True)
+        drawing = svg2rlg(self.dwgfilename)
+        renderPDF.drawToFile(drawing, self.dwgfilename.replace("svg", "pdf"))
         #with open('plate.svg', 'w', encoding='utf-8') as f:
         #    self.dwg.write(f, pretty=True)
         cv2.imshow('output', self.canvas)
