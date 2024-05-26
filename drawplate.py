@@ -4,6 +4,7 @@ import sys
 import time
 import math as m
 import pickle
+import base64
 
 from rich import print as rp
 
@@ -79,6 +80,7 @@ class SquareBoard(object):
             size=(f"{self.pwidth:5.3f}mm", f"{self.pheight:5.3f}mm"),
             #size=(f"{self.pwidth:5.3f}", f"{self.pheight:5.3f}"),
             viewBox=(f"0 0 {self.pwidth:5.3f} {self.pheight:5.3f}"),
+            #viewBox=(f"0 0 {int(8.5*300)} {11*300}"),
             debug=True
         )
         #self.lines = self.dwg.add(self.dwg.g(id='lines', stroke='black'))
@@ -193,6 +195,29 @@ class SquareBoard(object):
         cv2.imshow('output', self.canvas)
         
     def rotstamp(self, image, angle, width, height, point):
+        #img_encode = cv.imencode('.png', img)[1]
+        # Converting the image into numpy array 
+        #data_encode = np.array(img_encode) 
+        # Converting the array to bytes. 
+        #byte_encode = data_encode.tobytes()
+        img_encode = cv2.imencode('.png', image)[1]
+        byte_encode = img_encode.tobytes()
+        bbytes = base64.b64encode(byte_encode).decode()
+        xlink = f"data:image/png;base64,{bbytes}"
+        ppoint = self.tpsvg(point)
+        cx = ppoint[0]-5
+        cy = ppoint[1]-5
+        ximage = self.dwg.image(
+            href=(xlink), 
+            x=f"{cx}px", 
+            y=f"{cy}px",
+            width="10px", 
+            height="10px")
+        #ximage.scale(sx=10, sy=10)
+        #ximage.translate(*point)
+        ximage.rotate(-angle, center=ppoint)
+        self.dwg.add(ximage)
+        
         px = point[0]
         py = point[1]
         #print(f"image shape: {image.shape}, angle: {angle}, width: {width}, height: {height} point: ({px:4.1f}, {py:4.1f})")
