@@ -7,6 +7,7 @@ import pickle
 import base64
 
 from rich import print as rp
+from rich.pretty import pprint as rpp # yeah you know me
 
 import numpy as np
 import cv2
@@ -18,6 +19,9 @@ from reportlab.graphics import renderPDF
 
 import linear as lin
 
+np.set_printoptions(suppress=True, 
+                    formatter={'float_kind':'{:14.4f}'.format}) 
+                    
 tags = {
     'red27': 27,
     'blue03': 3,
@@ -94,12 +98,15 @@ class SquareBoard(object):
         self.dwg.add(self.print_layer)
         self.cut_layer = self.dwg.g(id='cut_layer')
         self.dwg.add(self.cut_layer)
+        self.ring_cut_layer = self.dwg.g(id='ring_cut_layer')
+        self.dwg.add(self.ring_cut_layer)
         self.debug_layer = self.dwg.g(id='debug_layer')
-        self.dwg.add(self.debug_layer)
+        #self.dwg.add(self.debug_layer)
 
         #self.lines.add(self.dwg.rect(insert=(0, 0), size=('100%', '100%'), rx=None, ry=None, fill='rgb(50,50,50)'))
-        paragraph = self.dwg.add(self.dwg.g(font_size=14))
-        paragraph.add(self.dwg.text("This is a Test", x=[10], y=[40, 45, 50, 55, 60]))
+        paragraph = self.print_layer.add(self.dwg.g(font_size=10))
+        #paragraph.add(self.dwg.text("This is a Test", x=[10], y=[40, 45, 50, 55, 60]))
+        paragraph.add(self.dwg.text("TOP", x=[self.pcx-10], y=[45]))
         #print(f"scale: {scale} red: {red}")
         cv2.namedWindow("output", cv2.WINDOW_NORMAL)
         cv2.resizeWindow("output", self.width, self.height) 
@@ -136,7 +143,7 @@ class SquareBoard(object):
         print("also", p1, p2)
         
     def rectangle(self, p1, p2, color, width=1, layer=None):
-        rp(f"[yellow]rectangle {lin.fv(p1)} {lin.fv(p2)}[/yellow]")
+        #rp(f"[yellow]rectangle {lin.fv(p1)} {lin.fv(p2)}[/yellow]")
         if layer is None:
             layer=self.print_layer
         
@@ -162,18 +169,18 @@ class SquareBoard(object):
         p2v = lin.vector(maxx, maxy)
 
     
-        rp(f"[blue on white] p1: {lin.fv(p1)} p1v: {lin.fv(p1v)}")
-        rp(f"[blue on white] p2: {lin.fv(p2)} p2v: {lin.fv(p2v)}")
+        #rp(f"[blue on white] p1: {lin.fv(p1)} p1v: {lin.fv(p1v)}")
+        #rp(f"[blue on white] p2: {lin.fv(p2)} p2v: {lin.fv(p2v)}")
         insert = p1v 
         size = p2v - p1v
-        rp(f"[yellow]insert: {lin.fv(insert)} size: {lin.fv(size)}[/yellow]")
+        #rp(f"[yellow]insert: {lin.fv(insert)} size: {lin.fv(size)}[/yellow]")
         r = self.dwg.rect(insert=insert, size=(size[0]*svgwrite.px, size[1]*svgwrite.px))
         if width > 0:
-            rp("[green]ring rect[/green]")
+            #rp("[green]ring rect[/green]")
             r.fill('white', opacity=0.0)
             r.stroke(self.bgr2hexrgb(color), width=f"{width*.1}px")
         else:
-            rp("[green]filled rect[/green]")
+            #rp("[green]filled rect[/green]")
             r.fill(self.bgr2hexrgb(color))
             r.stroke(self.bgr2hexrgb(color), width="0.2px")
         layer.add(r)
@@ -349,12 +356,14 @@ def new_6_marker_board():
     
     grid.circle((0,0), 5, red, layer=grid.debug_layer) # origin
     center = np.array((grid_mm/2, grid_mm/2))
-    rp("[bold red]MAKING CUTTING GRID[/bold red]")
+    #rp("[bold red]MAKING CUTTING GRID[/bold red]")
     grid.rectangle((0,0), (grid_mm, grid_mm), black, -1, layer=grid.print_layer)
     grid.rectangle((0,0), (grid_mm, grid_mm), yellow, layer=grid.cut_layer)
     
     ocr = 166/2 # outer circle
     grid.circle(center, ocr, cyan, -1, layer=grid.print_layer) # outer circle
+    grid.circle(center, ocr+2, yellow, 1, layer=grid.ring_cut_layer) # outer circle
+    
     
     icr = 138/2 # inner circle
     for i in range(3):
@@ -363,8 +372,9 @@ def new_6_marker_board():
         grid.fillarc(center, icr, ocr, (i)*120+7.5, (i)*120+52.5, white, layer=grid.print_layer)
         grid.fillarc(center, icr, ocr, (i)*120+22.5, (i)*120+37.5, cyan, layer=grid.print_layer)
         
-    grid.circle(center, ocr, yellow, layer=grid.cut_layer) # outer circle
-    grid.circle(center, icr, black, layer=grid.cut_layer) # inner circle
+    #grid.circle(center, ocr, yellow, layer=grid.cut_layer) # outer circle
+    grid.circle(center, icr, black, layer=grid.print_layer) # inner circle
+    grid.circle(center, icr, black, layer=grid.ring_cut_layer) # inner circle
         
     
     ccr = 159.3/2 # center of lego pin holes
@@ -376,10 +386,12 @@ def new_6_marker_board():
         hvr = rot2deg(i*90, hole_v)
         grid.circle(hvr+center, hole_rad, black, -1, layer=grid.print_layer)       
         grid.circle(hvr+center, hole_rad, green, layer=grid.cut_layer)       
+        grid.circle(hvr+center, hole_rad, green, layer=grid.ring_cut_layer)       
     for i in range(3): # secures ring to gear
         hvr = rot2deg(i*120+30, hole_v)
         grid.circle(hvr+center, hole_rad, black, -1, layer=grid.print_layer)
         grid.circle(hvr+center, hole_rad, red, layer=grid.cut_layer)
+        grid.circle(hvr+center, hole_rad, red, layer=grid.ring_cut_layer)
     
     tscr = (ocr - icr)/2 + icr # target square circle radius
     grid.circle(center, tscr, white, layer=grid.debug_layer)
@@ -388,6 +400,7 @@ def new_6_marker_board():
     tsir = 10/2
     
     corners = []
+    aruco_ids = []
     for (i, tang) in enumerate(aruco_angs):
         aid = ang_dict[tang]
         tsc = rot2deg(tang, lin.vector(tscr, 0, 0))
@@ -396,8 +409,11 @@ def new_6_marker_board():
         #grid.fillPoly(tpoints, black)        
         
         inner_square = rot_square(tsir, tang)  
-        corners.append(inner_square)   
         tpoints = inner_square+center+tsc
+        # world point foor aruco
+        wpoints = [lin.vector(*p, 0) for p in tpoints]
+        corners.append(wpoints) 
+        aruco_ids.append(aid)  
         grid.fillPoly(tpoints, black, layer=grid.debug_layer)
         
         #tpoints = rot_square(tsr, tang)+center+tsc
@@ -452,7 +468,51 @@ def new_6_marker_board():
         pfilename = "corner_info.pickle"
         with open(pfilename, "wb") as f:
             pickle.dump(corner_info, f)
-    """  
+    """ 
+    """
+            >>> corner_info = pickle.load(open('corner_info.pickle', 'rb'))
+            >>> corner_info
+            {'ids': array([27, 15,  3]), 'corners': array([[[ 96.5       , 162.5       ,   0.        ],
+                    [ 86.5       , 162.5       ,   0.        ],
+                    [ 86.5       , 172.5       ,   0.        ],
+                    [ 96.5       , 172.5       ,   0.        ]],
+
+                   [[ 27.51219633,  60.33012702,   0.        ],
+                    [ 32.51219633,  51.66987298,   0.        ],
+                    [ 23.85194229,  46.66987298,   0.        ],
+                    [ 18.85194229,  55.33012702,   0.        ]],
+
+                   [[150.48780367,  51.66987298,   0.        ],
+                    [155.48780367,  60.33012702,   0.        ],
+                    [164.14805771,  55.33012702,   0.        ],
+                    [159.14805771,  46.66987298,   0.        ]]])}
+            >>> corner_info['corners']
+            array([[[ 96.5       , 162.5       ,   0.        ],
+                    [ 86.5       , 162.5       ,   0.        ],
+                    [ 86.5       , 172.5       ,   0.        ],
+                    [ 96.5       , 172.5       ,   0.        ]],
+
+                   [[ 27.51219633,  60.33012702,   0.        ],
+                    [ 32.51219633,  51.66987298,   0.        ],
+                    [ 23.85194229,  46.66987298,   0.        ],
+                    [ 18.85194229,  55.33012702,   0.        ]],
+
+                   [[150.48780367,  51.66987298,   0.        ],
+                    [155.48780367,  60.33012702,   0.        ],
+                    [164.14805771,  55.33012702,   0.        ],
+                    [159.14805771,  46.66987298,   0.        ]]])
+            >>> corner_info['corners'].shape
+            (3, 4, 3)
+    """ 
+    #corners = np.array([lin.vector(*x, 0) for x in corners])
+    corner_info = {"ids": np.array(aruco_ids), "corners": np.array(corners)}
+    rp(f"[yellow on red] {corner_info['corners'].shape}")
+    rp(f"[blue on white]Corner Info:")
+    rpp(corner_info)
+    pfilename = "corner_info.pickle"
+    with open(pfilename, "wb") as f:
+        pickle.dump(corner_info, f)
+        
     grid.crosshairs()
               
     grid.show()
