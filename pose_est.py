@@ -8,8 +8,12 @@ import math as m
 
 import numpy as np
 import cv2
+from scipy.spatial.transform import Rotation   
 
 import linear as lin
+
+from rich import print as rp
+from rich.pretty import pprint as rpp # yeah you know me
 
 np.set_printoptions(suppress=True, 
                     formatter={'float_kind':'{:3.3f}'.format}) 
@@ -121,14 +125,26 @@ def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, dis
         w_tvec = tvecs
         w_rvec = rvecs 
         if ret:
-            r,p,y = [m.degrees(x) for x in rvecs]
+            rod, jack = cv2.Rodrigues(rvecs)
+            #rp(f"[red on white]Rod.shape: {rod.shape}")
+            #rpp(rod)
+           #https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html#rodrigues
+            #https://www.reddit.com/r/opencv/comments/kczhoc/question_solvepnp_rvecs_what_do_they_mean/
+            #https://eecs.qmul.ac.uk/~gslabaugh/publications/euler.pdf
+            #https://stackoverflow.com/questions/54616049/converting-a-rotation-matrix-to-euler-angles-and-back-special-case
+            rodmat =  Rotation.from_matrix(rod)
+            heading, pitch, roll  = rodmat.as_euler("zyx",degrees=True)
+            #pitch = pitch % 180
+            #roll = roll % 180
+            print(f"angles: (heading, pitch, roll): ({heading:5.2f}, {pitch:5.2f}, {roll:5.2f})")
+            #r,p,y = [m.degrees(x) for x in rvecs]
             #x,y,z = tvecs # this is the origin
             #x = x[0]
             #y = y[0]
             #z = z[0]
             #print(f"x: {x}")
             #print(f"solvePnP orientation: ({r:4.3f}, {p:4.3f}, {y:4.3f}) offset: ({x:4.3f}, {y:4.3f}, {z:4.3f})") 
-            print(f"solvePnP orientation: ({r:5.1f}, {p:5.1f}, {y:5.1f})") 
+            #print(f"solvePnP orientation: ({r:5.1f}, {p:5.1f}, {y:5.1f})") 
                 
                 
         else:
