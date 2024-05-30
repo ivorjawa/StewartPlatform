@@ -16,7 +16,7 @@ from rich import print as rp
 from rich.pretty import pprint as rpp # yeah you know me
 
 np.set_printoptions(suppress=True, 
-                    formatter={'float_kind':'{:3.3f}'.format}) 
+                    formatter={'float_kind':'{:5.2f}'.format}) 
 
 ARUCO_DICT = {
 	"DICT_4X4_50": cv2.aruco.DICT_4X4_50,
@@ -76,19 +76,6 @@ def aruco_display(corners, ids, rejected, image):
 	return image
 
 
-def drawg(img, corners, imgpts):
- corner = tuple(corners[0].ravel())
- img = cv.line(img, corner, tuple(imgpts[0].ravel()), (255,0,0), 5)
- img = cv.line(img, corner, tuple(imgpts[1].ravel()), (0,255,0), 5)
- img = cv.line(img, corner, tuple(imgpts[2].ravel()), (0,0,255), 5)
- return img
- 
-vdegrees = lambda v: np.array([np.degrees(x) for x in v])
-
-cb_valid = [False, False, False]
-circle_buf = [[], [], []]
-cb_times = [time.time(), time.time(), time.time()]
-
 class PoseError(Exception): pass
 
 class PoseInfo(object):
@@ -102,6 +89,23 @@ class PoseInfo(object):
         self.aruco_ids = aids
         self.rejected_points = rejected
         
+
+"""
+https://docs.opencv.org/4.x/db/da9/tutorial_aruco_board_detection.html
+
+// Get object and image points for the solvePnP function
+ cv::Mat objPoints, imgPoints;
+ board.matchImagePoints(corners, ids, objPoints, imgPoints);
+
+// Find pose
+ cv::solvePnP(objPoints, imgPoints, camMatrix, distCoeffs, rvec, tvec);
+        
+           #https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html#rodrigues
+            #https://www.reddit.com/r/opencv/comments/kczhoc/question_solvepnp_rvecs_what_do_they_mean/
+            #https://eecs.qmul.ac.uk/~gslabaugh/publications/euler.pdf
+            #https://stackoverflow.com/questions/54616049/converting-a-rotation-matrix-to-euler-angles-and-back-special-case
+"""
+        
 def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, distortion_coefficients, height, width):
     
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -112,16 +116,6 @@ def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, dis
 
     corners, ids, rejected_img_points = cv2.aruco.detectMarkers(gray, cv2.aruco_dict,parameters=parameters)
     
-    """
-        https://docs.opencv.org/4.x/db/da9/tutorial_aruco_board_detection.html
-        
-        // Get object and image points for the solvePnP function
-         cv::Mat objPoints, imgPoints;
-         board.matchImagePoints(corners, ids, objPoints, imgPoints);
-        
-        // Find pose
-         cv::solvePnP(objPoints, imgPoints, camMatrix, distCoeffs, rvec, tvec);
-        """
     try:
         objPoints, imgPoints = ArucoBoard.matchImagePoints(corners, ids)
         for i in range(objPoints.shape[0]):
@@ -132,10 +126,7 @@ def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, dis
         if ret:
             rod, jack = cv2.Rodrigues(rvecs)
 
-           #https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html#rodrigues
-            #https://www.reddit.com/r/opencv/comments/kczhoc/question_solvepnp_rvecs_what_do_they_mean/
-            #https://eecs.qmul.ac.uk/~gslabaugh/publications/euler.pdf
-            #https://stackoverflow.com/questions/54616049/converting-a-rotation-matrix-to-euler-angles-and-back-special-case
+           
             rodmat =  Rotation.from_matrix(rod)
             heading, roll, pitch  = rodmat.as_euler("zyx",degrees=True)
             
@@ -151,22 +142,6 @@ def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, dis
         raise PoseError(f"Match failed: {e}")
     
 def drawhud(frame, pose_info, matrix_coefficients, distortion_coefficients, height, width):
-       
-    tags = {
-        'red27': 27,
-        'blue03': 3,
-        'green15': 15,
-        'bubble': 42,
-    }
-    rtags = {
-        27: 'red:27', 
-        3: 'blue:3',
-        15: 'green:15',
-        42: 'bubble:42',
-    }  
-    
-
-    
     if not (pose_info.trans_vec is None):
         testpts = np.float32([
             [183, 0, 0], 
@@ -189,8 +164,6 @@ def drawhud(frame, pose_info, matrix_coefficients, distortion_coefficients, heig
                 cv2.circle(frame, np.intp(pt[0]), 3, (255, 255, 255), 2)
             cv2.line(frame, np.intp(imgpts[5][0]), np.intp(imgpts[6][0]), (0, 255, 0), 1)
             cv2.line(frame, np.intp(imgpts[7][0]), np.intp(imgpts[8][0]), (0, 255, 0), 1)
-            #cv2.circle(frame,np.intp(imgpts[1][0]),crplen+30,(0,255,255),2)
-            #cv2.circle(frame,np.intp(imgpts[4][0]),166,(0,255,255),2)
             
             steps = np.arange(0, 36, 1)*10
             r = 166/2
@@ -203,8 +176,6 @@ def drawhud(frame, pose_info, matrix_coefficients, distortion_coefficients, heig
                 pose_info.rot_vec, 
                 pose_info.trans_vec, matrix_coefficients, distortion_coefficients)
             imgpts2 = [ip[0] for ip in imgpts]
-            #print(testpts[0])
-            #print(imgpts2[0])
             cv2.polylines(frame, np.intp([imgpts2]), True, (0, 255, 255), 2)
             mask = np.zeros((height, width), np.uint8)
             #cv2.circle(mask,(xav,yav),rav+30,1,-1)
@@ -230,11 +201,14 @@ def drawhud(frame, pose_info, matrix_coefficients, distortion_coefficients, heig
             frame)
     return mask
 
+cb_valid = [False, False, False]
+circle_buf = [[], [], []]
+cb_times = [time.time(), time.time(), time.time()]
+
 def detect_ball(frame, rblur):
     global circle_buf, cb_valid, cb_times
     
     # look for ball
-    #red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
     circles = cv2.HoughCircles(rblur,cv2.HOUGH_GRADIENT,1,20,param1=130,param2=30,minRadius=55,maxRadius=90)
     #circles = None
     if np.any(circles):
@@ -290,12 +264,6 @@ def detect_ball(frame, rblur):
 
 def go():
     aruco_type = "DICT_4X4_50"
-
-    #arucoDict = cv2.aruco.Dictionary_get(ARUCO_DICT[aruco_type])
-    #arucoParams = cv2.aruco.DetectorParameters_create()
-    #intrinsic_camera = np.array(((933.15867, 0, 657.59),(0,933.1586, 400.36993),(0,0,1)))
-    #distortion = np.array((-0.43948,0.18514,0,0))
-
     arucoParams =  cv2.aruco.DetectorParameters()
     arucoDict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
     with open('caminfo.pickle', 'rb') as f:
