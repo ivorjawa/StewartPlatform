@@ -211,6 +211,11 @@ def drawhud(frame, pose_info, matrix_coefficients, distortion_coefficients, heig
             #print(testpts[0])
             #print(imgpts2[0])
             cv2.polylines(frame, np.intp([imgpts2]), True, (0, 255, 255), 2)
+            mask = np.zeros((height, width), np.uint8)
+            #cv2.circle(mask,(xav,yav),rav+30,1,-1)
+            cv2.fillPoly(mask, np.intp([imgpts2]), (1))
+            rin = rin * mask
+            rblur = cv2.medianBlur(rin,5)
         except cv2.error as e:
             print(f"oops: {e}")
             
@@ -294,10 +299,10 @@ def drawhud(frame, pose_info, matrix_coefficients, distortion_coefficients, heig
             #(cx, cy) = np.intp((np.sum(mask_circs)/(1.0*len(mask_circs))))
             #cr = np.intp(np.sum(mask_rads)/(1.0*len(mask_rads)))
             #print(f"cx, cy: ({xav},{yav}), Radius: {rav}")
-            mask = np.zeros((height, width), np.uint8)
-            cv2.circle(mask,(xav,yav),rav+30,1,-1)
-            rin = rin * mask
-            rblur = cv2.medianBlur(rin,5)
+            #mask = np.zeros((height, width), np.uint8)
+            #cv2.circle(mask,(xav,yav),rav+30,1,-1)
+            #rin = rin * mask
+            #rblur = cv2.medianBlur(rin,5)
             
             
             
