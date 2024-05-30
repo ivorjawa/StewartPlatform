@@ -151,10 +151,7 @@ def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, dis
         raise PoseError(f"Match failed: {e}")
     
 def drawhud(frame, pose_info, matrix_coefficients, distortion_coefficients, height, width):
-    global circle_buf, cb_valid, cb_times
-    
-    #w_tvec = pose_info.trans_vec
-    #w_rvec = pose_info.rot_vec    
+       
     tags = {
         'red27': 27,
         'blue03': 3,
@@ -168,9 +165,7 @@ def drawhud(frame, pose_info, matrix_coefficients, distortion_coefficients, heig
         42: 'bubble:42',
     }  
     
-    # save for later ball-seeking
-    rin = frame[:, :, 2].copy()
-    rblur = cv2.medianBlur(rin,5)
+
     
     if not (pose_info.trans_vec is None):
         testpts = np.float32([
@@ -214,8 +209,7 @@ def drawhud(frame, pose_info, matrix_coefficients, distortion_coefficients, heig
             mask = np.zeros((height, width), np.uint8)
             #cv2.circle(mask,(xav,yav),rav+30,1,-1)
             cv2.fillPoly(mask, np.intp([imgpts2]), (1))
-            rin = rin * mask
-            rblur = cv2.medianBlur(rin,5)
+
         except cv2.error as e:
             print(f"oops: {e}")
             
@@ -229,144 +223,71 @@ def drawhud(frame, pose_info, matrix_coefficients, distortion_coefficients, heig
         15, 2)
               
     if len(pose_info.aruco_corners) > 0:
-        mask_circs = []
-        mask_rads = [] # 145 - 235
         aruco_display(
             pose_info.aruco_corners, 
             pose_info.aruco_ids, 
             pose_info.rejected_points, 
             frame)
-        #print(f"detected ids: {ids}")
-        for i in range(0, len(pose_info.aruco_ids)):
-            tid = pose_info.aruco_ids[i][0]
+    return mask
 
-            rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(
-                pose_info.aruco_corners[i], 
-                0.02, 
-                matrix_coefficients,
-                distortion_coefficients)
-                
-            axis = np.float32([[.03,0,0], [0,.03,0], [0,0,-.03]]).reshape(-1,3)
-            imgpts, jac = cv2.projectPoints(axis, rvec, tvec, matrix_coefficients, distortion_coefficients)
+def detect_ball(frame, rblur):
+    global circle_buf, cb_valid, cb_times
+    
+    # look for ball
+    #red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
+    circles = cv2.HoughCircles(rblur,cv2.HOUGH_GRADIENT,1,20,param1=130,param2=30,minRadius=55,maxRadius=90)
+    #circles = None
+    if np.any(circles):
+        circles = np.uint16(np.around(circles))
+        if len(circles) == 1: 
+            circle_buf.append(circles[0][0])
+            cb_valid.append(True)
+        else:
+            circle_buf.append([])
+            cb_valid.append(False)
+        cb_times.append(time.time())
+        circle_buf.pop(0)
+        cb_valid.pop(0)
+        cb_times.pop(0)
+        for i in circles[0,:]:
+             # draw the outer circle
+             x = i[0]
+             y = i[1]
+             r = i[2]
+             #print(f"found circle with radius: {r}")
+             # draw circle
+             cv2.circle(frame,(x, y),r,(0,255,0),2)
+             # draw the center of the circle
+             cv2.circle(frame,(x,y),2,(255,255,255),3)
+    if sum(cb_valid) == 3:
+        print("possible solution found!")
+        try:
+            c1, c2, c3 = [np.array(x, dtype="float64") for x in circle_buf]
+            dt1 = cb_times[1]- cb_times[0]
+            dt2 = cb_times[2]- cb_times[1] 
+            ds1 = (c2 - c1)[:2]
+            ds2 = (c3 - c2)[:2]
+            v1 = ds1/dt1
+            v2 = ds2/dt2
+            dv = v2-v1
+            a = dv/dt2
+            print(f"c1: {np.intp(c1)}, c2: {np.intp(c2)}, c3: {np.intp(c3)}")
+            print(f"v1: {v1}, v2: {v2}, dv: {dv}")
+            print(f"dt1: {dt1:3.3f}, dt2: {dt2:3.3f}, ds1: {ds1}, ds2: {ds2}")
+            v1s = m.sqrt(abs(lin.dot(*v1)))
+            #print("x")
+            v2s = m.sqrt(abs(lin.dot(*v2)))
+            #print(f"a: {a}")
+            a_s = m.sqrt(abs(lin.dot(*a)))
             
-            crlen = 0.162
-            if tid == 42: # bubble, ie false
-                #centeray = np.float32([[0, 0, 0], [0, crlen, 0]]).reshape(-1,3)
-                continue
-            else:
-                centeray = np.float32([[0, 0, 0], [-crlen, 0, 0]]).reshape(-1,3)
-            imgpts, jac = cv2.projectPoints(centeray, rvec, tvec, matrix_coefficients, distortion_coefficients)
-            #cv2.line(frame, np.intp(imgpts[0][0]), np.intp(imgpts[1][0]), (0, 255, 255), 2)
-            crp0 = lin.vector(imgpts[0][0])
-            crp1 = lin.vector(imgpts[1][0])
-            
-            crplen = int(lin.vmag(crp1-crp0))
-            #print(f"centeray projected length is {crplen}")
-            
-            if (crplen > 145) and (crplen < 235):
-                mask_circs.append(np.intp(imgpts[1][0]))
-                mask_rads.append(crplen)
-            #cv2.circle(frame,np.intp(imgpts[1][0]),crplen+30,(0,255,255),2)
-            for j in range(len(centeray)):
-                pass
-                #print(f"cpoint: {centeray[j]} projected: {imgpts[j]}")
-            #print("jac:  ", jac.shape)
-            try:
-                #print(f"id: {rtags[tid]}  x: {frame[0]:3.3f}, y: {frame[1]:3.3f}, z: {frame[2]:3.3f}")
-                rvd = vdegrees(rvec[0][0])
-                #tvd = vdegrees(tvec[0][0])
-                tvd = tvec[0][0] # not radians
-                
-                #print(f"id: {rtags[tid]}  rvec: {rvd}, tvec: {tvd}")
-            except KeyError as e:
-                print(f"unknown tag {tid}")
-        if len(mask_circs ) > 0:
-            #print (f"mask centers: {mask_circs}")
-            #print (f"mask radii: {mask_rads}")
-            cx = []
-            cy = []
-            for c in mask_circs:
-                cx.append(c[0])
-                cy.append(c[1])
-            #cx, cy = mas_circs
-            xsum = np.sum(cx)
-            ysum = np.sum(cy)
-            rsum = np.sum(mask_rads)
-            scale = 1.0*len(mask_circs)
-            xav = np.intp(xsum/scale)
-            yav = np.intp(ysum/scale)
-            rav = np.intp(rsum/scale)
-            #(cx, cy) = np.intp((np.sum(mask_circs)/(1.0*len(mask_circs))))
-            #cr = np.intp(np.sum(mask_rads)/(1.0*len(mask_rads)))
-            #print(f"cx, cy: ({xav},{yav}), Radius: {rav}")
-            #mask = np.zeros((height, width), np.uint8)
-            #cv2.circle(mask,(xav,yav),rav+30,1,-1)
-            #rin = rin * mask
-            #rblur = cv2.medianBlur(rin,5)
-            
-            
-            
-            
-                
-        # look for ball
-
-        #red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
-        circles = cv2.HoughCircles(rblur,cv2.HOUGH_GRADIENT,1,20,param1=130,param2=30,minRadius=55,maxRadius=90)
-        #circles = None
-        if np.any(circles):
-            circles = np.uint16(np.around(circles))
-            if len(circles) == 1: 
-                circle_buf.append(circles[0][0])
-                cb_valid.append(True)
-            else:
-                circle_buf.append([])
-                cb_valid.append(False)
-            cb_times.append(time.time())
-            circle_buf.pop(0)
-            cb_valid.pop(0)
-            cb_times.pop(0)
-            for i in circles[0,:]:
-                 # draw the outer circle
-                 x = i[0]
-                 y = i[1]
-                 r = i[2]
-                 #print(f"found circle with radius: {r}")
-                 # draw circle
-                 cv2.circle(frame,(x, y),r,(0,255,0),2)
-                 # draw the center of the circle
-                 cv2.circle(frame,(x,y),2,(255,255,255),3)
-        if sum(cb_valid) == 3:
-            print("possible solution found!")
-            try:
-                c1, c2, c3 = [np.array(x, dtype="float64") for x in circle_buf]
-                dt1 = cb_times[1]- cb_times[0]
-                dt2 = cb_times[2]- cb_times[1] 
-                ds1 = (c2 - c1)[:2]
-                ds2 = (c3 - c2)[:2]
-                v1 = ds1/dt1
-                v2 = ds2/dt2
-                dv = v2-v1
-                a = dv/dt2
-                print(f"c1: {np.intp(c1)}, c2: {np.intp(c2)}, c3: {np.intp(c3)}")
-                print(f"v1: {v1}, v2: {v2}, dv: {dv}")
-                print(f"dt1: {dt1:3.3f}, dt2: {dt2:3.3f}, ds1: {ds1}, ds2: {ds2}")
-                v1s = m.sqrt(abs(lin.dot(*v1)))
-                #print("x")
-                v2s = m.sqrt(abs(lin.dot(*v2)))
-                #print(f"a: {a}")
-                a_s = m.sqrt(abs(lin.dot(*a)))
-                
-                print(f"v1: {v1s:8.2f}, v2: {v2s:8.2f}, a: {a_s:8.2f}", end='\n')
-                cv2.line(frame, np.intp((c1[0], c1[1])), np.intp((c2[0], c2[1])), (255, 255, 0), 2)
-                cv2.line(frame, np.intp((c2[0], c2[1])), np.intp((c3[0], c3[1])), (255, 255, 0), 2)
-            except Exception as e:
-                pass
-                print("Did I divide by zero?:  ", e)
-            
+            print(f"v1: {v1s:8.2f}, v2: {v2s:8.2f}, a: {a_s:8.2f}", end='\n')
+            cv2.line(frame, np.intp((c1[0], c1[1])), np.intp((c2[0], c2[1])), (255, 255, 0), 2)
+            cv2.line(frame, np.intp((c2[0], c2[1])), np.intp((c3[0], c3[1])), (255, 255, 0), 2)
+        except Exception as e:
+            pass
+            print("Did I divide by zero?:  ", e)
     return frame, rblur
 
-
-    
 def go():
     aruco_type = "DICT_4X4_50"
 
@@ -411,21 +332,30 @@ def go():
     while cap.isOpened():
     
         ret, img = cap.read()
+        
+        # save for later ball-seeking
+        rin = img[:, :, 2].copy()
+        rblur = cv2.medianBlur(rin,5)
     
-        canvas = np.zeros((height, width*2, 3), np.uint8)
         #print(f"canvas shape: {canvas.shape}")
-        pose_info = pose_estimation(img, ArucoBoard, ARUCO_DICT[aruco_type], cam_mtx, distortion, height, width)
-        output, rblur = drawhud(img, pose_info, cam_mtx, distortion, height, width)
+        try:
+            pose_info = pose_estimation(img, ArucoBoard, ARUCO_DICT[aruco_type], cam_mtx, distortion, height, width)
+            mask = drawhud(img, pose_info, cam_mtx, distortion, height, width)
+            rin = rin * mask
+            rblur = cv2.medianBlur(rin,5)
+            output, rblur = detect_ball(img, rblur)
 
-        cv2.line(output, (int(0),int(height/2)), (int(width), int(height/2)), (0, 0, 255), 1)
-        cv2.line(output, (int(width/2),int(0)), (int(width/2), int(height)), (0, 0, 255), 1)
+            cv2.line(output, (int(0),int(height/2)), (int(width), int(height/2)), (0, 0, 255), 1)
+            cv2.line(output, (int(width/2),int(0)), (int(width/2), int(height)), (0, 0, 255), 1)
     
-        red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
+            red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
     
-        canvas[0:480, 0:640] = output
-        canvas[0:480, 640:1280] = red
-        cv2.imshow('Estimated Pose', canvas)
-
+            canvas = np.zeros((height, width*2, 3), np.uint8)
+            canvas[0:480, 0:640] = output
+            canvas[0:480, 640:1280] = red
+            cv2.imshow('Estimated Pose', canvas)
+        except Exception as e:
+            print(e)
         if cv2.waitKey(1) == 27:
             break
         #key = cv2.waitKey(1) & 0xFF
