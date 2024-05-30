@@ -105,180 +105,194 @@ https://docs.opencv.org/4.x/db/da9/tutorial_aruco_board_detection.html
             #https://eecs.qmul.ac.uk/~gslabaugh/publications/euler.pdf
             #https://stackoverflow.com/questions/54616049/converting-a-rotation-matrix-to-euler-angles-and-back-special-case
 """
+
+class Recognizer(object):
+    def __init__(self):
+        self.aruco_type = "DICT_4X4_50"
+        self.arucoParams =  cv2.aruco.DetectorParameters()
+        self.arucoDict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
+        with open('caminfo.pickle', 'rb') as f:
+            caminfo = pickle.load(f)
+            self.cam_mtx = caminfo['cam_mtx']
+            self.distortion = caminfo['distortion']        
+        with open('corner_info.pickle', 'rb') as f:
+            corner_info = pickle.load(f)
+            self.aruco_ids = corner_info['ids']
+            self.aruco_corners = corner_info['corners']
+        #print(f"aruco_ids: {aruco_ids}")
+        #print(f"aruco_corners: {aruco_corners}")
+        self.ArucoBoard=cv2.aruco.Board(
+            self.aruco_corners.astype(np.float32), 
+            self.arucoDict, 
+            self.aruco_ids)
+        self.parameters =  cv2.aruco.DetectorParameters()
+        cv2.aruco_dict = self.arucoDict 
         
-def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, distortion_coefficients, height, width):
+        self.cb_valid = [False, False, False]
+        self.circle_buf = [[], [], []]
+        self.cb_times = [time.time(), time.time(), time.time()]
+                
+    def pose_estimation(self, frame,  height, width):
     
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    parameters =  cv2.aruco.DetectorParameters()
-    cv2.aruco_dict = cv2.aruco.getPredefinedDictionary(aruco_dict_type)
-
-
-    corners, ids, rejected_img_points = cv2.aruco.detectMarkers(gray, cv2.aruco_dict,parameters=parameters)
+        corners, ids, rejected_img_points = cv2.aruco.detectMarkers(
+            gray, cv2.aruco_dict,parameters=self.parameters)
     
-    try:
-        objPoints, imgPoints = ArucoBoard.matchImagePoints(corners, ids)
-        for i in range(objPoints.shape[0]):
-            #print(f"{i} {objPoints[i]}, {imgPoints[i]}")
-            pass
-        #print(f"objPoints: {objPoints.shape}, imgPoints: {imgPoints.shape}")
-        ret,rvecs, tvecs = cv2.solvePnP(objPoints, imgPoints, matrix_coefficients, distortion_coefficients)
-        if ret:
-            rod, jack = cv2.Rodrigues(rvecs)
-
-           
-            rodmat =  Rotation.from_matrix(rod)
-            heading, roll, pitch  = rodmat.as_euler("zyx",degrees=True)
-            
-            pitch = 180 - (pitch % 360)
-            heading = 90 - (heading % 360)
-            #roll = 360-(roll%360)
-            
-            print(f"angles: (heading, pitch, roll): ({heading:5.2f}, {pitch:5.2f}, {roll:5.2f})")
-            return PoseInfo(tvecs, rvecs, heading, roll, pitch, corners, ids, rejected_img_points)
-        else:
-            raise PoseError("solvePnP failed")  
-    except cv2.error as e:
-        raise PoseError(f"Match failed: {e}")
-    
-def drawhud(frame, pose_info, matrix_coefficients, distortion_coefficients, height, width):
-    if not (pose_info.trans_vec is None):
-        testpts = np.float32([
-            [183, 0, 0], 
-            [0,183,0], 
-            [0,0,0], 
-            [183,183,0], 
-            [91.5, 91.5, 0],
-            [0, 91.5, 0],
-            [183, 91.5, 0],
-            [91.5, 0, 0],
-            [91.5, 183, 0],
-        ]).reshape(-1,3)
-        imgpts, jac = cv2.projectPoints(
-            testpts, 
-            pose_info.rot_vec, 
-            pose_info.trans_vec, matrix_coefficients, distortion_coefficients)
-            
         try:
-            for i, pt in enumerate(imgpts):
-                cv2.circle(frame, np.intp(pt[0]), 3, (255, 255, 255), 2)
-            cv2.line(frame, np.intp(imgpts[5][0]), np.intp(imgpts[6][0]), (0, 255, 0), 1)
-            cv2.line(frame, np.intp(imgpts[7][0]), np.intp(imgpts[8][0]), (0, 255, 0), 1)
+            objPoints, imgPoints = self.ArucoBoard.matchImagePoints(corners, ids)
+            for i in range(objPoints.shape[0]):
+                #print(f"{i} {objPoints[i]}, {imgPoints[i]}")
+                pass
+            #print(f"objPoints: {objPoints.shape}, imgPoints: {imgPoints.shape}")
+            ret,rvecs, tvecs = cv2.solvePnP(objPoints, imgPoints, self.cam_mtx, self.distortion)
+            if ret:
+                rod, jack = cv2.Rodrigues(rvecs)
+                rodmat =  Rotation.from_matrix(rod)
+                heading, roll, pitch  = rodmat.as_euler("zyx",degrees=True)
             
-            steps = np.arange(0, 36, 1)*10
-            r = 166/2
-            x = r*np.cos(np.radians(steps))+91.5
-            y = r*np.sin(np.radians(steps))+91.5
-            z = 0 * steps
-            testpts = np.stack([x, y, z], axis=1)
+                pitch = 180 - (pitch % 360)
+                heading = 90 - (heading % 360)
+                #roll = 360-(roll%360)
+            
+                print(f"angles: (heading, pitch, roll): ({heading:5.2f}, {pitch:5.2f}, {roll:5.2f})")
+                return PoseInfo(tvecs, rvecs, heading, roll, pitch, corners, ids, rejected_img_points)
+            else:
+                raise PoseError("solvePnP failed")  
+        except cv2.error as e:
+            raise PoseError(f"Match failed: {e}")
+    
+    def drawhud(self, frame, pose_info, height, width):
+        if not (pose_info.trans_vec is None):
+            testpts = np.float32([
+                [183, 0, 0], 
+                [0,183,0], 
+                [0,0,0], 
+                [183,183,0], 
+                [91.5, 91.5, 0],
+                [0, 91.5, 0],
+                [183, 91.5, 0],
+                [91.5, 0, 0],
+                [91.5, 183, 0],
+            ]).reshape(-1,3)
             imgpts, jac = cv2.projectPoints(
                 testpts, 
                 pose_info.rot_vec, 
-                pose_info.trans_vec, matrix_coefficients, distortion_coefficients)
-            imgpts2 = [ip[0] for ip in imgpts]
-            cv2.polylines(frame, np.intp([imgpts2]), True, (0, 255, 255), 2)
-            mask = np.zeros((height, width), np.uint8)
-            #cv2.circle(mask,(xav,yav),rav+30,1,-1)
-            cv2.fillPoly(mask, np.intp([imgpts2]), (1))
-
-        except cv2.error as e:
-            print(f"oops: {e}")
+                pose_info.trans_vec, self.cam_mtx, self.distortion)
             
-    # Y is red, X is green, Z is blue
-    cv2.drawFrameAxes(
-        frame, 
-        matrix_coefficients, 
-        distortion_coefficients, 
-        pose_info.rot_vec, 
-        pose_info.trans_vec, 
-        15, 2)
+            try:
+                for i, pt in enumerate(imgpts):
+                    cv2.circle(frame, np.intp(pt[0]), 3, (255, 255, 255), 2)
+                cv2.line(frame, np.intp(imgpts[5][0]), np.intp(imgpts[6][0]), (0, 255, 0), 1)
+                cv2.line(frame, np.intp(imgpts[7][0]), np.intp(imgpts[8][0]), (0, 255, 0), 1)
+            
+                steps = np.arange(0, 36, 1)*10
+                r = 166/2
+                x = r*np.cos(np.radians(steps))+91.5
+                y = r*np.sin(np.radians(steps))+91.5
+                z = 0 * steps
+                testpts = np.stack([x, y, z], axis=1)
+                imgpts, jac = cv2.projectPoints(
+                    testpts, 
+                    pose_info.rot_vec, 
+                    pose_info.trans_vec, self.cam_mtx, self.distortion)
+                imgpts2 = [ip[0] for ip in imgpts]
+                cv2.polylines(frame, np.intp([imgpts2]), True, (0, 255, 255), 2)
+                mask = np.zeros((height, width), np.uint8)
+                #cv2.circle(mask,(xav,yav),rav+30,1,-1)
+                cv2.fillPoly(mask, np.intp([imgpts2]), (1))
+
+            except cv2.error as e:
+                print(f"oops: {e}")
+            
+        # Y is red, X is green, Z is blue
+        cv2.drawFrameAxes(
+            frame, 
+            self.cam_mtx, 
+            self.distortion, 
+            pose_info.rot_vec, 
+            pose_info.trans_vec, 
+            15, 2)
               
-    if len(pose_info.aruco_corners) > 0:
-        aruco_display(
-            pose_info.aruco_corners, 
-            pose_info.aruco_ids, 
-            pose_info.rejected_points, 
-            frame)
-    return mask
+        if len(pose_info.aruco_corners) > 0:
+            aruco_display(
+                pose_info.aruco_corners, 
+                pose_info.aruco_ids, 
+                pose_info.rejected_points, 
+                frame)
+        return mask
 
-cb_valid = [False, False, False]
-circle_buf = [[], [], []]
-cb_times = [time.time(), time.time(), time.time()]
 
-def detect_ball(frame, rblur):
-    global circle_buf, cb_valid, cb_times
+
+    def detect_ball(self, frame, rblur):
+        #global circle_buf, cb_valid, cb_times
     
-    # look for ball
-    circles = cv2.HoughCircles(rblur,cv2.HOUGH_GRADIENT,1,20,param1=130,param2=30,minRadius=55,maxRadius=90)
-    #circles = None
-    if np.any(circles):
-        circles = np.uint16(np.around(circles))
-        if len(circles) == 1: 
-            circle_buf.append(circles[0][0])
-            cb_valid.append(True)
-        else:
-            circle_buf.append([])
-            cb_valid.append(False)
-        cb_times.append(time.time())
-        circle_buf.pop(0)
-        cb_valid.pop(0)
-        cb_times.pop(0)
-        for i in circles[0,:]:
-             # draw the outer circle
-             x = i[0]
-             y = i[1]
-             r = i[2]
-             #print(f"found circle with radius: {r}")
-             # draw circle
-             cv2.circle(frame,(x, y),r,(0,255,0),2)
-             # draw the center of the circle
-             cv2.circle(frame,(x,y),2,(255,255,255),3)
-    if sum(cb_valid) == 3:
-        print("possible solution found!")
-        try:
-            c1, c2, c3 = [np.array(x, dtype="float64") for x in circle_buf]
-            dt1 = cb_times[1]- cb_times[0]
-            dt2 = cb_times[2]- cb_times[1] 
-            ds1 = (c2 - c1)[:2]
-            ds2 = (c3 - c2)[:2]
-            v1 = ds1/dt1
-            v2 = ds2/dt2
-            dv = v2-v1
-            a = dv/dt2
-            print(f"c1: {np.intp(c1)}, c2: {np.intp(c2)}, c3: {np.intp(c3)}")
-            print(f"v1: {v1}, v2: {v2}, dv: {dv}")
-            print(f"dt1: {dt1:3.3f}, dt2: {dt2:3.3f}, ds1: {ds1}, ds2: {ds2}")
-            v1s = m.sqrt(abs(lin.dot(*v1)))
-            #print("x")
-            v2s = m.sqrt(abs(lin.dot(*v2)))
-            #print(f"a: {a}")
-            a_s = m.sqrt(abs(lin.dot(*a)))
+        # look for ball
+        circles = cv2.HoughCircles(rblur,cv2.HOUGH_GRADIENT,1,20,param1=130,param2=30,minRadius=55,maxRadius=90)
+        #circles = None
+        if not np.any(circles):
+            self.cb_times.append(time.time())
+            self.circle_buf.append([])
+            self.cb_valid.append(False)
             
-            print(f"v1: {v1s:8.2f}, v2: {v2s:8.2f}, a: {a_s:8.2f}", end='\n')
-            cv2.line(frame, np.intp((c1[0], c1[1])), np.intp((c2[0], c2[1])), (255, 255, 0), 2)
-            cv2.line(frame, np.intp((c2[0], c2[1])), np.intp((c3[0], c3[1])), (255, 255, 0), 2)
-        except Exception as e:
-            pass
-            print("Did I divide by zero?:  ", e)
-    return frame, rblur
+            self.cb_valid.pop(0)
+            self.cb_times.pop(0)
+            self.circle_buf.pop(0)
+            return frame, rblur
+        #if np.any(circles):
+        else:
+            circles = np.uint16(np.around(circles))
+            if len(circles) == 1: 
+                self.circle_buf.append(circles[0][0])
+                self.cb_valid.append(True)
+            else:
+                self.circle_buf.append([])
+                self.cb_valid.append(False)
+            self.cb_times.append(time.time())
+            self.circle_buf.pop(0)
+            self.cb_valid.pop(0)
+            self.cb_times.pop(0)
+            for i in circles[0,:]:
+                 # draw the outer circle
+                 x = i[0]
+                 y = i[1]
+                 r = i[2]
+                 #print(f"found circle with radius: {r}")
+                 # draw circle
+                 cv2.circle(frame,(x, y),r,(0,255,0),2)
+                 # draw the center of the circle
+                 cv2.circle(frame,(x,y),2,(255,255,255),3)
+        if sum(self.cb_valid) == 3:
+            print("possible solution found!")
+            try:
+                c1, c2, c3 = [np.array(x, dtype="float64") for x in self.circle_buf]
+                dt1 = self.cb_times[1]- self.cb_times[0]
+                dt2 = self.cb_times[2]- self.cb_times[1] 
+                ds1 = (c2 - c1)[:2]
+                ds2 = (c3 - c2)[:2]
+                v1 = ds1/dt1
+                v2 = ds2/dt2
+                dv = v2-v1
+                a = dv/dt2
+                print(f"c1: {np.intp(c1)}, c2: {np.intp(c2)}, c3: {np.intp(c3)}")
+                print(f"v1: {v1}, v2: {v2}, dv: {dv}")
+                print(f"dt1: {dt1:3.3f}, dt2: {dt2:3.3f}, ds1: {ds1}, ds2: {ds2}")
+                v1s = m.sqrt(abs(lin.dot(*v1)))
+                #print("x")
+                v2s = m.sqrt(abs(lin.dot(*v2)))
+                #print(f"a: {a}")
+                a_s = m.sqrt(abs(lin.dot(*a)))
+            
+                print(f"v1: {v1s:8.2f}, v2: {v2s:8.2f}, a: {a_s:8.2f}", end='\n')
+                cv2.line(frame, np.intp((c1[0], c1[1])), np.intp((c2[0], c2[1])), (255, 255, 0), 2)
+                cv2.line(frame, np.intp((c2[0], c2[1])), np.intp((c3[0], c3[1])), (255, 255, 0), 2)
+            except Exception as e:
+                pass
+                print("Did I divide by zero?:  ", e)
+        return frame, rblur
 
 def go():
-    aruco_type = "DICT_4X4_50"
-    arucoParams =  cv2.aruco.DetectorParameters()
-    arucoDict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
-    with open('caminfo.pickle', 'rb') as f:
-        caminfo = pickle.load(f)
-        cam_mtx = caminfo['cam_mtx']
-        distortion = caminfo['distortion']
-        
-        
-    with open('corner_info.pickle', 'rb') as f:
-        corner_info = pickle.load(f)
-        aruco_ids = corner_info['ids']
-        aruco_corners = corner_info['corners']
-    #print(f"aruco_ids: {aruco_ids}")
-    #print(f"aruco_corners: {aruco_corners}")
-    ArucoBoard=cv2.aruco.Board(aruco_corners.astype(np.float32), arucoDict, aruco_ids)
+
 
     
     cap = cv2.VideoCapture(0)
@@ -297,6 +311,8 @@ def go():
     #cap.set(cv2.CAP_PROP_AUTOFOCUS, 0) 
     #cap.set(cv2.CAP_PROP_FOCUS, 0) 
 
+    rec = Recognizer()
+    
     while cap.isOpened():
     
         ret, img = cap.read()
@@ -307,17 +323,17 @@ def go():
     
         #print(f"canvas shape: {canvas.shape}")
         try:
-            pose_info = pose_estimation(img, ArucoBoard, ARUCO_DICT[aruco_type], cam_mtx, distortion, height, width)
-            mask = drawhud(img, pose_info, cam_mtx, distortion, height, width)
+            pose_info = rec.pose_estimation(img, height, width)
+            mask = rec.drawhud(img, pose_info, height, width)
             rin = rin * mask
             rblur = cv2.medianBlur(rin,5)
-            output, rblur = detect_ball(img, rblur)
+            output, rblur = rec.detect_ball(img, rblur)
 
             cv2.line(output, (int(0),int(height/2)), (int(width), int(height/2)), (0, 0, 255), 1)
             cv2.line(output, (int(width/2),int(0)), (int(width/2), int(height)), (0, 0, 255), 1)
-    
+
             red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
-    
+
             canvas = np.zeros((height, width*2, 3), np.uint8)
             canvas[0:480, 0:640] = output
             canvas[0:480, 640:1280] = red
