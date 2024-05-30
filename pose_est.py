@@ -89,23 +89,29 @@ cb_valid = [False, False, False]
 circle_buf = [[], [], []]
 cb_times = [time.time(), time.time(), time.time()]
 
-def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, distortion_coefficients, width, height):
-    global circle_buf, cb_valid, cb_times
+class PoseError(Exception): pass
 
-    w_tvec = None
-    w_rvec = None
+class PoseInfo(object):
+    def __init__(self, tvec, rvec, heading, roll, pitch, acorners, aids, rejected):
+        self.trans_vec = tvec
+        self.rot_vec = rvec
+        self.heading = heading
+        self.roll = roll
+        self.pitch = pitch
+        self.aruco_corners = acorners
+        self.aruco_ids = aids
+        self.rejected_points = rejected
+        
+def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, distortion_coefficients, height, width):
     
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    #cv2.aruco_dict = cv2.aruco.Dictionary_get(aruco_dict_type)
-    #parameters = cv2.aruco.DetectorParameters_create()
+
     parameters =  cv2.aruco.DetectorParameters()
     cv2.aruco_dict = cv2.aruco.getPredefinedDictionary(aruco_dict_type)
 
 
-    corners, ids, rejected_img_points = cv2.aruco.detectMarkers(gray, cv2.aruco_dict,parameters=parameters)#,
-        #cameraMatrix=matrix_coefficients,
-        #distCoeff=distortion_coefficients)
-
+    corners, ids, rejected_img_points = cv2.aruco.detectMarkers(gray, cv2.aruco_dict,parameters=parameters)
+    
     """
         https://docs.opencv.org/4.x/db/da9/tutorial_aruco_board_detection.html
         
@@ -123,37 +129,32 @@ def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, dis
             pass
         #print(f"objPoints: {objPoints.shape}, imgPoints: {imgPoints.shape}")
         ret,rvecs, tvecs = cv2.solvePnP(objPoints, imgPoints, matrix_coefficients, distortion_coefficients)
-        w_tvec = tvecs
-        w_rvec = rvecs 
         if ret:
             rod, jack = cv2.Rodrigues(rvecs)
-            #rp(f"[red on white]Rod.shape: {rod.shape}")
-            #rpp(rod)
+
            #https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html#rodrigues
             #https://www.reddit.com/r/opencv/comments/kczhoc/question_solvepnp_rvecs_what_do_they_mean/
             #https://eecs.qmul.ac.uk/~gslabaugh/publications/euler.pdf
             #https://stackoverflow.com/questions/54616049/converting-a-rotation-matrix-to-euler-angles-and-back-special-case
             rodmat =  Rotation.from_matrix(rod)
             heading, roll, pitch  = rodmat.as_euler("zyx",degrees=True)
+            
             pitch = 180 - (pitch % 360)
             heading = 90 - (heading % 360)
             #roll = 360-(roll%360)
+            
             print(f"angles: (heading, pitch, roll): ({heading:5.2f}, {pitch:5.2f}, {roll:5.2f})")
-            #r,p,y = [m.degrees(x) for x in rvecs]
-            #x,y,z = tvecs # this is the origin
-            #x = x[0]
-            #y = y[0]
-            #z = z[0]
-            #print(f"x: {x}")
-            #print(f"solvePnP orientation: ({r:4.3f}, {p:4.3f}, {y:4.3f}) offset: ({x:4.3f}, {y:4.3f}, {z:4.3f})") 
-            #print(f"solvePnP orientation: ({r:5.1f}, {p:5.1f}, {y:5.1f})") 
-                
-                
+            return PoseInfo(tvecs, rvecs, heading, roll, pitch, corners, ids, rejected_img_points)
         else:
-            print("solvePnP failed")  
+            raise PoseError("solvePnP failed")  
     except cv2.error as e:
-        print(f"Match failed: {e}")
-         
+        raise PoseError(f"Match failed: {e}")
+    
+def drawhud(frame, pose_info, matrix_coefficients, distortion_coefficients, height, width):
+    global circle_buf, cb_valid, cb_times
+    
+    #w_tvec = pose_info.trans_vec
+    #w_rvec = pose_info.rot_vec    
     tags = {
         'red27': 27,
         'blue03': 3,
@@ -171,7 +172,7 @@ def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, dis
     rin = frame[:, :, 2].copy()
     rblur = cv2.medianBlur(rin,5)
     
-    if not (w_tvec is None):
+    if not (pose_info.trans_vec is None):
         testpts = np.float32([
             [183, 0, 0], 
             [0,183,0], 
@@ -183,56 +184,65 @@ def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, dis
             [91.5, 0, 0],
             [91.5, 183, 0],
         ]).reshape(-1,3)
-        imgpts, jac = cv2.projectPoints(testpts, rvecs, tvecs, matrix_coefficients, distortion_coefficients)
-        #print(f"imgpts: {imgpts.shape} {imgpts}")
+        imgpts, jac = cv2.projectPoints(
+            testpts, 
+            pose_info.rot_vec, 
+            pose_info.trans_vec, matrix_coefficients, distortion_coefficients)
+            
         try:
             for i, pt in enumerate(imgpts):
-                #print(f"testpt: {testpts[i]} imgpt: {imgpts[i]}")
-                #print(f"pt: {pt} {frame.shape}")
-                #x, y = pt[0]
-                #cv2.circle(frame, np.intp((x, y)), 10, (255, 255, 255), -1)
-                cv2.circle(frame, np.intp(pt[0]), 5, (255, 255, 255), -1)
+                cv2.circle(frame, np.intp(pt[0]), 3, (255, 255, 255), 2)
             cv2.line(frame, np.intp(imgpts[5][0]), np.intp(imgpts[6][0]), (0, 255, 0), 1)
             cv2.line(frame, np.intp(imgpts[7][0]), np.intp(imgpts[8][0]), (0, 255, 0), 1)
             #cv2.circle(frame,np.intp(imgpts[1][0]),crplen+30,(0,255,255),2)
-            cv2.circle(frame,np.intp(imgpts[4][0]),166,(0,255,255),2)
+            #cv2.circle(frame,np.intp(imgpts[4][0]),166,(0,255,255),2)
+            
+            steps = np.arange(0, 36, 1)*10
+            r = 166/2
+            x = r*np.cos(np.radians(steps))+91.5
+            y = r*np.sin(np.radians(steps))+91.5
+            z = 0 * steps
+            testpts = np.stack([x, y, z], axis=1)
+            imgpts, jac = cv2.projectPoints(
+                testpts, 
+                pose_info.rot_vec, 
+                pose_info.trans_vec, matrix_coefficients, distortion_coefficients)
+            imgpts2 = [ip[0] for ip in imgpts]
+            #print(testpts[0])
+            #print(imgpts2[0])
+            cv2.polylines(frame, np.intp([imgpts2]), True, (0, 255, 255), 2)
         except cv2.error as e:
             print(f"oops: {e}")
             
-          
-    if len(corners) > 0:
+    # Y is red, X is green, Z is blue
+    cv2.drawFrameAxes(
+        frame, 
+        matrix_coefficients, 
+        distortion_coefficients, 
+        pose_info.rot_vec, 
+        pose_info.trans_vec, 
+        15, 2)
+              
+    if len(pose_info.aruco_corners) > 0:
         mask_circs = []
         mask_rads = [] # 145 - 235
-        aruco_display(corners, ids, rejected_img_points, frame)
+        aruco_display(
+            pose_info.aruco_corners, 
+            pose_info.aruco_ids, 
+            pose_info.rejected_points, 
+            frame)
         #print(f"detected ids: {ids}")
-        for i in range(0, len(ids)):
-            tid = ids[i][0]
+        for i in range(0, len(pose_info.aruco_ids)):
+            tid = pose_info.aruco_ids[i][0]
 
-            rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(corners[i], 0.02, matrix_coefficients,
-                                                                       distortion_coefficients)
-            
-            #print(f"tid: {tid} corners[{i}]: {corners[i]}")
-            #criteria = (cv2.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-            #corners2 = cv2.cornerSubPix(frame,corners,(11,11),(-1,-1),criteria)
-            #ret,rvecs, tvecs = cv2.solvePnP(objp, corners2, mtx, dist)
-            #if not ret:
-            #    print("solvePnP failed"
-            #    continue
-            #cv2.aruco.drawDetectedMarkers(frame, corners) 
-
-            # Y is red, X is green, Z is blue
-            cv2.drawFrameAxes(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.06, 1)
- 
+            rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(
+                pose_info.aruco_corners[i], 
+                0.02, 
+                matrix_coefficients,
+                distortion_coefficients)
+                
             axis = np.float32([[.03,0,0], [0,.03,0], [0,0,-.03]]).reshape(-1,3)
             imgpts, jac = cv2.projectPoints(axis, rvec, tvec, matrix_coefficients, distortion_coefficients)
-            #print(f"imgpts.shape: {imgpts.shape}, imgpts: {imgpts}  ")
-            
-            #print(f"axis: {axis}, axis.shape: {axis.shape}")
-            #for j in range(len(axis)):
-            #    print(f"point: {axis[j]} projected: {imgpts[j]}")
-            #cv2.line(frame, np.intp(imgpts[0][0]), np.intp(imgpts[1][0]), (0, 255, 255), 2)
-            #cv2.line(frame, np.intp(imgpts[1][0]), np.intp(imgpts[2][0]), (255, 0, 255), 2)
-            #cv2.line(frame, np.intp(imgpts[2][0]), np.intp(imgpts[0][0]), (255, 255, 0), 2)
             
             crlen = 0.162
             if tid == 42: # bubble, ie false
@@ -372,8 +382,8 @@ def go():
         corner_info = pickle.load(f)
         aruco_ids = corner_info['ids']
         aruco_corners = corner_info['corners']
-    print(f"aruco_ids: {aruco_ids}")
-    print(f"aruco_corners: {aruco_corners}")
+    #print(f"aruco_ids: {aruco_ids}")
+    #print(f"aruco_corners: {aruco_corners}")
     ArucoBoard=cv2.aruco.Board(aruco_corners.astype(np.float32), arucoDict, aruco_ids)
 
     
@@ -393,15 +403,14 @@ def go():
     #cap.set(cv2.CAP_PROP_AUTOFOCUS, 0) 
     #cap.set(cv2.CAP_PROP_FOCUS, 0) 
 
-
-    
     while cap.isOpened():
     
         ret, img = cap.read()
     
         canvas = np.zeros((height, width*2, 3), np.uint8)
-    
-        output, rblur = pose_estimation(img, ArucoBoard, ARUCO_DICT[aruco_type], cam_mtx, distortion, width, height)
+        #print(f"canvas shape: {canvas.shape}")
+        pose_info = pose_estimation(img, ArucoBoard, ARUCO_DICT[aruco_type], cam_mtx, distortion, height, width)
+        output, rblur = drawhud(img, pose_info, cam_mtx, distortion, height, width)
 
         cv2.line(output, (int(0),int(height/2)), (int(width), int(height/2)), (0, 0, 255), 1)
         cv2.line(output, (int(width/2),int(0)), (int(width/2), int(height)), (0, 0, 255), 1)
