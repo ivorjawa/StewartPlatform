@@ -107,7 +107,8 @@ def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, dis
         #distCoeff=distortion_coefficients)
 
     """
-
+        https://docs.opencv.org/4.x/db/da9/tutorial_aruco_board_detection.html
+        
         // Get object and image points for the solvePnP function
          cv::Mat objPoints, imgPoints;
          board.matchImagePoints(corners, ids, objPoints, imgPoints);
@@ -133,9 +134,10 @@ def pose_estimation(frame, ArucoBoard, aruco_dict_type, matrix_coefficients, dis
             #https://eecs.qmul.ac.uk/~gslabaugh/publications/euler.pdf
             #https://stackoverflow.com/questions/54616049/converting-a-rotation-matrix-to-euler-angles-and-back-special-case
             rodmat =  Rotation.from_matrix(rod)
-            heading, pitch, roll  = rodmat.as_euler("zyx",degrees=True)
-            #pitch = pitch % 180
-            #roll = roll % 180
+            heading, roll, pitch  = rodmat.as_euler("zyx",degrees=True)
+            pitch = 180 - (pitch % 360)
+            heading = 90 - (heading % 360)
+            #roll = 360-(roll%360)
             print(f"angles: (heading, pitch, roll): ({heading:5.2f}, {pitch:5.2f}, {roll:5.2f})")
             #r,p,y = [m.degrees(x) for x in rvecs]
             #x,y,z = tvecs # this is the origin
