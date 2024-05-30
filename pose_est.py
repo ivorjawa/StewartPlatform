@@ -107,7 +107,9 @@ https://docs.opencv.org/4.x/db/da9/tutorial_aruco_board_detection.html
 """
 
 class Recognizer(object):
-    def __init__(self):
+    def __init__(self, height, width):
+        self.height = height
+        self.width = width
         self.aruco_type = "DICT_4X4_50"
         self.arucoParams =  cv2.aruco.DetectorParameters()
         self.arucoDict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
@@ -132,7 +134,7 @@ class Recognizer(object):
         self.circle_buf = [[], [], []]
         self.cb_times = [time.time(), time.time(), time.time()]
                 
-    def pose_estimation(self, frame,  height, width):
+    def pose_estimation(self, frame):
     
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
@@ -162,7 +164,7 @@ class Recognizer(object):
         except cv2.error as e:
             raise PoseError(f"Match failed: {e}")
     
-    def drawhud(self, frame, pose_info, height, width):
+    def drawhud(self, frame, pose_info):
         if not (pose_info.trans_vec is None):
             testpts = np.float32([
                 [183, 0, 0], 
@@ -198,7 +200,7 @@ class Recognizer(object):
                     pose_info.trans_vec, self.cam_mtx, self.distortion)
                 imgpts2 = [ip[0] for ip in imgpts]
                 cv2.polylines(frame, np.intp([imgpts2]), True, (0, 255, 255), 2)
-                mask = np.zeros((height, width), np.uint8)
+                mask = np.zeros((self.height, self.width), np.uint8)
                 #cv2.circle(mask,(xav,yav),rav+30,1,-1)
                 cv2.fillPoly(mask, np.intp([imgpts2]), (1))
 
@@ -221,8 +223,6 @@ class Recognizer(object):
                 pose_info.rejected_points, 
                 frame)
         return mask
-
-
 
     def detect_ball(self, frame, rblur):
         #global circle_buf, cb_valid, cb_times
@@ -291,10 +291,7 @@ class Recognizer(object):
                 print("Did I divide by zero?:  ", e)
         return frame, rblur
 
-def go():
-
-
-    
+def go():    
     cap = cv2.VideoCapture(0)
 
     width = 640
@@ -311,7 +308,7 @@ def go():
     #cap.set(cv2.CAP_PROP_AUTOFOCUS, 0) 
     #cap.set(cv2.CAP_PROP_FOCUS, 0) 
 
-    rec = Recognizer()
+    rec = Recognizer(height, width)
     
     while cap.isOpened():
     
@@ -323,8 +320,8 @@ def go():
     
         #print(f"canvas shape: {canvas.shape}")
         try:
-            pose_info = rec.pose_estimation(img, height, width)
-            mask = rec.drawhud(img, pose_info, height, width)
+            pose_info = rec.pose_estimation(img)
+            mask = rec.drawhud(img, pose_info)
             rin = rin * mask
             rblur = cv2.medianBlur(rin,5)
             output, rblur = rec.detect_ball(img, rblur)
