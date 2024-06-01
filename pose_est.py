@@ -185,8 +185,8 @@ class Recognizer(object):
             
             
     def log(self, ball_info, pose_info):
-        print(ball_info)
-        print(pose_info)
+        #print(ball_info)
+        #print(pose_info)
         if self.logging:
             self.log_data.append([ball_info, pose_info])
     
@@ -338,14 +338,14 @@ class Recognizer(object):
                 a = dv/dt2
                 bi = BallInfo([c1, c2, c3], [dt1, dt2], [ds1, ds1], [v1, v2], a)
                 self.log(bi, self.pose_info)
-                print(f"c1: {np.intp(c1)}, c2: {np.intp(c2)}, c3: {np.intp(c3)}")
-                print(f"v1: {v1}, v2: {v2}, dv: {dv}")
-                print(f"dt1: {dt1:3.3f}, dt2: {dt2:3.3f}, ds1: {ds1}, ds2: {ds2}")
+                #print(f"c1: {np.intp(c1)}, c2: {np.intp(c2)}, c3: {np.intp(c3)}")
+                #print(f"v1: {v1}, v2: {v2}, dv: {dv}")
+                #print(f"dt1: {dt1:3.3f}, dt2: {dt2:3.3f}, ds1: {ds1}, ds2: {ds2}")
                 v1s = m.sqrt(abs(lin.dot(*v1)))
                 v2s = m.sqrt(abs(lin.dot(*v2)))
                 a_s = m.sqrt(abs(lin.dot(*a)))
             
-                print(f"v1: {v1s:8.2f}, v2: {v2s:8.2f}, a: {a_s:8.2f}", end='\n')
+                #print(f"v1: {v1s:8.2f}, v2: {v2s:8.2f}, a: {a_s:8.2f}", end='\n')
                 self.have_estimate = True
                 cv2.line(frame, np.intp((c1[0], c1[1])), np.intp((c2[0], c2[1])), (255, 255, 0), 2)
                 cv2.line(frame, np.intp((c2[0], c2[1])), np.intp((c3[0], c3[1])), (255, 255, 0), 2)
@@ -353,7 +353,7 @@ class Recognizer(object):
                 # FIXME predict next step using kalman filter here
                 # state space physics model of ball and input
                 # feed-forward
-                print(f"c3: {c3}  v2: {v2}")
+                #print(f"c3: {c3}  v2: {v2}")
                 vline = c3[:2] + v2
                 aline = c3[:2] + a
                 if self.draw_valines:
