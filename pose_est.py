@@ -2,7 +2,7 @@
 
 import sys
 import os
-import time
+import time, datetime
 import pickle
 import math as m
 
@@ -16,7 +16,7 @@ from rich import print as rp
 from rich.pretty import pprint as rpp # yeah you know me
 
 np.set_printoptions(suppress=True, 
-                    formatter={'float_kind':'{:5.2f}'.format}) 
+                    formatter={'float_kind':'{:6.2f}'.format}) 
 
 ARUCO_DICT = {
 	"DICT_4X4_50": cv2.aruco.DICT_4X4_50,
@@ -69,8 +69,8 @@ def aruco_display(corners, ids, rejected, image):
 			cv2.circle(image, topLeft, 4, (255, 0, 255), -1)
             
 			
-			cv2.putText(image, str(markerID),(topLeft[0]+30, topLeft[1] - 30), cv2.FONT_HERSHEY_SIMPLEX,
-				1.5, (255, 0, 255), 2)
+			cv2.putText(image, str(markerID),(topLeft[0]+10, topLeft[1] - 10), cv2.FONT_HERSHEY_SIMPLEX,
+				.75, (255, 0, 255), 2)
 			#print("[Inference] ArUco marker ID: {}".format(markerID))
 			
 	return image
@@ -78,8 +78,11 @@ def aruco_display(corners, ids, rejected, image):
 
 class PoseError(Exception): pass
 
+fs = lambda a: ','.join([f"{x:6.3f}" for x in np.array(a).ravel()])
+
 class PoseInfo(object):
-    def __init__(self, tvec, rvec, heading, roll, pitch, acorners, aids, rejected):
+    def __init__(self, tvec, rvec, heading, roll, pitch, acorners, aids, rejected, centerpos):
+        self.position = centerpos
         self.trans_vec = tvec
         self.rot_vec = rvec
         self.heading = heading
@@ -88,8 +91,26 @@ class PoseInfo(object):
         self.aruco_corners = acorners
         self.aruco_ids = aids
         self.rejected_points = rejected
-        
+    def header(self):
+        return("px,py,tvx,tvy,tvz,rvx,rvy,rvz,heading,roll,pitch")
+    def __str__(self):
+        return f"{fs(self.position)},{fs(self.trans_vec)},{fs(self.rot_vec)},{self.heading:6.3f},{self.roll:6.3f},{self.pitch:6.3f}"
 
+#bi = BallInfo([c1, c2, c3], [dt1, dt2], [ds1, ds1], [v1, v2], a)       
+class BallInfo(object):
+    def __init__(self, centers, timedeltas, spacedeltas, velocities, acceleration):
+        self.time = time.time()
+        self.centers = centers
+        self.dts = timedeltas
+        self.dss = spacedeltas
+        self.vs = velocities
+        self.accel = acceleration
+    def header(self):
+        return("time,c1x,c1y,c1z,c2x,c2y,c2z,c3x,c3y,c3z,dt1,dt2,ds1x,ds1y,ds2x,ds2y,v1x,v1y,v2x,v2y,ax,ay")
+    def __str__(self):
+        return f"{self.time},{fs(self.centers)},{fs(self.dts)},{fs(self.dss)},{fs(self.vs)},{fs(self.accel)}"
+
+    
 """
 https://docs.opencv.org/4.x/db/da9/tutorial_aruco_board_detection.html
 
@@ -108,6 +129,7 @@ https://docs.opencv.org/4.x/db/da9/tutorial_aruco_board_detection.html
 
 class Recognizer(object):
     def __init__(self, height, width):
+        self.draw_valines = False
         self.height = height
         self.width = width
         self.aruco_type = "DICT_4X4_50"
@@ -133,7 +155,42 @@ class Recognizer(object):
         self.cb_valid = [False, False, False]
         self.circle_buf = [[], [], []]
         self.cb_times = [time.time(), time.time(), time.time()]
-                
+        
+        self.have_pose = False
+        self.have_ball = False
+        self.have_estimate = False
+        
+        self.log_data = []
+        self.logging = False
+        self.csv_stemname = "Pose_est"
+        
+    def start_logging(self):
+        if not self.logging:
+            rp("[yellow on red]Begin Logging")
+            self.log_data = []
+            self.logging = True
+            
+    def stop_logging(self):
+        if self.logging:
+            if len(self.log_data) > 0:
+                fn = f"{self.csv_stemname}-{datetime.datetime.now().isoformat()}.csv" 
+                header = f"{self.log_data[0][0].header()},{self.log_data[0][1].header()}"
+                with open(fn, "w") as cvsfile:
+                    print(header, file=cvsfile)
+                    for bi, pi in self.log_data:
+                        print(f"{str(bi)},{str(pi)}", file=cvsfile)
+                rp(f"[yellow on red]Wrote log to {fn}")
+        self.logging = False
+        
+            
+            
+    def log(self, ball_info, pose_info):
+        print(ball_info)
+        print(pose_info)
+        if self.logging:
+            self.log_data.append([ball_info, pose_info])
+    
+    
     def pose_estimation(self, frame):
     
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -157,8 +214,12 @@ class Recognizer(object):
                 heading = 90 - (heading % 360)
                 #roll = 360-(roll%360)
             
-                print(f"angles: (heading, pitch, roll): ({heading:5.2f}, {pitch:5.2f}, {roll:5.2f})")
-                return PoseInfo(tvecs, rvecs, heading, roll, pitch, corners, ids, rejected_img_points)
+                testpts = np.float32([[91.5, 91.5, 0],])
+                imgpts, jac = cv2.projectPoints(testpts,rvecs, tvecs, self.cam_mtx, self.distortion)
+                center = imgpts[0][0]
+                print(f"center: {center}, angles: (heading, pitch, roll): ({heading:5.2f}, {pitch:5.2f}, {roll:5.2f})")
+                self.pose_info =  PoseInfo(tvecs, rvecs, heading, roll, pitch, corners, ids, rejected_img_points, center)
+                return self.pose_info
             else:
                 raise PoseError("solvePnP failed")  
         except cv2.error as e:
@@ -245,6 +306,7 @@ class Recognizer(object):
             if len(circles) == 1: 
                 self.circle_buf.append(circles[0][0])
                 self.cb_valid.append(True)
+                self.have_ball = True
             else:
                 self.circle_buf.append([])
                 self.cb_valid.append(False)
@@ -274,22 +336,51 @@ class Recognizer(object):
                 v2 = ds2/dt2
                 dv = v2-v1
                 a = dv/dt2
+                bi = BallInfo([c1, c2, c3], [dt1, dt2], [ds1, ds1], [v1, v2], a)
+                self.log(bi, self.pose_info)
                 print(f"c1: {np.intp(c1)}, c2: {np.intp(c2)}, c3: {np.intp(c3)}")
                 print(f"v1: {v1}, v2: {v2}, dv: {dv}")
                 print(f"dt1: {dt1:3.3f}, dt2: {dt2:3.3f}, ds1: {ds1}, ds2: {ds2}")
                 v1s = m.sqrt(abs(lin.dot(*v1)))
-                #print("x")
                 v2s = m.sqrt(abs(lin.dot(*v2)))
-                #print(f"a: {a}")
                 a_s = m.sqrt(abs(lin.dot(*a)))
             
                 print(f"v1: {v1s:8.2f}, v2: {v2s:8.2f}, a: {a_s:8.2f}", end='\n')
+                self.have_estimate = True
                 cv2.line(frame, np.intp((c1[0], c1[1])), np.intp((c2[0], c2[1])), (255, 255, 0), 2)
                 cv2.line(frame, np.intp((c2[0], c2[1])), np.intp((c3[0], c3[1])), (255, 255, 0), 2)
+                
+                # FIXME predict next step using kalman filter here
+                # state space physics model of ball and input
+                # feed-forward
+                print(f"c3: {c3}  v2: {v2}")
+                vline = c3[:2] + v2
+                aline = c3[:2] + a
+                if self.draw_valines:
+                    cv2.line(frame, np.intp((c3[0], c3[1])), np.intp((vline[0], vline[1])), (0, 255, 0), 2)
+                    cv2.line(frame, np.intp((c3[0], c3[1])), np.intp((aline[0], aline[1])), (0, 0, 255), 2)
+
             except Exception as e:
                 pass
                 print("Did I divide by zero?:  ", e)
         return frame, rblur
+    def recognize(self, frame):
+        self.have_pose = False
+        self.have_ball = False
+        self.have_estimate = False
+        # save for later ball-seeking
+        rin = frame[:, :, 2].copy()
+        try:
+            pose_info = self.pose_estimation(frame)
+            self.have_pose = True
+            mask = self.drawhud(frame, pose_info)
+            rin = rin * mask
+            rblur = cv2.medianBlur(rin,5)
+            
+            self.output, rblur = self.detect_ball(frame, rblur)
+            self.red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
+        except Exception as e:
+            print(e)
 
 def go():    
     cap = cv2.VideoCapture(0)
@@ -305,40 +396,35 @@ def go():
     os.system("./uvc-util -I 0 -s auto-exposure-mode=1")
     os.system("./uvc-util -I 0 -s exposure-time-abs=150")
     
-    #cap.set(cv2.CAP_PROP_AUTOFOCUS, 0) 
-    #cap.set(cv2.CAP_PROP_FOCUS, 0) 
 
     rec = Recognizer(height, width)
     
+    # FIXME create state machine to pan roll and pitch and measure slew rate
+    # strategy for balancing:  first center machine
+    # get true gravity vector from brick
+    # once platform centered, center ball on platform
+    # should expose 6-DOF api on stuart
     while cap.isOpened():
-    
         ret, img = cap.read()
-        
-        # save for later ball-seeking
-        rin = img[:, :, 2].copy()
-        rblur = cv2.medianBlur(rin,5)
-    
-        #print(f"canvas shape: {canvas.shape}")
-        try:
-            pose_info = rec.pose_estimation(img)
-            mask = rec.drawhud(img, pose_info)
-            rin = rin * mask
-            rblur = cv2.medianBlur(rin,5)
-            output, rblur = rec.detect_ball(img, rblur)
+        if ret:
+            rec.recognize(img)
 
-            cv2.line(output, (int(0),int(height/2)), (int(width), int(height/2)), (0, 0, 255), 1)
-            cv2.line(output, (int(width/2),int(0)), (int(width/2), int(height)), (0, 0, 255), 1)
-
-            red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
+            cv2.line(rec.output, (int(0),int(height/2)), (int(width), int(height/2)), (0, 0, 255), 1)
+            cv2.line(rec.output, (int(width/2),int(0)), (int(width/2), int(height)), (0, 0, 255), 1)
 
             canvas = np.zeros((height, width*2, 3), np.uint8)
-            canvas[0:480, 0:640] = output
-            canvas[0:480, 640:1280] = red
+            canvas[0:480, 0:640] = rec.output
+            canvas[0:480, 640:1280] = rec.red
             cv2.imshow('Estimated Pose', canvas)
-        except Exception as e:
-            print(e)
-        if cv2.waitKey(1) == 27:
+
+        key = cv2.waitKey(1)
+        if key == 27:
             break
+        elif key == ord('l'):
+            rec.start_logging()
+        elif key == ord('s'):
+            rec.stop_logging()
+        
         #key = cv2.waitKey(1) & 0xFF
         #if key == ord('q'):
         #    break
