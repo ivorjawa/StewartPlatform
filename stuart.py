@@ -170,6 +170,7 @@ class SlerpSM(StateMachine):
         self.rotor1 = None
         self.rotor2 = None
         self.segstime = millis()
+        self.segcount = 5
         print(f"rcube: {self.rcube}")
         print("SlerpSM()")
     def loadframe(self):
@@ -193,8 +194,8 @@ class SlerpSM(StateMachine):
     def segstart(self):
         print("segstart")
         self.segstime = millis()
-        lerpcube = self.scube1 + (self.framedex/25.0)*self.cubefract
-        rotor = slerp.slerp(self.rotor1, self.rotor2, self.framedex)
+        lerpcube = self.scube1 + (self.framedex/(1.0*self.segcount))*self.cubefract
+        rotor = slerp.slerp(self.rotor1, self.rotor2, self.framedex/(1.0*self.segcount))
         (r, p, y) = slerp.to_euler(rotor) # (roll, pitch, yaw)
         r = m.degrees(r)
         p = m.degrees(p)
@@ -223,7 +224,7 @@ class SlerpSM(StateMachine):
             timeout = True
         if self.stew.is_moved() or timeout:
             self.framedex += 1
-            if self.framedex == 26:
+            if self.framedex == self.segcount+1:
                 self.framedex = 0
                 self.state = self.states.advance
             else:
@@ -234,7 +235,7 @@ class SlerpSM(StateMachine):
         self.cubedex += 1
         if(self.cubedex == self.cubelength):
             self.cubedex = 0
-            raise(Exception("moopsy!"))
+            raise(Exception("moopsy!")) # kill after one cycle
         self.state = self.states.loadframe
                         
 class MoveSM(object):

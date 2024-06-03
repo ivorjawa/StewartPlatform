@@ -79,7 +79,13 @@ def point(x, y, z):
 def slerp(one, two, t):
     #https://splines.readthedocs.io/en/latest/rotation/slerp.html
     """Spherical Linear intERPolation."""
-    return (two * one.inverse())**t * one
+    #print(f"two: ({fq(two)}) one.inverse: ({fq(one.inverse())}) t: {t} one: ({fq(one)})")
+    p1 = two * one.inverse()
+    p2 = p1 ** t
+    p3 = p2 * one
+    #print(f"p1: ({fq(p1)}), p2: ({fq(p2)}), p3: ({fq(p3)})")
+    return p3
+    #return (two * one.inverse())**t * one
            
 
 #https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles    
@@ -159,8 +165,8 @@ if __name__ == "__main__":
     #z = p2.z
     #print(f"p2: ({x:3.3f}, {y:3.3f}, {z:3.3f})")
     
-    q1 = euler_quat(m.radians(0), m.radians(15), m.radians(15))
-    q2 = euler_quat(m.radians(0), m.radians(-15), m.radians(-15))
+    q1 = euler_quat(m.radians(0), m.radians(0), m.radians(10))
+    q2 = euler_quat(m.radians(0), m.radians(0), m.radians(-10))
     #q1 = make_quat(0, 1, 0, 0)
     #print(f"q1: {q1} q1.d: {q1.d.T}")
     #2 = make_quat(0, 0, 1, 0)
@@ -170,7 +176,10 @@ if __name__ == "__main__":
     #q2 = make_quat(0, -.13, -.13, -0.02)
     print(f"q1: {fq(q1)} euler: {fv3(to_euler_d(q1))}")
     for i in range(11):
-        print(f"{i}: {fq(slerp(q1, q2, i/10))}")
+        #if i > 1:
+        #    break
+        qi = slerp(q1, q2, i/10)
+        print(f"{i}: {fq(qi)} euler: {fv3(to_euler_d(qi))}")
     print(f"q2: {fq(q2)} euler: {fv3(to_euler_d(q2))}")
     
     #a = lin.vector(1, 2, 3)

@@ -79,8 +79,10 @@ class Quaternion:
     
         
     def __init__(self, w=1, x=0, y=0, z=0):  # Default: the identity quaternion
+        #print(f"qinit: w: {w} x: {x} y: {y} z: {z}")
         #self.d = array('f', (w, x, y, z))
         self.d = lin.vec4(w, x, y, z)
+        #print(f"self.d: {self.d}")
         
     def normalise(self):
         if self[0] == 1:  # acos(1) == 0. Identity quaternion: no rotation
@@ -239,7 +241,12 @@ class Quaternion:
     #https://github.com/Kent-H/blue3D/blob/master/Blue3D/src/blue3D/type/QuaternionF.java
     #https://math.stackexchange.com/questions/939229/unit-quaternion-to-a-scalar-power
     def scale(self, n):
-        return Quaternion(*(n*self.d))
+        #print(f"scale self: {self} n: {n}")
+        nsd = n * self.d
+        #print(f"nsd: {nsd}")
+        retval =  Quaternion(nsd[0],nsd[1],nsd[2],nsd[3]) # *nsd caused a bug here
+        #print(f"retval: {retval}")
+        return retval
         
     def ln(self): 
         #w, x, y, z = self.d
@@ -279,6 +286,13 @@ class Quaternion:
         return Quaternion(w, x, y, z)
         
     def __pow__(self, n):
+        #print(f"pow: {self} n {n}")
+        logn = self.ln()
+        slog = logn.scale(n)
+        exlax = slog.exp()
+        #print(f"logn: {logn}")
+        #print(f"slog: {slog}")
+        #print(f"exlax: {exlax}")
         return self.ln().scale(n).exp()
         
 # A vector quaternion has real part 0. It can represent a point in space.
