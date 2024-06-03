@@ -195,17 +195,26 @@ class Recognizer(object):
     
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        corners, ids, rejected_img_points = cv2.aruco.detectMarkers(
-            gray, cv2.aruco_dict,parameters=self.parameters)
-    
+        detector = cv2.aruco.ArucoDetector(cv2.aruco_dict, self.parameters)
+        #corners, ids, rejected_img_points = cv2.aruco.detectMarkers(
+        #gray, cv2.aruco_dict,parameters=self.parameters)
+        
+        corners, ids, rejected_img_points = detector.detectMarkers(gray)
+        corners, ids, rejected_img_points, _ = detector.refineDetectedMarkers(
+            gray, 
+            self.ArucoBoard, 
+            corners, 
+            ids, rejected_img_points, self.cam_mtx, self.distortion)
         try:
             objPoints, imgPoints = self.ArucoBoard.matchImagePoints(corners, ids)
             for i in range(objPoints.shape[0]):
                 #print(f"{i} {objPoints[i]}, {imgPoints[i]}")
                 pass
             #print(f"objPoints: {objPoints.shape}, imgPoints: {imgPoints.shape}")
-            ret,rvecs, tvecs = cv2.solvePnP(objPoints, imgPoints, self.cam_mtx, self.distortion)
+            ret,rvecs,tvecs = cv2.solvePnP(objPoints, imgPoints, self.cam_mtx, self.distortion)
             if ret:
+                rvecs,tvecs = cv2.solvePnPRefineLM(
+                    objPoints, imgPoints, self.cam_mtx, self.distortion, rvecs, tvecs)
                 rod, jack = cv2.Rodrigues(rvecs)
                 rodmat =  Rotation.from_matrix(rod)
                 heading, roll, pitch  = rodmat.as_euler("zyx",degrees=True)
