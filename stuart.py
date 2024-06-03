@@ -151,11 +151,12 @@ class Enum(object):
 class SlerpSM(StateMachine):
     def __init__(self, stew):
         super().__init__()
-        self.states =  Enum("slerpstate", ['loadframe', 'segstart', 'segend', 'advance'])
+        self.states =  Enum("slerpstate", ['loadframe', 'segstart', 'segend', 'wait', 'advance'])
         self.state = self.states.loadframe
         self.register(self.states.loadframe, self.loadframe)
         self.register(self.states.segstart, self.segstart)
         self.register(self.states.segend, self.segend)
+        self.register(self.states.wait, self.wait)
         self.register(self.states.advance, self.advance)
         self.rcube = slerpdat.rcube # cube rotations
         self.scube = slerpdat.scube # cube positions
@@ -216,20 +217,26 @@ class SlerpSM(StateMachine):
             
         self.state = self.states.segend
     def segend(self):
-        print(f"segend {self.framedex}")
+        #print(f"segend {self.framedex}")
         dt = millis()-self.segstime
         timeout = False
-        if(dt) > 100:
+        if(dt) > 250:
             print(f"move timeout: {dt}")
             timeout = True
         if self.stew.is_moved() or timeout:
             self.framedex += 1
             if self.framedex == self.segcount+1:
                 self.framedex = 0
-                self.state = self.states.advance
+                self.state = self.states.wait
+                self.segstime = millis()
             else:
                 self.state = self.states.segstart
             print(f"next state: {self.state}")
+    def wait(self):
+        dt = millis()-self.segstime
+        if(dt) > 1000:
+            print("waited")
+            self.state = self.states.advance
     def advance(self):
         print("advance")
         self.cubedex += 1
@@ -286,7 +293,7 @@ class Stewart(StewartPlatform):
             self.cmots[i].track_target(target)
  
     def is_moved(self):
-        thresh = 5
+        thresh = 10
         done = [False for i in self.cyls]
         for i, cyl in enumerate(self.cyls):
             target = self.pos_ang(cyl)
