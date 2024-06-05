@@ -319,6 +319,7 @@ class BaseStation(object):
         while 1:
         
             #report = self.gamepad.report()
+            #for x in [24, 40, 72, 68, 255]: print(f"{x:#010b}") 
             cdict = {'roll': 0, 'pitch': 0, 'yaw': 0, 'coll': 0, 'glyph': 255} # keepawake
             try:
                 cdict = self.fromq.get_nowait()

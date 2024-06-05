@@ -328,7 +328,9 @@ def run_remote():
     # Register the standard input so we can read keyboard presses.
     poller.register(stdin)
     
-    wvars = ['coll', 'roll', 'pitch', 'yaw', 'glyph']
+    # FIXME need to add x, y, z and flag in glyph for quatmode
+    # put wvars into a python file everrything can include
+    wvars = ['coll', 'roll', 'pitch', 'yaw', 'glyph'] 
     wirep = JoyProtocol(wvars, 2, poller, stdin)
     
     #jsman = JSMan()

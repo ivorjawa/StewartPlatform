@@ -122,7 +122,6 @@ class SquareBoard(object):
         #print(f"p: {p}, flipped: {flipped}")
         return np.intp(flipped*self.scale + self.origin_n)
     def tpsvg(self, p):
-        # FIXME output is mirrored!
         #flipped = lin.vector(p[0], self.pheight-p[1]) 
         flipped = lin.vector(p[0], self.activemm-p[1]) 
         retval = flipped + self.origin_p
