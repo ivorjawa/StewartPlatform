@@ -699,6 +699,10 @@ def old_3_marker_board():
             break
         
 if __name__ == "__main__":
+    #FIXME make 300 dpi png of just 183mm square
+    # https://cairosvg.org/documentation/
+    #from cairosvg import svg2png
+    #svg2png(bytes, write_to="plateout.png")
     print()
     #old_3_marker_board()     
     new_6_marker_board() 
