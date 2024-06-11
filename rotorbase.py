@@ -69,7 +69,9 @@ class BaseStation(object):
                 #print(report)          
                 output = wirep.encode(report)
                 #print(output)
-                if (output != lastout) or (((time.time()-self.last_sent)*1000) > 16):
+                dtms = (time.time() - self.last_sent) * 1000
+                if (dtms > 16): # only send 60 fps
+                #if (output != lastout) or (((time.time()-self.last_sent)*1000) > 16):
                     lastout = output
                     logging.debug(output)
                     try:
