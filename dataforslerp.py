@@ -82,7 +82,7 @@ scube2 = [
 
 ]
 
-scube = [lin.vector(*v) for v in scube1]
+scube = [lin.vector(*v) for v in scube2]
 
 """        
 
@@ -117,23 +117,23 @@ rcube2 = [
     #[0, 0, 0]
             
     [0, 0, 0], # slide 1
-    [0, 6, 6], 
+    [0, 3, 3], 
     #[0, 0, 0],
     
     [0, 0, 0], # slide 2
-    [0, -6, -6], 
+    [0, -3, -3], 
     #[0, 0, 0],
     
     [0, 0, 0], # slide 3
-    [0, -6, 6], 
+    [0, -3, 3], 
     #[0, 0, 0],
     
     [0, 0, 0], # slide 4
-    [0, 6, -6], 
+    [0, 3, -3], 
     #[0, 0, 0],
   
 ]
-rcube = [lin.vector(*v) for v in rcube1]
+rcube = [lin.vector(*v) for v in rcube2]
 
 #pybricksdev run ble -n jawaspike dataforslerp.py
 if __name__ == "__main__":

@@ -67,8 +67,9 @@ class StewartPlatform(object): # millimeters
         self.plat_range = self.max_height - self.min_height
         self.cube_unit_guess = min(self.inner_r, self.plat_range) # guess at limit for expanding unit xyz movement
         print(f"min_cyl: {min_cyl} max_cyl: {max_cyl} inner_r: {inner_r} outer_r: {outer_r}")
-        print(f"min_height_hyp: {min_height_hyp} min_height: {self.min_height}")
-        print(f"max_height_hyp: {max_height_hyp} max_height: {self.max_height}")
+        print(f"min_height_hyp: {min_height_hyp:6.1f} min_height: {self.min_height:6.1f}")
+        print(f"max_height_hyp: {max_height_hyp:6.1f} max_height: {self.max_height:6.1f}")
+        print(f"Height Range: +-{self.plat_range/2:6.1f}")
         print(f"cube unit guess: {self.cube_unit_guess}")
         #sys.exit(0)
 
@@ -101,20 +102,23 @@ class StewartPlatform(object): # millimeters
         self.old_coll_v = self.p0 *(self.min_height + .5 * self.plat_range)
         self.old_cyls = self.cyls.copy()
     
-    def solve6(self, roll, pitch, yaw, x, y, z):
-        "rpy in degrees, xyz -1.0..1.0"
+    def solve6(self, roll, pitch, yaw, x, y, z, use_guess=True):
+        "rpy in degrees, xyz -1.0..1.0 * guess or xyz in relative mm to 0"
         #(heading, pitch, roll)
         rotor = slerp.euler_quat(m.radians(yaw), m.radians(pitch), m.radians(roll))
-        return self.solve4(rotor, x, y, z)
+        return self.solve4(rotor, x, y, z, use_guess)
         
-    def solve4(self, rotor, x, y, z):
+    def solve4(self, rotor, x, y, z, use_guess=True):
+        cubescale = 1
+        if use_guess:
+            cubescale = self.cube_unit_guess
         saq = slerp.point(*self.sA)
         sbq = slerp.point(*self.sB)
         scq = slerp.point(*self.sC)
         sa = slerp.quat2vec3(slerp.qrotate(rotor, saq))
         sb = slerp.quat2vec3(slerp.qrotate(rotor, sbq))
         sc = slerp.quat2vec3(slerp.qrotate(rotor, scq))
-        coll_v = (lin.vector(x, y, z) * self.cube_unit_guess) + lin.vector(0, 0, self.min_height)
+        coll_v = (lin.vector(x, y, z) * cubescale) + lin.vector(0, 0, self.min_height)
         sa += coll_v
         sb += coll_v
         sc += coll_v
@@ -248,3 +252,48 @@ class StewartPlatform(object): # millimeters
                 return(())
         return((sa, sb, sc, cyls))
             
+
+def probe():
+    np = lin.np
+    from rich.pretty import pprint as rpp
+    #inner_r, outer_r, footprint, min_cyl, max_cyl: mm
+    Stew = StewartPlatform(57, 98, 120, 250, 314)
+    def max_r(hpct):
+        retval = (0, (Stew.plat_range) * hpct)
+        for r in range(0, 200, 1):
+            for d in range(0, 360, 20):
+                roll = 0
+                pitch = 0
+                yaw = 0
+                x = r*m.cos(m.radians(d))
+                y = r*m.sin(m.radians(d))
+                z = (Stew.plat_range) * hpct
+                #print(f"Radius: {r} Angle: {d} RPY: ({roll}, {pitch} {yaw}) XYZ: ({x:5.1f}, {y:5.1f}, {z:5.1f}) ", end='')
+                rv = Stew.solve6(roll, pitch, yaw, x, y, z, False)
+                if  rv != ():
+                    retval = (r, z)
+                    #print(f"cyls: {np.intp(Stew.cyls)}")
+                else:
+                    #print(f"solve failed, returning radius {retval}")
+                    return retval
+    #h = .5
+    #r = max_r(.5)
+    #print(f"height percent: {h} max radius: {r}")
+    rd = []
+    for h in np.arange(0, 1.01, .01):
+        rd.append(max_r(h))
+    rpp(rd)
+    retval = np.array(rd)
+    print(retval)
+    #for k, v in enumerate(rd):
+    #    #r, z = v
+    #    #print(f"{k:3.1f}% R: {v[0]:5.1f} z: {v[1]:5.1f}")
+    #    print(f"{k:3.1f}% v: {v}")
+    return retval, Stew
+if __name__ == "__main__":
+    probe()
+    
+    
+        
+
+    
