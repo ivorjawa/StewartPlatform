@@ -226,7 +226,7 @@ class Recognizer(object):
                 testpts = np.float32([[91.5, 91.5, 0],])
                 imgpts, jac = cv2.projectPoints(testpts,rvecs, tvecs, self.cam_mtx, self.distortion)
                 center = imgpts[0][0]
-                print(f"center: {center}, angles: (heading, pitch, roll): ({heading:5.2f}, {pitch:5.2f}, {roll:5.2f})")
+                #print(f"center: {center}, angles: (heading, pitch, roll): ({heading:5.2f}, {pitch:5.2f}, {roll:5.2f})")
                 self.pose_info =  PoseInfo(tvecs, rvecs, heading, roll, pitch, corners, ids, rejected_img_points, center)
                 return self.pose_info
             else:
@@ -236,7 +236,7 @@ class Recognizer(object):
     
     def hudtext(self, frame):
         # (origin) (width height)
-        cv2.rectangle(frame, (0, 100), (130, 230), (0, 0, 0), -1)
+        cv2.rectangle(frame, (0, 100), (130, 280), (0, 0, 0), -1)
         fontspec = (cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
         
         cv2.putText(frame,f"Roll:",(0, 120),*fontspec)
@@ -245,8 +245,10 @@ class Recognizer(object):
         cv2.putText(frame,f"CX:",(0, 180),*fontspec)
         cv2.putText(frame,f"CY:",(0, 200),*fontspec)
         cv2.putText(frame,f"CZ:",(0, 220),*fontspec)                          
+        cv2.putText(frame,f"dxp:",(0, 248),*fontspec)                          
+        cv2.putText(frame,f"dyp:",(0, 268),*fontspec)                          
         
-        x0 = 65
+        x0 = 75
         cv2.putText(frame,f"{self.pose_info.roll:5.1f}",(x0, 120),*fontspec)
         cv2.putText(frame,f"{self.pose_info.pitch:5.1f}",(x0, 140),*fontspec)
         cv2.putText(frame,f"{self.pose_info.heading:5.1f}",(x0, 160),*fontspec)
@@ -255,6 +257,10 @@ class Recognizer(object):
         cv2.putText(frame,f"{tv[0]:5.1f}",(x0, 180),*fontspec)
         cv2.putText(frame,f"{tv[1]:5.1f}",(x0, 200),*fontspec)
         cv2.putText(frame,f"{tv[2]:5.1f}",(x0, 220),*fontspec)
+        dxp = -int(self.width/2 - self.pose_info.position[0])              
+        dyp = int(self.height/2 - self.pose_info.position[1])              
+        cv2.putText(frame,f"{dxp:4}",(x0, 248),*fontspec)
+        cv2.putText(frame,f"{dyp:4}",(x0, 268),*fontspec)
 
             
     def drawhud(self, frame, pose_info):
