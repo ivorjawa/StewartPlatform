@@ -146,7 +146,8 @@ def decode_taranis(report, rescale=8):
 
     return {
         'yaw': yaw, 'pitch': pitch, 'roll': roll, 'coll': coll, 
-        'glyph': glyph, 'switches': switches,
+        'glyph': glyph, 
+        #'switches': switches, # FIXME client needs to stop expecting 8 bits
         'S1': S1, 'S2': S2, 'LS': LS, 'RS': RS, 
     }
 

@@ -1,6 +1,6 @@
 # bare-bones wire protocol for stuffing control data to hub
 
-from ddict import defaultdict
+from ddict import ddict
 """
 from uselect import poll
 from usys import stdin
@@ -21,7 +21,7 @@ class JoyProtocol(object):
         self.varscale = 2**varwidth/2.0 # 11: 1024.0, 8: 128.0
         self.varthresh = 5/self.varscale # ignore smaller inputs
         
-        self.vals = defaultdict(lambda: 0) # results dictionary, unset values 0
+        self.vals = ddict(lambda: 0) # results dictionary, unset values 0
         #self.vals = {}
         for n in self.varnames: 
             self.vals[n] = 0
@@ -46,6 +46,7 @@ class JoyProtocol(object):
         
     def encode(self, vals):
         "encode vals for the wire, with self.width-wide hex digits"
+        vals = ddict(lambda: 0, vals)
         return ">"+''.join([self.fmt % vals[n] for n in self.varnames])+"<" 
         
     def hbytes(self, arr, off):
@@ -85,7 +86,14 @@ class JoyProtocol(object):
               if (key == '<'):
                   return True 
               else:
-                  print("buffer bad")
+                  print(f"buffer bad pos: {self.pos} buf: {self.buf}")
+                  print(f"buffer len: {len(self.buf)} protolen: {self.protolen}")
+                  print(f"prototype: {self.prototype}")
+                  print(f"wire width: {self.wirewidth}")
+                  print(f"varnames: {self.varnames}")
+                  print(f"varwidth: {self.varwidth}")
+                  print(f"nvars: {self.nvars}")
+                  print(f"varoffs: {self.varoffs}")
       return False  
 
 def test():
@@ -100,16 +108,18 @@ def test():
     """
     
     import sys
-    j = JoyProtocol(['coll', 'roll', 'pitch', 'yaw', 'glyph'], 2, None, sys.stdin)
+    from stewart_wvars import wvars
+    #j = JoyProtocol(['coll', 'roll', 'pitch', 'yaw', 'glyph'], 2, None, sys.stdin)
+    j = JoyProtocol(wvars, 2, None, sys.stdin)
     print(f"Prototype: {j.prototype}, length: {j.protolen}") 
     print(f"varnames: {j.varnames} wirewidth: {j.wirewidth}") 
-    indict = {'coll':8, 'roll':16, 'pitch':32, 'yaw':64, 'glyph':128}
+    indict = {'coll':8, 'roll':16, 'pitch':32, 'yaw':64, 'glyph':128, 'switches': 16384}
     encin = j.encode(indict)
     j.buf = encin
     j.decode_wire()
     print(f"Raw yaw: {j.decode_raw('yaw')}")
     outdict = j.vals
-    print(f"indict: {indict}\nencin: {encin}\noutdict: {outdict}")
+    print(f"indict: {indict}\nencin: {encin}\noutdict: {outdict.d}")
 
 if __name__ == "__main__":
     test()

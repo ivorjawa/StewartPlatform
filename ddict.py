@@ -1,5 +1,5 @@
 # https://github.com/micropython/micropython-lib/
-class defaultdict:
+class ddict:
     #@staticmethod
     #def __new__(cls, default_factory=None, **kwargs):
     #    # Some code (e.g. urllib.urlparse) expects that basic defaultdict
@@ -9,8 +9,8 @@ class defaultdict:
     #    self.d = {}
     #    return self
 
-    def __init__(self, default_factory=None, **kwargs):
-        self.d = kwargs
+    def __init__(self, default_factory=None, d = {}):
+        self.d = d
         self.default_factory = default_factory
 
     def __getitem__(self, key):

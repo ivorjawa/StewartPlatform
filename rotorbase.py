@@ -68,6 +68,7 @@ class BaseStation(object):
             if report:  
                 #print(report)          
                 output = wirep.encode(report)
+                #print(output)
                 if (output != lastout) or (((time.time()-self.last_sent)*1000) > 16):
                     lastout = output
                     logging.debug(output)
