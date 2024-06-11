@@ -234,6 +234,29 @@ class Recognizer(object):
         except cv2.error as e:
             raise PoseError(f"Match failed: {e}")
     
+    def hudtext(self, frame):
+        # (origin) (width height)
+        cv2.rectangle(frame, (0, 100), (130, 230), (0, 0, 0), -1)
+        fontspec = (cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
+        
+        cv2.putText(frame,f"Roll:",(0, 120),*fontspec)
+        cv2.putText(frame,f"Pitch:",(0, 140),*fontspec)
+        cv2.putText(frame,f"Heading:",(0, 160),*fontspec)
+        cv2.putText(frame,f"CX:",(0, 180),*fontspec)
+        cv2.putText(frame,f"CY:",(0, 200),*fontspec)
+        cv2.putText(frame,f"CZ:",(0, 220),*fontspec)                          
+        
+        x0 = 65
+        cv2.putText(frame,f"{self.pose_info.roll:5.1f}",(x0, 120),*fontspec)
+        cv2.putText(frame,f"{self.pose_info.pitch:5.1f}",(x0, 140),*fontspec)
+        cv2.putText(frame,f"{self.pose_info.heading:5.1f}",(x0, 160),*fontspec)
+        #print(f"self.trans_vec: {self.pose_info.trans_vec.T[0]}")
+        tv = self.pose_info.trans_vec.T[0]
+        cv2.putText(frame,f"{tv[0]:5.1f}",(x0, 180),*fontspec)
+        cv2.putText(frame,f"{tv[1]:5.1f}",(x0, 200),*fontspec)
+        cv2.putText(frame,f"{tv[2]:5.1f}",(x0, 220),*fontspec)
+
+            
     def drawhud(self, frame, pose_info):
         if not (pose_info.trans_vec is None):
             testpts = np.float32([
@@ -273,6 +296,7 @@ class Recognizer(object):
                 mask = np.zeros((self.height, self.width), np.uint8)
                 #cv2.circle(mask,(xav,yav),rav+30,1,-1)
                 cv2.fillPoly(mask, np.intp([imgpts2]), (1))
+                self.hudtext(frame)
 
             except cv2.error as e:
                 print(f"oops: {e}")
