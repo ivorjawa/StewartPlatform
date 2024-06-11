@@ -313,7 +313,8 @@ class BaseStation(object):
     
     async def send_data(self, hub):
         lastout = ""
-        wvars = ['coll', 'roll', 'pitch', 'yaw', 'glyph']
+        #wvars = ['coll', 'roll', 'pitch', 'yaw', 'glyph']
+        from stewart_wvars import wvars
         wirep = JoyProtocol(wvars, 2, None, sys.stdin)
         logging.info("starting main loop")
         while 1:

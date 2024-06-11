@@ -1,0 +1,1 @@
+wvars = ['coll', 'roll', 'pitch', 'yaw', 'glyph']

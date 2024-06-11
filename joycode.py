@@ -1,5 +1,6 @@
 # bare-bones wire protocol for stuffing control data to hub
 
+from ddict import defaultdict
 """
 from uselect import poll
 from usys import stdin
@@ -20,7 +21,8 @@ class JoyProtocol(object):
         self.varscale = 2**varwidth/2.0 # 11: 1024.0, 8: 128.0
         self.varthresh = 5/self.varscale # ignore smaller inputs
         
-        self.vals = {} # results dictionary
+        self.vals = defaultdict(lambda: 0) # results dictionary, unset values 0
+        #self.vals = {}
         for n in self.varnames: 
             self.vals[n] = 0
         self.prototype = self.encode(self.vals) 
