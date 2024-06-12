@@ -240,6 +240,7 @@ class MoveSM(StateMachine):
     def started(self):
         if self.stew.is_moved():
             self.state = self.states.finished
+            self.stew.stopall()
             print(f"elapsed {millis() - self.start_time}")
             print("<taskdone/>")
         else:
@@ -252,7 +253,7 @@ class MoveSM(StateMachine):
         self.stew.calculate(roll, pitch, yaw, coll, glyph)
         self.start_time = millis()
         self.state = self.states.started
-        self.stew.actuate() # slerp state machine handles this internally, in segstart()
+        self.stew.actuate() 
         #print(f"moveto() start_time: {self.start_time}")
         
 class Stewart(StewartPlatform):
@@ -276,7 +277,9 @@ class Stewart(StewartPlatform):
             #print(f"motor {i} wants cylinder length {cyl}")
             target = self.pos_ang(cyl)
             self.cmots[i].track_target(target)
- 
+    def stopall(self):
+        for m in self.cmots:
+            m.dc(0)
     def is_moved(self):
         thresh = 25
         done = [False for i in self.cyls]
@@ -339,6 +342,7 @@ def run_remote():
     sm = msm   
     last_sm_tick = 0 
     while True:
+        # input loop scan, expects 30-60Hz inputs
         if wirep.poll():
             try:    
                 last_input = millis() 
@@ -353,6 +357,7 @@ def run_remote():
                 
                 if glyph == 255:
                     # keepalive
+                    # FIXME: remove.  not necessary anymore with SMs independent of input
                     pass
                 else:
                     #print(f"roll:{roll: 3.1f}, pitch:{pitch: 3.1f}, yaw:{yaw: 3.1f} coll:{coll: 3.1f} glyph:{glyph}", end="\n")
@@ -380,7 +385,7 @@ def run_remote():
                 print("failure in main loop:")
                 print(e)
         
-        #sm.tick()
+        # update current state machine at 100Hz
         ticktime = millis()
         if (ticktime - last_sm_tick) > 10: # 100 hz
             last_sm_tick = ticktime

@@ -57,8 +57,8 @@ class JoyProtocol(object):
     def decode_js(self, js_uint):
         "scale self.varwidth-bit unsigned int into range [-1.0,1.0], with deadzone"   
         jsf = js_uint/self.varscale - 1
-        if(abs(jsf)<self.varthresh): # control the dead zone
-            jsf = 0
+        #if(abs(jsf)<self.varthresh): # control the dead zone
+        #    jsf = 0
         return jsf 
     
     def decode_raw(self, name):

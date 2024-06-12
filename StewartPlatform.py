@@ -3,11 +3,13 @@ m = lin.m
 from linear import xaxis, yaxis, zaxis, rotate, vector
 import slerp
 
+# FIXME more glyph button bullshit, oh how I hate the PS3 controller
 cSA = 24
 cSB = 40
 cSC = 72
 cSD = 68
 
+# FIXME we can get this out of linear or slerp
 def euler_rotation_matrix(alpha,beta,gamma):
     """
     https://automaticaddison.com/how-to-describe-the-rotation-of-a-robot-in-3d/
@@ -171,7 +173,7 @@ class StewartPlatform(object): # millimeters
         # bend that vector by the disk deflection
         coll_v = coll_p * Vdisk_n         
         
-
+        # once we rewrite this, glyph can go away FIXME
         flatmode = False
         if (glyph & cSD) == cSD:
             flatmode = True
@@ -180,14 +182,20 @@ class StewartPlatform(object): # millimeters
             self.modelabel = f"flat motion {glyph}"
         
         if not flatmode:
-            if (glyph & cSC) == cSC: 
-                #print("using cup motion") 
-                self.modelabel = f"cup motion {glyph}"     
-                oily = euler_rotation_matrix(m.radians(-roll),m.radians(pitch),0) # cup motion
-            else:
-                self.modelabel = f"sphere motion {glyph}"
-                #print("using sphere motion")
-                oily = euler_rotation_matrix(m.radians(roll),m.radians(-pitch),0) # sphere motion
+            
+            self.modelabel = f"sphere motion {glyph}"
+            oily = euler_rotation_matrix(m.radians(roll),m.radians(-pitch),0) # sphere motion
+            
+            # cup motion was never really useful except as a test.
+            # but keeping the logic around anyway
+            #if (glyph & cSC) == cSC: 
+            #    #print("using cup motion") 
+            #    self.modelabel = f"cup motion {glyph}"     
+            #    oily = euler_rotation_matrix(m.radians(-roll),m.radians(pitch),0) # cup motion
+            #else:
+            #    self.modelabel = f"sphere motion {glyph}"
+            #    #print("using sphere motion")
+            #    oily = euler_rotation_matrix(m.radians(roll),m.radians(-pitch),0) # sphere motion
                 
         
         if flatmode:
