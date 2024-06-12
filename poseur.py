@@ -225,6 +225,7 @@ class BaseStation(object):
             (3 if we consider keepawake a mode, 4 if keepawake is handled separately)
             Glyph still has to die.
             129 will signify "slerp to next pose"
+            130 will be "twitch (no interpolation) to next pose" 
             """
             cdict = {'roll': 0, 'pitch': 0, 'yaw': 0, 'coll': 0, 'glyph': 255} # keepawake
             # get command from opencv recognizer process

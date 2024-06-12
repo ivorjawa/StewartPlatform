@@ -248,7 +248,8 @@ class MoveSM(StateMachine):
     def finished(self):
         # state is finished
         pass
-    def moveto(self):
+    def moveto(self, roll, pitch, yaw, coll, glyph):
+        self.stew.calculate(roll, pitch, yaw, coll, glyph)
         self.start_time = millis()
         self.state = self.states.started
         self.stew.actuate() # slerp state machine handles this internally, in segstart()
@@ -363,10 +364,8 @@ def run_remote():
                         sm = ssm
                     else:
                         sm = msm
-                        # this maybe should move into Move SM, but maybe not
-                        Stew.calculate(roll, pitch, yaw, coll, glyph)
                         try:
-                            msm.moveto()
+                            msm.moveto(roll, pitch, yaw, coll, glyph)
                         except Exception as e:
                             print("moveto/actuate failed: ", e)
                             print(f"<goodbye/>")
