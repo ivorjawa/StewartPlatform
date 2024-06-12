@@ -17,7 +17,7 @@ from linear import xaxis, yaxis, zaxis, rotate
 import linear as lin
 
 from joycode import JoyProtocol
-from StewartPlatform import StewartPlatform
+import StewartPlatform
 from statemachine import StateMachine
 import dataforslerp as slerpdat
 import slerp
@@ -254,9 +254,14 @@ class MoveSM(StateMachine):
         self.start_time = millis()
         self.state = self.states.started
         self.stew.actuate() 
-        #print(f"moveto() start_time: {self.start_time}")
+    def moveto6abs(self, roll, pitch, yaw, x, y, z):
+        print(f"m6a: RPY: ({roll:5.1f},{pitch:5.1f},{yaw:5.1f})  XYZ: ({x:5.1f},{y:5.1f},{z:5.1f})")
+        self.stew.calculate6(roll, pitch, yaw, x, y, z, False)
+        self.start_time = millis()
+        self.state = self.states.started
+        self.stew.actuate()
         
-class Stewart(StewartPlatform):
+class Stewart(StewartPlatform.StewartPlatform):
     def __init__(self, inner_r, outer_r, footprint, min_cyl, max_cyl, threshang):
         super().__init__(inner_r, outer_r, footprint, min_cyl, max_cyl)
         self.threshang = threshang # top of cylinder, degrees
@@ -295,9 +300,9 @@ class Stewart(StewartPlatform):
             #print(f"cyl: {i} target: {target} current: {current} speed: {speed} motord: {motordone} mathd: {mathdone} d:{done[i]}")
         return sum(done) == len(self.cyls)
      
-    def calculate6(self, roll, pitch, yaw, x, y, z):
+    def calculate6(self, roll, pitch, yaw, x, y, z, use_guess=True):
         try:
-            (coll_v, sa, sb, sc) = self.solve6(roll, pitch, yaw, x, y, z) # sets self.cyls  
+            (coll_v, sa, sb, sc) = self.solve6(roll, pitch, yaw, x, y, z, use_guess) # sets self.cyls  
         except ValueError as e:
             label = f"Range Error solve6: RPY:({m.radians(roll)},{m.radians(pitch)},{m.radians(yaw)}) {e}"
             print(label)
@@ -341,6 +346,7 @@ def run_remote():
     ssm = SlerpSM(Stew)
     sm = msm   
     last_sm_tick = 0 
+    from StewartPlatform import cSA, cSB, cSC, cSD
     while True:
         # input loop scan, expects 30-60Hz inputs
         if wirep.poll():
@@ -364,19 +370,30 @@ def run_remote():
                     #for i, cyl in enumerate(Stew.cyls):
                     #    print(f" Cyl {i}:{cyl: 3.1f}mm", end="")
                     #print("")
-                    if((glyph & 24) == 24):
+                    if((glyph & cSA) == cSA):
                         print("switch a on")
                         sm = ssm
                     else:
                         sm = msm
                         try:
-                            msm.moveto(roll, pitch, yaw, coll, glyph)
+                            if((glyph & cSC) == cSC): # precision quaternion 6-axis control
+                                # xyz in mm above lowest collective center
+                                zrange = 66 # mm
+                                diskrad = 70 # mm
+                                # above determined in StewartPlatform jupyter notebook
+                                z = (wirep.vals['coll']/2 + .5)*zrange
+                                x = (wirep.vals['LS'])*diskrad
+                                y = (wirep.vals['RS'])*diskrad
+                                yaw = -1*wirep.vals['S1']*23
+                                msm.moveto6abs(roll, pitch, yaw, x, y, z)
+                            else: # helicopter style control
+                                msm.moveto(roll, pitch, yaw, coll, glyph)
                         except Exception as e:
                             print("moveto/actuate failed: ", e)
                             print(f"<goodbye/>")
                             return None
                             
-                    if((glyph & 40) == 40): # X '0b0101000' SB
+                    if((glyph & cSB) == cSB): # X '0b0101000' SB
                         print(f"<goodbye/>")
                         return None
                         #break
