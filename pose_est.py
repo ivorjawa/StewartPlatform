@@ -257,10 +257,10 @@ class Recognizer(object):
         cv2.putText(frame,f"{tv[0]:5.1f}",(x0, 180),*fontspec)
         cv2.putText(frame,f"{tv[1]:5.1f}",(x0, 200),*fontspec)
         cv2.putText(frame,f"{tv[2]:5.1f}",(x0, 220),*fontspec)
-        dxp = -int(self.width/2 - self.pose_info.position[0])              
-        dyp = int(self.height/2 - self.pose_info.position[1])              
-        cv2.putText(frame,f"{dxp:4}",(x0, 248),*fontspec)
-        cv2.putText(frame,f"{dyp:4}",(x0, 268),*fontspec)
+        self.dxp = -int(self.width/2 - self.pose_info.position[0])              
+        self.dyp = int(self.height/2 - self.pose_info.position[1])              
+        cv2.putText(frame,f"{self.dxp:4}",(x0, 248),*fontspec)
+        cv2.putText(frame,f"{self.dyp:4}",(x0, 268),*fontspec)
 
             
     def drawhud(self, frame, pose_info):
@@ -418,6 +418,7 @@ class Recognizer(object):
             
             self.output, rblur = self.detect_ball(frame, rblur)
             self.red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
+            return pose_info
         except Exception as e:
             print(e)
 

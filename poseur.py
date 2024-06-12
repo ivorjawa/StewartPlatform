@@ -5,6 +5,7 @@ import os
 import datetime
 import logging, logging.handlers
 import multiprocessing as mp
+import queue
 import asyncio
 import time
 import random
@@ -27,12 +28,11 @@ from pose_est import Recognizer
 
 #"maps -1.0..1.0 to 0..255"
 one28 = lambda x: int(((x+1)/2)*255)
-
      
 class TrackerSM(StateMachine):
     def __init__(self, fromq, toq):
         super().__init__()
-        self.build('cstates', ['wait_start', 'gen_sig', 'wait_move', 'scan', 'count', 'done'])
+        self.build('cstates', ['wait_start', 'wait_move', 'scan'])
         
         self.fromq = fromq
         self.toq = toq
@@ -45,89 +45,88 @@ class TrackerSM(StateMachine):
         self.width = 640
         self.height = 480
 
-        rec = Recognizer(self.height, self.width)
+        self.rec = Recognizer(self.height, self.width)
         
         self.cam = cv2.VideoCapture(0)
         self.cam.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         self.cam.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         self.cam.set(cv2.CAP_PROP_FPS, 30)
 
-    
+        # initialize camera, set infinite focus, turn off auto focus, set exposure time
         os.system("./uvc-util -I 0 -s auto-focus=0")
         os.system("./uvc-util -I 0 -s focus-abs=0")
         os.system("./uvc-util -I 0 -s auto-exposure-mode=1")
         os.system("./uvc-util -I 0 -s exposure-time-abs=150")
-
-    def recognize(self):
-        print("recognizer")
-        ret, pose = self.calibrator.calibrate_frame(self.frame)
-        return ret, pose
         
     
     def wait_start(self):
         #print("asleep")
         if self.woke:
-            self.state = self.states.gen_sig
-            print("generating signal")
+            self.state = self.states.scan
+            print("scanning")
             
-    def gen_sig(self):
-        #StewartPlatform.cSD = Flatmode
-        #StewartPlatform.cSC set is cup motion, otherwise dome motion
-        #.cSB is kill switch
-        modeglyph = StewartPlatform.cSC|StewartPlatform.cSD
-        cdict = {
-            'roll': one28(random.random()-.5), 
-            'pitch': one28(random.random()-.5), 
-            'yaw': one28(random.random()-.5), 
-            'coll': one28(random.random()-.5), 
-            'glyph': modeglyph
-        }
-        #print(f"cdict: {cdict}")
-        #self.cur_pitch += 1/self.posegoal
-        self.toq.put_nowait(cdict)
-        self.moving = True
-        self.start_time = time.time()
-        print("sent command")
-        self.state = self.states.wait_move
+    def scan(self):
+        ret, img = self.cam.read()
+        if ret:
+            try:
+                pose_info = self.rec.recognize(img)
+
+                cv2.line(self.rec.output, (int(0),int(self.height/2)), (int(self.width), int(self.height/2)), (0, 0, 255), 1)
+                cv2.line(self.rec.output, (int(self.width/2),int(0)), (int(self.width/2), int(self.height)), (0, 0, 255), 1)
+
+                canvas = np.zeros((self.height, self.width*2, 3), np.uint8)
+                canvas[0:480, 0:640] = self.rec.output
+                canvas[0:480, 640:1280] = self.rec.red
+                cv2.imshow('Estimated Pose', canvas)
+                
+                xerr = self.rec.dxp
+                yerr = self.rec.dyp
+                headerr = 0 - pose_info.heading
+                
+                print(f"insert PID magic here xerr: {xerr} yerr: {yerr} headerr: {headerr}")
+                # initial strategy: want to make dxp and dyp and heading 0 with z at 50%
+                modeglyph = StewartPlatform.cSC # select 6-DOF absolute mode
+                cdict = {
+                    'roll': one28(0), 
+                    'pitch': one28(0), 
+                    'yaw': one28(0), 
+                    'z': one28(0), #middle
+                    'x': one28(0),
+                    'y': one28(0),
+                    'glyph': modeglyph
+                }
+                self.state = self.states.wait_move
+                self.toq.put_nowait(cdict)
+                self.moving = True
+                self.start_time = time.time()
+                
+                key = cv2.waitKey(1)
+                if key == 27:
+                    sys.exit(0)
+                elif key == ord('l'):
+                    self.rec.start_logging()
+                elif key == ord('s'):
+                    self.rec.stop_logging()
+                    
+                print("sent command")
+            except Exception as e:
+                print(f"recognizer failed: {e}")
+                 
         
     def wait_move(self):
         now = time.time()
         if self.moving == True:
             if (now - self.start_time > 5):
                 print("Timeout waiting for robot to move, kicking")
-                self.state = self.states.gen_sig
+                self.state = self.states.scan
         elif self.moving == False:
             self.end_time = now
             self.state = self.states.scan
             print(f"got movement, took {self.end_time-self.start_time:3.3f}s")
             
-    def scan(self):
-        ret, pose = self.recognize()
-        if ret:
-            self.poses.append(pose)
-            print(f"appended pose {len(self.poses)}")
-        self.state = self.states.count
-        
-    def count(self):
-        if len(self.poses) >= self.posegoal:
-            print("enough poses found")
-            self.calibrator.calculate()
-            self.state = self.states.done
-        else:
-            self.state = self.states.gen_sig           
-
-    
     def loop(self):
         while 1:
-            #self.frame = self.cap.get_frame().bgr
-            ret, self.frame = self.cam.read()
-            if not ret:
-                print("eof?")
-                break
-
-            cv2.line(self.frame, np.intp((0, self.height/2)), np.intp((self.width, self.height/2)), (0, 0, 255), 1)
-            cv2.line(self.frame, np.intp((self.width/2, 0)), np.intp((self.width/2, self.height)), (0, 0, 255), 1)
-            cv2.imshow('calibrator', self.frame)
+            self.tick()
             try:
                 token = self.fromq.get_nowait()
                 print(f"got token {token}")
@@ -137,11 +136,10 @@ class TrackerSM(StateMachine):
                     self.moving = False
                 else:
                     print(f"got unknown token: {token}")
-            except Exception as e:
+            except queue.Empty as e:
                 pass
-            self.tick()
-            if cv2.pollKey() == 27:
-                break
+                #print(f"Tracker tick exception: {e}")
+                #raise
         cv2.destroyAllWindows()
         return        
 
@@ -226,6 +224,7 @@ class BaseStation(object):
             Glyph still has to die.
             129 will signify "slerp to next pose"
             130 will be "twitch (no interpolation) to next pose" 
+            Well, eventually.  we just send cSC now for precision 6DOF
             """
             cdict = {'roll': 0, 'pitch': 0, 'yaw': 0, 'coll': 0, 'glyph': 255} # keepawake
             # get command from opencv recognizer process
