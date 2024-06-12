@@ -171,10 +171,13 @@ class SlerpSM(StateMachine):
         self.rotor1 = None
         self.rotor2 = None
         self.segstime = millis()
-        self.segcount = 5
+        self.segcount = 10
         print(f"rcube: {self.rcube}")
         print("SlerpSM()")
     def loadframe(self):
+        # FIXME need to calculate both  LERP distance and SLERP distance
+        # and use them to derive number of segments needed.
+        # SLERP and LERP should terminate same time
         print(f"loadframe {self.cubedex}")
         cubedex1 = self.cubedex
         cubedex2 = (self.cubedex+1) % self.cubelength
@@ -198,8 +201,8 @@ class SlerpSM(StateMachine):
         lerpcube = self.scube1 + (self.framedex/(1.0*self.segcount))*self.cubefract
         rotor = slerp.slerp(self.rotor1, self.rotor2, self.framedex/(1.0*self.segcount))
         (r, p, y) = slerp.to_euler(rotor) # (roll, pitch, yaw)
-        r = m.degrees(r)
-        p = m.degrees(p)
+        r = -m.degrees(r) # FIXME seems opposite direction of intention?
+        p = -m.degrees(p)
         y = m.degrees(y)
         
         print(f"r: {r:5.2f} p: {p:5.2f} y: {y:5.2f}")
@@ -217,10 +220,10 @@ class SlerpSM(StateMachine):
             
         self.state = self.states.segend
     def segend(self):
-        #print(f"segend {self.framedex}")
         dt = millis()-self.segstime
+        #print(f"segend {self.framedex} dt: {dt:5.3f}")
         timeout = False
-        if(dt) > 250:
+        if(dt) > 50:
             print(f"move timeout: {dt}")
             timeout = True
         if self.stew.is_moved() or timeout:
@@ -293,7 +296,7 @@ class Stewart(StewartPlatform):
             self.cmots[i].track_target(target)
  
     def is_moved(self):
-        thresh = 10
+        thresh = 25
         done = [False for i in self.cyls]
         for i, cyl in enumerate(self.cyls):
             target = self.pos_ang(cyl)
@@ -301,7 +304,9 @@ class Stewart(StewartPlatform):
             speed = self.cmots[i].speed()
             motordone = self.cmots[i].done()
             mathdone = abs(current-target) < thresh
-            done[i] = mathdone
+            #done[i] = mathdone
+            #done[i] = motordone
+            done[i] = motordone or mathdone
             #print(f"cyl: {i} target: {target} current: {current} speed: {speed} motord: {motordone} mathd: {mathdone} d:{done[i]}")
         return sum(done) == len(self.cyls)
      
@@ -346,9 +351,11 @@ def run_remote():
     Stew = Stewart(57, 98, 120, 250, 314, threshold)
     identify()
     print("<awake/>")    
+    
     msm = MoveSM(Stew.is_moved)
     ssm = SlerpSM(Stew)
-    sm = msm    
+    sm = msm   
+    last_sm_tick = 0 
     while True:
         if wirep.poll():
             try:    
@@ -357,8 +364,6 @@ def run_remote():
                 wirep.decode_wire()
                 #print("wirep: ", wirep.vals)
                 coll = (wirep.vals['coll']/2 + .5)*coll_range   
-                #coll = .5              
-                #print(f"wire coll: {wirep.vals['coll']} calculated: {coll}")
                 pitch = -1*wirep.vals['roll']*disk_def
                 roll = -1*wirep.vals['pitch']*disk_def
                 yaw = -1*wirep.vals['yaw']*23
@@ -368,7 +373,6 @@ def run_remote():
                     # keepalive
                     pass
                 else:
-
                     #print(f"roll:{roll: 3.1f}, pitch:{pitch: 3.1f}, yaw:{yaw: 3.1f} coll:{coll: 3.1f} glyph:{glyph}", end="\n")
                     #for i, cyl in enumerate(Stew.cyls):
                     #    print(f" Cyl {i}:{cyl: 3.1f}mm", end="")
@@ -376,10 +380,12 @@ def run_remote():
                     if((glyph & 24) == 24):
                         print("switch a on")
                         sm = ssm
-                        while True:
-                            sm.tick()
+                        #while True:
+                        #    sm.tick()
                     else:
                         sm = msm
+                        
+                        # this should move into Move SM
                         Stew.calculate(roll, pitch, yaw, coll, glyph)
                         msm.moveto()
                     if((glyph & 40) == 40): # X '0b0101000' SB
@@ -391,20 +397,20 @@ def run_remote():
                 print("failure in main loop:")
                 print(e)
         
-            # this should be one level out, triggering on every runthrough,
-            # instead of just when data are received, but that lugs down the
-            # processor, so we have to keep in step with controller commands
-            # and rely on the controller to send frames regularly.
-            # this won't be an issue with slerp for now, I don't think.
-            if sm == msm:
+
+        #sm.tick()
+        ticktime = millis()
+        if (ticktime - last_sm_tick) > 10: # 100 hz
+            last_sm_tick = ticktime
+            sm.tick()
+            if sm == msm: # should wrap this bullshit in the sm, probably
                 try:
-                    Stew.actuate()
+                    Stew.actuate() # slerp state machine handles this internally, in segstart()
                 except Exception as e:
                     print("actuate failed: ", e)
                     print(f"<goodbye/>")
                     return None
-        sm.tick()
-                
+        
 if __name__ == "__main__":
     # pybricksdev run ble -n rotor rotor.py
     #teststorage()
