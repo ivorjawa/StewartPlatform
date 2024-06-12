@@ -141,29 +141,14 @@ def identify():
     print(f"Version Info: {usys.version_info}")
     print(f"Battery Voltage: {hub.battery.voltage()}mv") 
 
-class Enum(object):
-    # this is good enough for state machines in micropython
-    def __init__(self, enumname, enums, start=1):
-        self.__enumname = enumname
-        for i, e in enumerate(enums):
-            setattr(self, e, i+start)
 
 class SlerpSM(StateMachine):
     def __init__(self, stew):
         super().__init__()
-        self.states =  Enum("slerpstate", ['loadframe', 'segstart', 'segend', 'wait', 'advance'])
-        self.state = self.states.loadframe
-        self.register(self.states.loadframe, self.loadframe)
-        self.register(self.states.segstart, self.segstart)
-        self.register(self.states.segend, self.segend)
-        self.register(self.states.wait, self.wait)
-        self.register(self.states.advance, self.advance)
+        self.build("slerpstate", ['loadframe', 'segstart', 'segend', 'wait', 'advance'])
         self.rcube = slerpdat.rcube # cube rotations
         self.scube = slerpdat.scube # cube positions
-        #self.cubescale = .6
-        #self.scube = scube * .75 # scale it down a bit.
-        #self.coll_offset = lin.vector(0, 0, 1) 
-        #self.scube = scube + offset # give it room to move at 0 collective
+
         self.cubelength = len(self.scube) #-8
         self.stew = stew
         self.cubedex = 0
@@ -186,9 +171,7 @@ class SlerpSM(StateMachine):
         
         self.rotor1 = slerp.euler_quat(m.radians(rcube1[0]), m.radians(rcube1[1]), m.radians(rcube1[2]))
         self.rotor2 = slerp.euler_quat(m.radians(rcube2[0]), m.radians(rcube2[1]), m.radians(rcube2[2]))
-        
-        #self.scube1 = self.cubescale*(self.scube[cubedex1]) + self.coll_offset
-        #self.scube2 = self.cubescale*(self.scube[cubedex2]) + self.coll_offset        
+               
         self.scube1 = self.scube[cubedex1]
         self.scube2 = self.scube[cubedex2]
         
@@ -208,12 +191,10 @@ class SlerpSM(StateMachine):
         print(f"r: {r:5.2f} p: {p:5.2f} y: {y:5.2f}")
         try:    
             colspokes = self.stew.solve4(rotor, *lerpcube)
-            
             if len(colspokes) == 4:
                 
                 (coll_v, sa, sb, sc) = colspokes
                 self.stew.actuate()
-                
         except ValueError as e:
             label = f"Range Error solve6: RPY:({m.radians(roll)},{m.radians(pitch)},{m.radians(yaw)}) {e}"
             print(label)
@@ -245,32 +226,32 @@ class SlerpSM(StateMachine):
         self.cubedex += 1
         if(self.cubedex == self.cubelength):
             self.cubedex = 0
-            raise(Exception("moopsy!")) # kill after one cycle
+            #raise(Exception("moopsy!")) # kill after one cycle
         self.state = self.states.loadframe
                         
-class MoveSM(object):
-    def __init__(self, testfn):
+class MoveSM(StateMachine):
+    def __init__(self, stew):
         print("new MoveSM")
-        self.states = Enum("movestates", ['started', 'finished']) 
-        self.state = self.states.finished
+        super().__init__()
+        self.build("movestates", ['finished', 'started']) 
         self.start_time = 0
-        self.testfn = testfn
-    def tick(self):
-        #print(f"MoveSM.tick(): {self.state} start: {self.start_time}")
-        if self.state == self.states.started:
-            if self.testfn():
-                self.state = self.states.finished
-                print(f"elapsed {millis() - self.start_time}")
-                print("<taskdone/>")
-            else:
-                pass
-                #print("<notdoneyet/>") # gets stuck if I don't report FIXME
+        self.stew = stew
+
+    def started(self):
+        if self.stew.is_moved():
+            self.state = self.states.finished
+            print(f"elapsed {millis() - self.start_time}")
+            print("<taskdone/>")
         else:
-            # state is finished
             pass
+            #print("<notdoneyet/>") # gets stuck if I don't report FIXME
+    def finished(self):
+        # state is finished
+        pass
     def moveto(self):
         self.start_time = millis()
         self.state = self.states.started
+        self.stew.actuate() # slerp state machine handles this internally, in segstart()
         #print(f"moveto() start_time: {self.start_time}")
         
 class Stewart(StewartPlatform):
@@ -352,7 +333,7 @@ def run_remote():
     identify()
     print("<awake/>")    
     
-    msm = MoveSM(Stew.is_moved)
+    msm = MoveSM(Stew)
     ssm = SlerpSM(Stew)
     sm = msm   
     last_sm_tick = 0 
@@ -380,14 +361,17 @@ def run_remote():
                     if((glyph & 24) == 24):
                         print("switch a on")
                         sm = ssm
-                        #while True:
-                        #    sm.tick()
                     else:
                         sm = msm
-                        
-                        # this should move into Move SM
+                        # this maybe should move into Move SM, but maybe not
                         Stew.calculate(roll, pitch, yaw, coll, glyph)
-                        msm.moveto()
+                        try:
+                            msm.moveto()
+                        except Exception as e:
+                            print("moveto/actuate failed: ", e)
+                            print(f"<goodbye/>")
+                            return None
+                            
                     if((glyph & 40) == 40): # X '0b0101000' SB
                         print(f"<goodbye/>")
                         return None
@@ -397,19 +381,12 @@ def run_remote():
                 print("failure in main loop:")
                 print(e)
         
-
         #sm.tick()
         ticktime = millis()
         if (ticktime - last_sm_tick) > 10: # 100 hz
             last_sm_tick = ticktime
             sm.tick()
-            if sm == msm: # should wrap this bullshit in the sm, probably
-                try:
-                    Stew.actuate() # slerp state machine handles this internally, in segstart()
-                except Exception as e:
-                    print("actuate failed: ", e)
-                    print(f"<goodbye/>")
-                    return None
+
         
 if __name__ == "__main__":
     # pybricksdev run ble -n rotor rotor.py
