@@ -63,12 +63,12 @@ class TrackerSM(StateMachine):
         os.system("./uvc-util -I 0 -s exposure-time-abs=150")
         
         # rotational, controlling degrees
-        rKp = 0.01
-        rKi = 0.005
+        rKp = 0.025
+        rKi = 0.01
         rKd = 0
         # translational, controlling mm
-        tKp = 0.05
-        tKi = 0.01
+        tKp = 0.01
+        tKi = 0.001
         tKd = 0
         
         self.x_pid = PID.PID(0, tKp, tKi, tKd, PID.PID.P_ON_E, PID.PID.DIRECT)
@@ -142,10 +142,10 @@ class TrackerSM(StateMachine):
                     'S1': one28(self.heading_pid.myOutput), 
                     #'S1': one28(0), 
                     'coll': one28(0), # middle
-                    #'LS': one28(self.x_pid.myOutput),
-                    #'RS': one28(self.y_pid.myOutput),                    
-                    'LS': one28(0),
-                    'RS': one28(0),
+                    'LS': one28(self.x_pid.myOutput),
+                    'RS': one28(self.y_pid.myOutput),                    
+                    #'LS': one28(0),
+                    #'RS': one28(0),
                     'glyph': modeglyph
                 }
                 #self.state = self.states.wait_move
