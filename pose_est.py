@@ -264,6 +264,10 @@ class Recognizer(object):
 
             
     def drawhud(self, frame, pose_info):
+        # FIXME: might have scrolling graph of PID and Kalman stats at bottom
+        # Terminator up this shit
+        # Also make version in Terminator Red
+        # Draw grid on checkerboard
         if not (pose_info.trans_vec is None):
             testpts = np.float32([
                 [183, 0, 0], 

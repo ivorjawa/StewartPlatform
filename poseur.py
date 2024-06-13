@@ -20,8 +20,11 @@ import bleak
 
 from rich import print as rprint
 
-from joycode import JoyProtocol
+import PID
+PID.setmillis(lambda: time.time()*1000) # must be set before creating any PID objects
+            
 
+from joycode import JoyProtocol
 from statemachine import StateMachine
 import StewartPlatform
 from pose_est import Recognizer
@@ -32,7 +35,8 @@ one28 = lambda x: int(((x+1)/2)*255)
 class TrackerSM(StateMachine):
     def __init__(self, fromq, toq):
         super().__init__()
-        self.build('cstates', ['wait_start', 'wait_move', 'scan'])
+        #self.build('cstates', ['scan', 'wait_start', 'wait_move'])
+        self.build('cstates', ['wait_start', 'scan', 'wait_move'])
         
         self.fromq = fromq
         self.toq = toq
@@ -58,13 +62,48 @@ class TrackerSM(StateMachine):
         os.system("./uvc-util -I 0 -s auto-exposure-mode=1")
         os.system("./uvc-util -I 0 -s exposure-time-abs=150")
         
-    
+        # rotational, controlling degrees
+        rKp = 0.01
+        rKi = 0.005
+        rKd = 0
+        # translational, controlling mm
+        tKp = 0.05
+        tKi = 0.01
+        tKd = 0
+        
+        self.x_pid = PID.PID(0, tKp, tKi, tKd, PID.PID.P_ON_E, PID.PID.DIRECT)
+        self.y_pid = PID.PID(0, tKp, tKi, tKd, PID.PID.P_ON_E, PID.PID.DIRECT)
+        self.heading_pid = PID.PID(0, rKp, rKi, rKd, PID.PID.P_ON_E, PID.PID.DIRECT)
+        self.pids = [self.x_pid, self.y_pid, self.heading_pid]
+        for pid in self.pids:
+            pid.mySetpoint = 0  
+            pid.SetOutputLimits(-1.0, 1.0)
+            pid.SetSampleTime(33.3) # ms, 30 FPS
+            pid.SetMode(pid.AUTOMATIC)
+        
     def wait_start(self):
         #print("asleep")
         if self.woke:
             self.state = self.states.scan
             print("scanning")
+    """
+            #millis = time.time          # python desktop
+            #millis = StopWatch().time   # pybricks
             
+            import PID
+            PID.setmillis(millis) # must be set before creating any PID objects
+            
+            import PID
+            class MotorPID(object):
+                    self.pid = PID.PID(0, Kp, Ki, Kd, PID.PID.P_ON_E, PID.PID.DIRECT)
+                    self.pid.SetOutputLimits(-self.MAXDPS, self.MAXDPS)
+                    self.pid.SetSampleTime(samp_time_ms)
+                    self.pid.SetMode(PID.PID.AUTOMATIC)
+                    self.pid.mySetpoint = self.throttle_pct * self.MAXDPS
+                    if abs(self.pid.mySetpoint) > self.deadthresh:
+                        self.pid.Compute(self.speed)
+                    output = self.pid.myOutput
+    """      
     def scan(self):
         ret, img = self.cam.read()
         if ret:
@@ -81,27 +120,42 @@ class TrackerSM(StateMachine):
                 
                 xerr = self.rec.dxp
                 yerr = self.rec.dyp
-                headerr = 0 - pose_info.heading
+                headerr = pose_info.heading
                 
-                print(f"insert PID magic here xerr: {xerr} yerr: {yerr} headerr: {headerr}")
+                #print(f"heading_pid auto state: {self.heading_pid.inAuto}")
+                xpe = self.x_pid.Compute(xerr)
+                ype = self.y_pid.Compute(yerr)
+                hpe = self.heading_pid.Compute(headerr)
+                #print(f"pid results: {[xpe, ype, hpe]}")
+                
+                print(f"insert PID magic here xerr: {xerr}=>{self.x_pid.myOutput:5.3f} yerr: {yerr}=>{self.y_pid.myOutput:5.3f} headerr: {headerr:5.1f}=>{self.heading_pid.myOutput:5.3f}")
                 # initial strategy: want to make dxp and dyp and heading 0 with z at 50%
-                modeglyph = StewartPlatform.cSC # select 6-DOF absolute mode
+                modeglyph = StewartPlatform.cSC # select 6-DOF absolute / precision mode
+                # in precision mode, 
+                # z: coll
+                # x: LS
+                # y: RS
+                # yaw: S1
                 cdict = {
                     'roll': one28(0), 
                     'pitch': one28(0), 
-                    'yaw': one28(0), 
-                    'z': one28(0), #middle
-                    'x': one28(0),
-                    'y': one28(0),
+                    'S1': one28(self.heading_pid.myOutput), 
+                    #'S1': one28(0), 
+                    'coll': one28(0), # middle
+                    #'LS': one28(self.x_pid.myOutput),
+                    #'RS': one28(self.y_pid.myOutput),                    
+                    'LS': one28(0),
+                    'RS': one28(0),
                     'glyph': modeglyph
                 }
-                self.state = self.states.wait_move
+                #self.state = self.states.wait_move
                 self.toq.put_nowait(cdict)
                 self.moving = True
                 self.start_time = time.time()
                 
                 key = cv2.waitKey(1)
                 if key == 27:
+                    # FIXME make this send other thread / robot termination message
                     sys.exit(0)
                 elif key == ord('l'):
                     self.rec.start_logging()
@@ -163,7 +217,7 @@ class  LoggingQueuedBricksHub(PybricksHub):
     def _line_handler(self, line: bytes) -> None:
         try:
             l = line.decode()
-            logging.debug(f"Hub Sent:  {l}")
+            logging.warning(f"Hub Sent:  {l}")
             
             if l == "<report>":
                 fn = "%s_%s.csv" % (self.csv_stemname,
@@ -228,25 +282,36 @@ class BaseStation(object):
             """
             cdict = {'roll': 0, 'pitch': 0, 'yaw': 0, 'coll': 0, 'glyph': 255} # keepawake
             # get command from opencv recognizer process
+            track_packet = False
             try:
                 cdict = self.fromq.get_nowait()
+                #print(f"got cdict from tracker: {cdict}")
+                track_packet = True
             except Exception as e:
                 pass
             #print(report)  
             output = wirep.encode(cdict)
+            #if track_packet:
+            #    print(f"command output: {output}")
             
             # may need this throttling, not sure yet, recognizer locked to 30 hz
             #dtms = (time.time() - self.last_sent) * 1000
             #if (dtms > 16): # only send 60 fps
             
-            if (output != lastout) or (((time.time()-self.last_sent)*1000) > 16):
-                lastout = output
+            dtms = (time.time() - self.last_sent) * 1000
+            if (dtms > 16) or track_packet: # only send keepalive 60 fps
+            #if (output != lastout) or (((time.time()-self.last_sent)*1000) > 16):
+                #lastout = output
                 logging.debug(output)
                 #print(f"cdict before send: {cdict}")        
                 #print(f"output: {output}")
                 try:
+                    #if track_packet:
+                    #    print("about to send track packet")
                     await hub.write(bytearray(output, 'ascii'))
                     self.last_sent = time.time()
+                    #if track_packet:
+                    #    print("sent track packet")
                 except bleak.exc.BleakError as e:
                     logging.debug(f"BLE communication error: {e}")
                 except Exception as e:

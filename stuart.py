@@ -157,7 +157,7 @@ class SlerpSM(StateMachine):
         self.rotor2 = None
         self.segstime = millis()
         self.segcount = 10
-        print(f"rcube: {self.rcube}")
+        #print(f"rcube: {self.rcube}")
         print("SlerpSM()")
     def loadframe(self):
         # FIXME need to calculate both  LERP distance and SLERP distance
@@ -354,7 +354,7 @@ def run_remote():
                 last_input = millis() 
 
                 wirep.decode_wire()
-                #print("wirep: ", wirep.vals)
+                #print("wirep: ", wirep.vals.d)
                 coll = (wirep.vals['coll']/2 + .5)*coll_range   
                 pitch = -1*wirep.vals['roll']*disk_def
                 roll = -1*wirep.vals['pitch']*disk_def
@@ -366,6 +366,7 @@ def run_remote():
                     # FIXME: remove.  not necessary anymore with SMs independent of input
                     pass
                 else:
+                    #print("wirep: ", wirep.vals.d)
                     #print(f"roll:{roll: 3.1f}, pitch:{pitch: 3.1f}, yaw:{yaw: 3.1f} coll:{coll: 3.1f} glyph:{glyph}", end="\n")
                     #for i, cyl in enumerate(Stew.cyls):
                     #    print(f" Cyl {i}:{cyl: 3.1f}mm", end="")
@@ -377,6 +378,7 @@ def run_remote():
                         sm = msm
                         try:
                             if((glyph & cSC) == cSC): # precision quaternion 6-axis control
+                                print("Precision")
                                 # xyz in mm above lowest collective center
                                 zrange = 66 # mm
                                 diskrad = 70 # mm
@@ -385,8 +387,11 @@ def run_remote():
                                 x = (wirep.vals['LS'])*diskrad
                                 y = (wirep.vals['RS'])*diskrad
                                 yaw = -1*wirep.vals['S1']*23
+                                print("about to moveto6abs")
                                 msm.moveto6abs(roll, pitch, yaw, x, y, z)
+                                print("movetp6abs called")
                             else: # helicopter style control
+                                #print("Helicopter")
                                 msm.moveto(roll, pitch, yaw, coll, glyph)
                         except Exception as e:
                             print("moveto/actuate failed: ", e)
