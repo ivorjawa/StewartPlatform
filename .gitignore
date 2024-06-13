@@ -4,3 +4,16 @@
 *__pycache__*
 logs/*
 token.txt
+plate.pdf
+plate.svg
+plate.png
+*.pickle
+uvc-util
+*.dylib
+pysource_kalman_filter
+pyt.py
+janus_test.py
+joylog.csv
+aruco/src
+pyg.py
+
