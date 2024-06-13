@@ -64,11 +64,11 @@ class TrackerSM(StateMachine):
         
         # rotational, controlling degrees
         rKp = 0.025
-        rKi = 0.01
+        rKi = 0.015
         rKd = 0
         # translational, controlling mm
         tKp = 0.01
-        tKi = 0.001
+        tKi = 0.002
         tKd = 0
         
         self.x_pid = PID.PID(0, tKp, tKi, tKd, PID.PID.P_ON_E, PID.PID.DIRECT)
