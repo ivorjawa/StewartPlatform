@@ -7,6 +7,7 @@ token.txt
 plate.pdf
 plate.svg
 plate.png
+plateout.png
 *.pickle
 uvc-util
 *.dylib
@@ -16,4 +17,4 @@ janus_test.py
 joylog.csv
 aruco/src
 pyg.py
-
+stulog.csv
