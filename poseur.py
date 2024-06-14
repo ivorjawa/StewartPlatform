@@ -10,6 +10,7 @@ import asyncio
 import time
 import random
 import pickle
+import math as m
 
 import numpy as np
 import cv2
@@ -128,6 +129,10 @@ class TrackerSM(StateMachine):
                 hpe = self.heading_pid.Compute(headerr)
                 #print(f"pid results: {[xpe, ype, hpe]}")
                 
+                angle = time.time() % m.tau # circle in tau seconds
+                pitch = m.sin(angle)
+                roll = m.cos(angle)
+                
                 print(f"insert PID magic here xerr: {xerr}=>{self.x_pid.myOutput:5.3f} yerr: {yerr}=>{self.y_pid.myOutput:5.3f} headerr: {headerr:5.1f}=>{self.heading_pid.myOutput:5.3f}")
                 # initial strategy: want to make dxp and dyp and heading 0 with z at 50%
                 modeglyph = StewartPlatform.cSC # select 6-DOF absolute / precision mode
@@ -137,8 +142,10 @@ class TrackerSM(StateMachine):
                 # y: RS
                 # yaw: S1
                 cdict = {
-                    'roll': one28(0), 
-                    'pitch': one28(0), 
+                    'roll': one28(roll), 
+                    'pitch': one28(pitch),
+                    #'roll': one28(0), 
+                    #'pitch': one28(0), 
                     'S1': one28(self.heading_pid.myOutput), 
                     #'S1': one28(0), 
                     'coll': one28(0), # middle

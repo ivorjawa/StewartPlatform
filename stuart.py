@@ -355,7 +355,8 @@ def run_remote():
 
                 wirep.decode_wire()
                 #print("wirep: ", wirep.vals.d)
-                coll = (wirep.vals['coll']/2 + .5)*coll_range   
+                coll = (wirep.vals['coll']/2 + .5)*coll_range 
+                # rotated because camera is rotated.  
                 pitch = -1*wirep.vals['roll']*disk_def
                 roll = -1*wirep.vals['pitch']*disk_def
                 yaw = -1*wirep.vals['yaw']*23
@@ -378,16 +379,21 @@ def run_remote():
                         sm = msm
                         try:
                             if((glyph & cSC) == cSC): # precision quaternion 6-axis control
-                                print("Precision")
+                                #print("Precision")
                                 # xyz in mm above lowest collective center
                                 zrange = 66 # mm
                                 diskrad = 70 # mm
                                 # above determined in StewartPlatform jupyter notebook
+                                disk_small = 5 # +- degrees
+                                
+                                pitch = -1*wirep.vals['roll']*disk_small
+                                roll = -1*wirep.vals['pitch']*disk_small
                                 z = (wirep.vals['coll']/2 + .5)*zrange
                                 x = (wirep.vals['LS'])*diskrad
                                 y = (wirep.vals['RS'])*diskrad
                                 yaw = -1*wirep.vals['S1']*23
-                                print("about to moveto6abs")
+                                
+                                #print("about to moveto6abs")
                                 msm.moveto6abs(roll, pitch, yaw, x, y, z)
                                 print("movetp6abs called")
                             else: # helicopter style control
