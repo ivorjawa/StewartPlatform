@@ -389,7 +389,7 @@ class Recognizer(object):
                  self.ball_dxp = -int(self.width/2 - self.ball_pos[0])              
                  self.ball_dyp = int(self.height/2 - self.ball_pos[1])
         if sum(self.cb_valid) == 3:
-            print("possible solution found!")
+            #print("possible solution found!")
             try:
                 c1, c2, c3 = [np.array(x, dtype="float64") for x in self.circle_buf]
                 dt1 = self.cb_times[1]- self.cb_times[0]
@@ -442,6 +442,8 @@ class Recognizer(object):
             
             self.output, rblur = self.detect_ball(frame, rblur)
             self.red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
+            cv2.line(frame, np.intp((0,self.height/2)), np.intp((self.width, self.height/2)), (0, 0, 255), 1)
+            cv2.line(frame, np.intp((self.width/2,0)), np.intp((self.width/2,self.height)), (0, 0, 255), 1)
             self.drawhud(frame, pose_info)
             return pose_info
         except Exception as e:
@@ -474,9 +476,6 @@ def go():
         ret, img = cap.read()
         if ret:
             rec.recognize(img)
-
-            cv2.line(rec.output, (int(0),int(height/2)), (int(width), int(height/2)), (0, 0, 255), 1)
-            cv2.line(rec.output, (int(width/2),int(0)), (int(width/2), int(height)), (0, 0, 255), 1)
 
             canvas = np.zeros((height, width*2, 3), np.uint8)
             canvas[0:480, 0:640] = rec.output
