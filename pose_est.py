@@ -448,7 +448,7 @@ class Recognizer(object):
             return pose_info
         except Exception as e:
             print(f"recognizer error: {e}")
-            raise
+            #raise
 
 def go():    
     cap = cv2.VideoCapture(0)

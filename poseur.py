@@ -129,10 +129,22 @@ class TrackerSM(StateMachine):
                 hpe = self.heading_pid.Compute(headerr)
                 #print(f"pid results: {[xpe, ype, hpe]}")
                 
-                angle = time.time() % m.tau # circle in tau seconds
-                pitch = m.sin(angle)
-                roll = m.cos(angle)
                 
+                #angle = time.time() % m.tau # circle in tau seconds
+                #pitch = m.sin(angle)
+                #roll = m.cos(angle)
+                pitch = 0
+                roll = 0
+                
+                if self.rec.have_ball:
+                    ballrad = m.sqrt(self.rec.ball_dxp**2 + self.rec.ball_dyp**2);
+                    ballang = m.atan2(self.rec.ball_dyp, self.rec.ball_dxp)
+                    ballangd = m.degrees(ballang)
+                    ballradscale = (ballrad/120)*.75
+                    print(f"ball found rad: {ballrad:5.2f} angle: {ballangd:5.2f} output: {ballradscale:5.2f}")
+                    pitch = -m.sin(ballang)*ballradscale
+                    roll = -m.cos(ballang)*ballradscale
+                    
                 print(f"insert PID magic here xerr: {xerr}=>{self.x_pid.myOutput:5.3f} yerr: {yerr}=>{self.y_pid.myOutput:5.3f} headerr: {headerr:5.1f}=>{self.heading_pid.myOutput:5.3f}")
                 # initial strategy: want to make dxp and dyp and heading 0 with z at 50%
                 modeglyph = StewartPlatform.cSC # select 6-DOF absolute / precision mode
