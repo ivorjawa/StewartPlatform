@@ -228,6 +228,9 @@ class Recognizer(object):
                 center = imgpts[0][0]
                 #print(f"center: {center}, angles: (heading, pitch, roll): ({heading:5.2f}, {pitch:5.2f}, {roll:5.2f})")
                 self.pose_info =  PoseInfo(tvecs, rvecs, heading, roll, pitch, corners, ids, rejected_img_points, center)
+                self.dxp = -int(self.width/2 - self.pose_info.position[0])              
+                self.dyp = int(self.height/2 - self.pose_info.position[1])
+                self.find_playfield_mask(frame)
                 return self.pose_info
             else:
                 raise PoseError("solvePnP failed")  
@@ -236,7 +239,7 @@ class Recognizer(object):
     
     def hudtext(self, frame):
         # (origin) (width height)
-        cv2.rectangle(frame, (0, 100), (130, 280), (0, 0, 0), -1)
+        cv2.rectangle(frame, (0, 100), (130, 325), (0, 0, 0), -1)
         fontspec = (cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
         
         cv2.putText(frame,f"Roll:",(0, 120),*fontspec)
@@ -256,13 +259,43 @@ class Recognizer(object):
         tv = self.pose_info.trans_vec.T[0]
         cv2.putText(frame,f"{tv[0]:5.1f}",(x0, 180),*fontspec)
         cv2.putText(frame,f"{tv[1]:5.1f}",(x0, 200),*fontspec)
-        cv2.putText(frame,f"{tv[2]:5.1f}",(x0, 220),*fontspec)
-        self.dxp = -int(self.width/2 - self.pose_info.position[0])              
-        self.dyp = int(self.height/2 - self.pose_info.position[1])              
+        cv2.putText(frame,f"{tv[2]:5.1f}",(x0, 220),*fontspec)             
         cv2.putText(frame,f"{self.dxp:4}",(x0, 248),*fontspec)
         cv2.putText(frame,f"{self.dyp:4}",(x0, 268),*fontspec)
 
+        if self.have_ball == True:
+            #ballstring1 = "BALL FOUND"
+            #ballstring2 = f"{self.ball_pos}"
+            ballstring1 = "BALL FOUND"
+            ballstring2 = f"BDP: {(self.ball_dxp, self.ball_dyp)}"
+        else:
+            ballstring1 = "NO BALL"
+            ballstring2 = "(-,-)"
             
+        cv2.putText(frame,ballstring1,(0, 295),*fontspec)
+        cv2.putText(frame,ballstring2,(0, 315),*fontspec)
+        
+    def find_playfield_mask(self, frame):
+        steps = np.arange(0, 36, 1)*10
+        r = 166/2
+        x = r*np.cos(np.radians(steps))+91.5
+        y = r*np.sin(np.radians(steps))+91.5
+        z = 0 * steps
+        testpts = np.stack([x, y, z], axis=1)
+        imgpts, jac = cv2.projectPoints(
+            testpts, 
+            self.pose_info.rot_vec, 
+            self.pose_info.trans_vec, self.cam_mtx, self.distortion)
+        
+        imgpts2 = [ip[0] for ip in imgpts]
+        
+        self.playfield_circle = np.intp([imgpts2])
+        self.playfield_mask = np.zeros((self.height, self.width), np.uint8)
+        
+        cv2.polylines(frame, self.playfield_circle, True, (0, 255, 255), 2)
+        cv2.fillPoly(self.playfield_mask, self.playfield_circle, (1))  
+        
+             
     def drawhud(self, frame, pose_info):
         # FIXME: might have scrolling graph of PID and Kalman stats at bottom
         # Terminator up this shit
@@ -290,22 +323,7 @@ class Recognizer(object):
                     cv2.circle(frame, np.intp(pt[0]), 3, (255, 255, 255), 2)
                 cv2.line(frame, np.intp(imgpts[5][0]), np.intp(imgpts[6][0]), (0, 255, 0), 1)
                 cv2.line(frame, np.intp(imgpts[7][0]), np.intp(imgpts[8][0]), (0, 255, 0), 1)
-            
-                steps = np.arange(0, 36, 1)*10
-                r = 166/2
-                x = r*np.cos(np.radians(steps))+91.5
-                y = r*np.sin(np.radians(steps))+91.5
-                z = 0 * steps
-                testpts = np.stack([x, y, z], axis=1)
-                imgpts, jac = cv2.projectPoints(
-                    testpts, 
-                    pose_info.rot_vec, 
-                    pose_info.trans_vec, self.cam_mtx, self.distortion)
-                imgpts2 = [ip[0] for ip in imgpts]
-                cv2.polylines(frame, np.intp([imgpts2]), True, (0, 255, 255), 2)
-                mask = np.zeros((self.height, self.width), np.uint8)
-                #cv2.circle(mask,(xav,yav),rav+30,1,-1)
-                cv2.fillPoly(mask, np.intp([imgpts2]), (1))
+                cv2.polylines(frame, self.playfield_circle, True, (0, 255, 255), 2)
                 self.hudtext(frame)
 
             except cv2.error as e:
@@ -326,7 +344,7 @@ class Recognizer(object):
                 pose_info.aruco_ids, 
                 pose_info.rejected_points, 
                 frame)
-        return mask
+        #return mask
 
     def detect_ball(self, frame, rblur):
         #global circle_buf, cb_valid, cb_times
@@ -367,6 +385,9 @@ class Recognizer(object):
                  cv2.circle(frame,(x, y),r,(0,255,0),2)
                  # draw the center of the circle
                  cv2.circle(frame,(x,y),2,(255,255,255),3)
+                 self.ball_pos = (x, y)
+                 self.ball_dxp = -int(self.width/2 - self.ball_pos[0])              
+                 self.ball_dyp = int(self.height/2 - self.ball_pos[1])
         if sum(self.cb_valid) == 3:
             print("possible solution found!")
             try:
@@ -416,15 +437,16 @@ class Recognizer(object):
         try:
             pose_info = self.pose_estimation(frame)
             self.have_pose = True
-            mask = self.drawhud(frame, pose_info)
-            rin = rin * mask
+            rin = rin * self.playfield_mask
             rblur = cv2.medianBlur(rin,5)
             
             self.output, rblur = self.detect_ball(frame, rblur)
             self.red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
+            self.drawhud(frame, pose_info)
             return pose_info
         except Exception as e:
-            print(e)
+            print(f"recognizer error: {e}")
+            raise
 
 def go():    
     cap = cv2.VideoCapture(0)
