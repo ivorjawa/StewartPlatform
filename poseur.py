@@ -142,8 +142,8 @@ class TrackerSM(StateMachine):
                     ballangd = m.degrees(ballang)
                     ballradscale = (ballrad/120)*.75
                     print(f"ball found rad: {ballrad:5.2f} angle: {ballangd:5.2f} output: {ballradscale:5.2f}")
-                    pitch = -m.sin(ballang)*ballradscale
-                    roll = -m.cos(ballang)*ballradscale
+                    pitch = m.sin(ballang)*ballradscale
+                    roll = m.cos(ballang)*ballradscale
                     
                 print(f"insert PID magic here xerr: {xerr}=>{self.x_pid.myOutput:5.3f} yerr: {yerr}=>{self.y_pid.myOutput:5.3f} headerr: {headerr:5.1f}=>{self.heading_pid.myOutput:5.3f}")
                 # initial strategy: want to make dxp and dyp and heading 0 with z at 50%
@@ -154,10 +154,10 @@ class TrackerSM(StateMachine):
                 # y: RS
                 # yaw: S1
                 cdict = {
-                    'roll': one28(roll), 
-                    'pitch': one28(pitch),
                     #'roll': one28(0), 
-                    #'pitch': one28(0), 
+                    'roll': one28(roll),
+                    #'pitch': one28(0),  
+                    'pitch': one28(pitch),
                     'S1': one28(self.heading_pid.myOutput), 
                     #'S1': one28(0), 
                     'coll': one28(0), # middle
