@@ -72,10 +72,23 @@ class TrackerSM(StateMachine):
         tKi = 0.002
         tKd = 0
         
+        # roll and pitch, input pixel offset, controls limited degrees
+        bKp = 0.05
+        bKi = 0.001
+        bKd = 0
+        
         self.x_pid = PID.PID(0, tKp, tKi, tKd, PID.PID.P_ON_E, PID.PID.DIRECT)
         self.y_pid = PID.PID(0, tKp, tKi, tKd, PID.PID.P_ON_E, PID.PID.DIRECT)
         self.heading_pid = PID.PID(0, rKp, rKi, rKd, PID.PID.P_ON_E, PID.PID.DIRECT)
-        self.pids = [self.x_pid, self.y_pid, self.heading_pid]
+        self.roll_pid = PID.PID(0, bKp, bKi, bKd, PID.PID.P_ON_E, PID.PID.DIRECT)
+        self.pitch_pid = PID.PID(0, bKp, bKi, bKd, PID.PID.P_ON_E, PID.PID.DIRECT)
+        self.pids = [
+            self.x_pid, 
+            self.y_pid, 
+            self.heading_pid, 
+            self.roll_pid,
+            self.pitch_pid,
+        ]
         for pid in self.pids:
             pid.mySetpoint = 0  
             pid.SetOutputLimits(-1.0, 1.0)
@@ -140,10 +153,16 @@ class TrackerSM(StateMachine):
                     ballrad = m.sqrt(self.rec.ball_dxp**2 + self.rec.ball_dyp**2);
                     ballang = m.atan2(self.rec.ball_dyp, self.rec.ball_dxp)
                     ballangd = m.degrees(ballang)
-                    ballradscale = (ballrad/120)*.75
+                    #ballradscale = (ballrad/130)*.65 # used without PI
+                    ballradscale = ballrad
                     print(f"ball found rad: {ballrad:5.2f} angle: {ballangd:5.2f} output: {ballradscale:5.2f}")
-                    pitch = m.sin(ballang)*ballradscale
-                    roll = m.cos(ballang)*ballradscale
+                    #pitch = m.sin(ballang)*ballradscale
+                    #roll = m.cos(ballang)*ballradscale
+                    ppe = pitcherr = m.sin(ballang)*ballradscale
+                    rpe = rollerr = m.cos(ballang)*ballradscale
+                    self.pitch_pid.Compute(pitcherr)
+                    self.roll_pid.Compute(rollerr)
+                    rprint(f"[white on blue]pid results: {np.array([rpe, ppe])}")
                     
                 print(f"insert PID magic here xerr: {xerr}=>{self.x_pid.myOutput:5.3f} yerr: {yerr}=>{self.y_pid.myOutput:5.3f} headerr: {headerr:5.1f}=>{self.heading_pid.myOutput:5.3f}")
                 # initial strategy: want to make dxp and dyp and heading 0 with z at 50%
@@ -155,9 +174,11 @@ class TrackerSM(StateMachine):
                 # yaw: S1
                 cdict = {
                     #'roll': one28(0), 
-                    'roll': one28(roll),
+                    #'roll': one28(roll),
+                    'roll': one28(self.roll_pid.myOutput),
                     #'pitch': one28(0),  
-                    'pitch': one28(pitch),
+                    #'pitch': one28(pitch),
+                    'pitch': one28(self.pitch_pid.myOutput),
                     'S1': one28(self.heading_pid.myOutput), 
                     #'S1': one28(0), 
                     'coll': one28(0), # middle

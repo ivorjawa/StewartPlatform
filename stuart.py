@@ -384,7 +384,7 @@ def run_remote():
                                 zrange = 66 # mm
                                 diskrad = 70 # mm
                                 # above determined in StewartPlatform jupyter notebook
-                                disk_small = 5 # +- degrees
+                                disk_small = 3 # +- degrees
                                 
                                 pitch = -1*wirep.vals['roll']*disk_small
                                 roll = -1*wirep.vals['pitch']*disk_small

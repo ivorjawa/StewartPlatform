@@ -9,7 +9,7 @@
 # http://brettbeauregard.com/blog/2011/04/improving-the-beginners-pid-introduction/
 # https://github.com/br3ttb/Arduino-PID-Library/
 
-# on PyBricks, use millis
+# on PyBricks, use StopWatch().time
 # on Desktop, PID.setmillis(lambda: time.time()*1000) # must be set before creating any PID objects
 millis = None # must be set
 def setmillis(millisfn):
