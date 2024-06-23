@@ -156,6 +156,8 @@ class Recognizer(object):
         self.circle_buf = [[], [], []]
         self.cb_times = [time.time(), time.time(), time.time()]
         
+        self.ball_info = None # data log of ball
+        self.pose_info = None # data log of platform
         self.have_pose = False
         self.have_ball = False
         self.have_estimate = False
@@ -172,13 +174,19 @@ class Recognizer(object):
             
     def stop_logging(self):
         if self.logging:
+            rp(f"[yellow on red]Stop Logging have {len(self.log_data)} lines")
             if len(self.log_data) > 0:
-                fn = f"{self.csv_stemname}-{datetime.datetime.now().isoformat()}.csv" 
-                header = f"{self.log_data[0][0].header()},{self.log_data[0][1].header()}"
+                fn = f"{self.csv_stemname}-{datetime.datetime.now().isoformat()}.csv"
+                d0 = self.log_data[0] 
+                header = ','.join([d.header() for d in d0]) 
+                #header = f"{self.log_data[0][0].header()},{self.log_data[0][1].header()}"
                 with open(fn, "w") as cvsfile:
                     print(header, file=cvsfile)
-                    for bi, pi in self.log_data:
-                        print(f"{str(bi)},{str(pi)}", file=cvsfile)
+                    #for bi, pi in self.log_data:
+                    for fields in self.log_data:
+                        line = ','.join([str(field) for field in fields])
+                        #print(f"{str(bi)},{str(pi)}", file=cvsfile)
+                        print(line, file=cvsfile)
                 rp(f"[yellow on red]Wrote log to {fn}")
         self.logging = False
         
@@ -400,8 +408,7 @@ class Recognizer(object):
                 v2 = ds2/dt2
                 dv = v2-v1
                 a = dv/dt2
-                bi = BallInfo([c1, c2, c3], [dt1, dt2], [ds1, ds1], [v1, v2], a)
-                self.log(bi, self.pose_info)
+                self.ball_info = BallInfo([c1, c2, c3], [dt1, dt2], [ds1, ds1], [v1, v2], a)
                 #print(f"c1: {np.intp(c1)}, c2: {np.intp(c2)}, c3: {np.intp(c3)}")
                 #print(f"v1: {v1}, v2: {v2}, dv: {dv}")
                 #print(f"dt1: {dt1:3.3f}, dt2: {dt2:3.3f}, ds1: {ds1}, ds2: {ds2}")
@@ -445,6 +452,8 @@ class Recognizer(object):
             cv2.line(frame, np.intp((0,self.height/2)), np.intp((self.width, self.height/2)), (0, 0, 255), 1)
             cv2.line(frame, np.intp((self.width/2,0)), np.intp((self.width/2,self.height)), (0, 0, 255), 1)
             self.drawhud(frame, pose_info)
+
+                
             return pose_info
         except Exception as e:
             print(f"recognizer error: {e}")
@@ -476,6 +485,14 @@ def go():
         ret, img = cap.read()
         if ret:
             rec.recognize(img)
+            # self.have_estimate
+            if rec.have_estimate:
+                print("have estimate")
+                rec.log(rec.ball_info, rec.pose_info)
+                print(f"logged estimate have {len(rec.log_data)} lines")
+            else:
+                print("no estimate")
+                
 
             canvas = np.zeros((height, width*2, 3), np.uint8)
             canvas[0:480, 0:640] = rec.output

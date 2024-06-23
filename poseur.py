@@ -158,6 +158,9 @@ class TrackerSM(StateMachine):
                 rprint(f"[white on blue]pid results: {np.array([rpe, ppe])}")
                     
                 print(f"insert PID magic here xerr: {xerr}=>{self.x_pid.myOutput:5.3f} yerr: {yerr}=>{self.y_pid.myOutput:5.3f} headerr: {headerr:5.1f}=>{self.heading_pid.myOutput:5.3f}")
+                if self.rec.have_estimate:
+                    print("have estimate")
+                    self.rec.log(self.rec.ball_info, self.rec.pose_info)
                 # initial strategy: want to make dxp and dyp and heading 0 with z at 50%
                 modeglyph = StewartPlatform.cSC # select 6-DOF absolute / precision mode
                 # in precision mode, 
