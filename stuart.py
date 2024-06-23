@@ -287,7 +287,7 @@ class Stewart(StewartPlatform.StewartPlatform):
         for m in self.cmots:
             m.dc(0)
     def is_moved(self):
-        thresh = 15
+        thresh = 10
         done = [False for i in self.cyls]
         for i, cyl in enumerate(self.cyls):
             target = self.pos_ang(cyl)
