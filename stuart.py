@@ -71,7 +71,8 @@ def runtostall(cmots, spd, reset=True):
                 if reset:
                     cm.reset_angle(0)
                 fin[i] = True
-        if fin[0] and fin[1] and fin[2] and fin[3] and fin[4] and fin[5]:
+        #if fin[0] and fin[1] and fin[2] and fin[3] and fin[4] and fin[5]:
+        if sum(fin) == 6:
             done = True
     
 def calib_core(cmots):
@@ -95,7 +96,7 @@ def neutral_coll(cmots, angle):
 def memory_calibrate():
     print("Starting soft calibration")
     threshold = readthresh()
-    if (threshold < 0) or (threshold > 3500):
+    if (threshold < 0) or (threshold > 5500):
         raise ValueError(f"Recorded threshold of {threshold} degrees invalid, recalibrate")
     cmots = [M1, M2, M3, M4, M5, M6]
     calib_core(cmots)
@@ -286,7 +287,7 @@ class Stewart(StewartPlatform.StewartPlatform):
         for m in self.cmots:
             m.dc(0)
     def is_moved(self):
-        thresh = 25
+        thresh = 15
         done = [False for i in self.cyls]
         for i, cyl in enumerate(self.cyls):
             target = self.pos_ang(cyl)
@@ -361,8 +362,12 @@ def run_remote():
                 roll = -1*wirep.vals['pitch']*disk_def
                 yaw = -1*wirep.vals['yaw']*23
                 glyph = wirep.decode_raw('glyph')
-                
-                if glyph == 255:
+                #print(f"Glyph: {glyph:08x}")
+                if((glyph & cSB) == cSB): # X '0b0101000' SB
+                    print(f"<goodbye/>")
+                    return None
+                    #break
+                elif glyph == 1:
                     # keepalive
                     # FIXME: remove.  not necessary anymore with SMs independent of input
                     pass
@@ -391,7 +396,7 @@ def run_remote():
                                 z = (wirep.vals['coll']/2 + .5)*zrange
                                 x = (wirep.vals['LS'])*diskrad
                                 y = (wirep.vals['RS'])*diskrad
-                                yaw = -1*wirep.vals['S1']*23
+                                yaw = -1*wirep.vals['S1']*10
                                 
                                 #print("about to moveto6abs")
                                 msm.moveto6abs(roll, pitch, yaw, x, y, z)
@@ -404,10 +409,7 @@ def run_remote():
                             print(f"<goodbye/>")
                             return None
                             
-                    if((glyph & cSB) == cSB): # X '0b0101000' SB
-                        print(f"<goodbye/>")
-                        return None
-                        #break
+
                     
             except Exception as e:
                 print("failure in main loop:")
@@ -421,7 +423,7 @@ def run_remote():
 
         
 if __name__ == "__main__":
-    # pybricksdev run ble -n rotor rotor.py
+    # pybricksdev run ble -n jawaspike stuart.py
     #teststorage()
     #testwritestore()
     #run_remote()

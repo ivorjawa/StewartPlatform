@@ -73,7 +73,7 @@ class TrackerSM(StateMachine):
         tKd = 0
         
         # roll and pitch, input pixel offset, controls limited degrees
-        bKp = 0.05
+        bKp = 0.02
         bKi = 0.001
         bKd = 0
         
@@ -100,32 +100,15 @@ class TrackerSM(StateMachine):
         if self.woke:
             self.state = self.states.scan
             print("scanning")
-    """
-            #millis = time.time          # python desktop
-            #millis = StopWatch().time   # pybricks
-            
-            import PID
-            PID.setmillis(millis) # must be set before creating any PID objects
-            
-            import PID
-            class MotorPID(object):
-                    self.pid = PID.PID(0, Kp, Ki, Kd, PID.PID.P_ON_E, PID.PID.DIRECT)
-                    self.pid.SetOutputLimits(-self.MAXDPS, self.MAXDPS)
-                    self.pid.SetSampleTime(samp_time_ms)
-                    self.pid.SetMode(PID.PID.AUTOMATIC)
-                    self.pid.mySetpoint = self.throttle_pct * self.MAXDPS
-                    if abs(self.pid.mySetpoint) > self.deadthresh:
-                        self.pid.Compute(self.speed)
-                    output = self.pid.myOutput
-    """      
+ 
     def scan(self):
         ret, img = self.cam.read()
         if ret:
             try:
                 pose_info = self.rec.recognize(img)
 
-                cv2.line(self.rec.output, (int(0),int(self.height/2)), (int(self.width), int(self.height/2)), (0, 0, 255), 1)
-                cv2.line(self.rec.output, (int(self.width/2),int(0)), (int(self.width/2), int(self.height)), (0, 0, 255), 1)
+                #cv2.line(self.rec.output, (int(0),int(self.height/2)), (int(self.width), int(self.height/2)), (0, 0, 255), 1)
+                #cv2.line(self.rec.output, (int(self.width/2),int(0)), (int(self.width/2), int(self.height)), (0, 0, 255), 1)
 
                 canvas = np.zeros((self.height, self.width*2, 3), np.uint8)
                 canvas[0:480, 0:640] = self.rec.output
@@ -150,6 +133,12 @@ class TrackerSM(StateMachine):
                 roll = 0
                 
                 if self.rec.have_ball:
+                    # FIXME rec.detect_ball is what triggers logging
+                    # rec.start_logging and stop_logging control it
+                    # need to add log type for collected PID and error data,
+                    # possibly need to inherit Recognizer and override rec.log()
+                    # ... or, something.  ugly.
+                    
                     ballrad = m.sqrt(self.rec.ball_dxp**2 + self.rec.ball_dyp**2);
                     ballang = m.atan2(self.rec.ball_dyp, self.rec.ball_dxp)
                     ballangd = m.degrees(ballang)
@@ -196,6 +185,8 @@ class TrackerSM(StateMachine):
                 key = cv2.waitKey(1)
                 if key == 27:
                     # FIXME make this send other thread / robot termination message
+                    self.toq.put_nowait({'glyph':StewartPlatform.cSB}) # kill packet
+                    time.sleep(1)
                     sys.exit(0)
                 elif key == ord('l'):
                     self.rec.start_logging()
@@ -228,6 +219,9 @@ class TrackerSM(StateMachine):
                     self.woke = True
                 elif token == "<taskdone/>":
                     self.moving = False
+                elif token == "<goodbye/>":
+                    print("robot requested exit")
+                    sys.exit(1)
                 else:
                     print(f"got unknown token: {token}")
             except queue.Empty as e:
@@ -271,6 +265,8 @@ class  LoggingQueuedBricksHub(PybricksHub):
                     self.csvfile = None
                     logging.info("done logging")
             elif l == "<goodbye/>":
+                self.toq.put_nowait(l)
+                time.sleep(1)
                 sys.exit(1)
             elif l == "<awake/>":
                 self.toq.put_nowait(l)
@@ -320,7 +316,7 @@ class BaseStation(object):
             130 will be "twitch (no interpolation) to next pose" 
             Well, eventually.  we just send cSC now for precision 6DOF
             """
-            cdict = {'roll': 0, 'pitch': 0, 'yaw': 0, 'coll': 0, 'glyph': 255} # keepawake
+            cdict = {'roll': 0, 'pitch': 0, 'yaw': 0, 'coll': 0, 'glyph': 1} #FIXME glyph was 255 keepawake, now 1 null
             # get command from opencv recognizer process
             track_packet = False
             try:
