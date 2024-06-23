@@ -64,7 +64,7 @@ class TrackerSM(StateMachine):
         os.system("./uvc-util -I 0 -s exposure-time-abs=150")
         
         # rotational, controlling degrees
-        rKp = 0.025
+        rKp = 0.01
         rKi = 0.015
         rKd = 0
         # translational, controlling mm
@@ -73,7 +73,7 @@ class TrackerSM(StateMachine):
         tKd = 0
         
         # roll and pitch, input pixel offset, controls limited degrees
-        bKp = 0.02
+        bKp = 0.005
         bKi = 0.001
         bKd = 0
         

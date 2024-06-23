@@ -360,7 +360,7 @@ def run_remote():
                 # rotated because camera is rotated.  
                 pitch = -1*wirep.vals['roll']*disk_def
                 roll = -1*wirep.vals['pitch']*disk_def
-                yaw = -1*wirep.vals['yaw']*23
+                yaw = -1*wirep.vals['yaw']*15 # FIXME parameterize this
                 glyph = wirep.decode_raw('glyph')
                 #print(f"Glyph: {glyph:08x}")
                 if((glyph & cSB) == cSB): # X '0b0101000' SB
@@ -396,7 +396,7 @@ def run_remote():
                                 z = (wirep.vals['coll']/2 + .5)*zrange
                                 x = (wirep.vals['LS'])*diskrad
                                 y = (wirep.vals['RS'])*diskrad
-                                yaw = -1*wirep.vals['S1']*10
+                                yaw = -1*wirep.vals['S1']*15 # FIXME parameterize this
                                 
                                 #print("about to moveto6abs")
                                 msm.moveto6abs(roll, pitch, yaw, x, y, z)
