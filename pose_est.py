@@ -166,6 +166,8 @@ class Recognizer(object):
         self.logging = False
         self.csv_stemname = "Pose_est"
         
+        self.system_state = 'UNSET'
+        
     def start_logging(self):
         if not self.logging:
             rp("[yellow on red]Begin Logging")
@@ -247,7 +249,7 @@ class Recognizer(object):
     
     def hudtext(self, frame):
         # (origin) (width height)
-        cv2.rectangle(frame, (0, 100), (130, 325), (0, 0, 0), -1)
+        cv2.rectangle(frame, (0, 100), (130, 370), (0, 0, 0), -1)
         fontspec = (cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
         
         cv2.putText(frame,f"Roll:",(0, 120),*fontspec)
@@ -282,6 +284,10 @@ class Recognizer(object):
             
         cv2.putText(frame,ballstring1,(0, 295),*fontspec)
         cv2.putText(frame,ballstring2,(0, 315),*fontspec)
+        
+        cv2.putText(frame,"STATE",(0, 335),*fontspec)
+        cv2.putText(frame,f"[{self.system_state}]",(0, 355),*fontspec)
+        
         
     def find_playfield_mask(self, frame):
         steps = np.arange(0, 36, 1)*10

@@ -177,11 +177,6 @@ class TrackerSM(StateMachine):
                 roll = 0
                 
                 if self.rec.have_ball:
-                    # FIXME rec.detect_ball is what triggers logging
-                    # rec.start_logging and stop_logging control it
-                    # need to add log type for collected PID and error data,
-                    # possibly need to inherit Recognizer and override rec.log()
-                    # ... or, something.  ugly.
                     
                     ballrad = m.sqrt(self.rec.ball_dxp**2 + self.rec.ball_dyp**2);
                     ballang = m.atan2(self.rec.ball_dyp, self.rec.ball_dxp)
@@ -263,6 +258,7 @@ class TrackerSM(StateMachine):
             
     def loop(self):
         while 1:
+            self.rec.system_state = str(self.state)
             self.scancore()
             self.tick()
             
@@ -271,7 +267,7 @@ class TrackerSM(StateMachine):
                 print(f"got token {token}")
                 if token == "<awake/>":
                     self.woke = True
-                elif token == "<taskdone/>":
+                elif token == "<taskdone/>": # FIXME this doesn't really work anymore
                     self.moving = False
                 elif token == "<goodbye/>":
                     print("robot requested exit")
