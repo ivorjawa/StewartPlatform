@@ -167,12 +167,15 @@ class TrackerSM(StateMachine):
                     print(f"ball found rad: {ballrad:5.2f} angle: {ballangd:5.2f} output: {ballradscale:5.2f}")
                     #pitch = m.sin(ballang)*ballradscale
                     #roll = m.cos(ballang)*ballradscale
+                    ppe = pitcherr = m.sin(ballang)*ballradscale
+                    rpe = rollerr = -m.cos(ballang)*ballradscale
                 else:
                     # flatten out
                     ballang = 0
                     ballradscale = 0
-                ppe = pitcherr = m.sin(ballang)*ballradscale
-                rpe = rollerr = -m.cos(ballang)*ballradscale
+                    ppe = pitcherr = self.rec.pose_info.pitch
+                    rpe = rollerr = -self.rec.pose_info.roll
+                    #rpe = rollerr = 0
                 self.pitch_pid.Compute(pitcherr)
                 self.roll_pid.Compute(rollerr)
                 rprint(f"[white on blue]pid results: {np.array([rpe, ppe])}")
@@ -263,7 +266,7 @@ class TrackerSM(StateMachine):
                     self.moving = False
                 elif token == "<goodbye/>":
                     print("robot requested exit")
-                    sys.exit(1)
+                    return
                 else:
                     print(f"got unknown token: {token}")
             except queue.Empty as e:
