@@ -192,11 +192,11 @@ class Recognizer(object):
         
             
             
-    def log(self, ball_info, pose_info):
+    def log(self):
         #print(ball_info)
         #print(pose_info)
         if self.logging:
-            self.log_data.append([ball_info, pose_info])
+            self.log_data.append([self.ball_info, self.pose_info])
     
     
     def pose_estimation(self, frame):
@@ -488,7 +488,7 @@ def go():
             # self.have_estimate
             if rec.have_estimate:
                 print("have estimate")
-                rec.log(rec.ball_info, rec.pose_info)
+                rec.log()
                 print(f"logged estimate have {len(rec.log_data)} lines")
             else:
                 print("no estimate")

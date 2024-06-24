@@ -30,6 +30,24 @@ from statemachine import StateMachine
 import StewartPlatform
 from pose_est import Recognizer
 
+class ControlInfo(object):
+    def __init__(self, datadict):
+        self.data = datadict
+        self.headerkeys = sorted(self.data.keys())
+    def header(self):
+        return(','.join(self.headerkeys))
+    def __str__(self):
+        return(','.join([f"{self.data[key]:0.5f}" for key in self.headerkeys]))
+        
+        
+class ClogRecognizer(Recognizer): # control-logged recognizer
+    def __init__(self, height, width, trackersm):
+        super().__init__(height, width)
+        self.trackersm = trackersm
+    def log(self):
+        if self.logging:
+            self.log_data.append([self.ball_info, self.pose_info, self.trackersm.control_info])
+            
 #"maps -1.0..1.0 to 0..255"
 one28 = lambda x: int(((x+1)/2)*255)
      
@@ -50,7 +68,7 @@ class TrackerSM(StateMachine):
         self.width = 640
         self.height = 480
 
-        self.rec = Recognizer(self.height, self.width)
+        self.rec = ClogRecognizer(self.height, self.width, self)
         
         self.cam = cv2.VideoCapture(0)
         self.cam.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
@@ -63,6 +81,8 @@ class TrackerSM(StateMachine):
         os.system("./uvc-util -I 0 -s auto-exposure-mode=1")
         os.system("./uvc-util -I 0 -s exposure-time-abs=150")
         
+        # control info db log
+        self.control_info = None
         # rotational, controlling degrees
         rKp = 0.01
         rKi = 0.015
@@ -123,7 +143,7 @@ class TrackerSM(StateMachine):
                 xpe = self.x_pid.Compute(xerr)
                 ype = self.y_pid.Compute(yerr)
                 hpe = self.heading_pid.Compute(headerr)
-                #print(f"pid results: {[xpe, ype, hpe]}")
+                #print(f"pid results: {[xpe, ype, hpe]}") # these are bool, completed correctly
                 
                 
                 #angle = time.time() % m.tau # circle in tau seconds
@@ -160,7 +180,22 @@ class TrackerSM(StateMachine):
                 print(f"insert PID magic here xerr: {xerr}=>{self.x_pid.myOutput:5.3f} yerr: {yerr}=>{self.y_pid.myOutput:5.3f} headerr: {headerr:5.1f}=>{self.heading_pid.myOutput:5.3f}")
                 if self.rec.have_estimate:
                     print("have estimate")
-                    self.rec.log(self.rec.ball_info, self.rec.pose_info)
+                    cid = {
+                        'xerr': xerr,
+                        'yerr': yerr,
+                        'headerr': headerr,
+                        'ballang': ballang,
+                        'ballradscale': ballradscale,
+                        'rollerr': rollerr,
+                        'pitcherr': pitcherr,
+                        'roll_pid_out': self.roll_pid.myOutput,
+                        'pitch_pid_out': self.pitch_pid.myOutput,
+                        'heading_pid_out': self.heading_pid.myOutput,
+                        'x_pid_out': self.x_pid.myOutput,
+                        'x_pid_out': self.x_pid.myOutput,
+                    }
+                    self.control_info = ControlInfo(cid)
+                    self.rec.log()
                 # initial strategy: want to make dxp and dyp and heading 0 with z at 50%
                 modeglyph = StewartPlatform.cSC # select 6-DOF absolute / precision mode
                 # in precision mode, 
