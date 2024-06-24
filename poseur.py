@@ -51,26 +51,12 @@ class ClogRecognizer(Recognizer): # control-logged recognizer
 #"maps -1.0..1.0 to 0..255"
 one28 = lambda x: int(((x+1)/2)*255)
 
-"""
-step test state machine
-* put machine state in HUD *
 
-Wait for alive
-Scan: Wait for ball
-Sleep 2 seconds
-Start logging
-Command 5° Step test
-Wait for completion
-Log data
-wait for ball gone
-Go to scan
-
-"""     
 class TrackerSM(StateMachine):
     def __init__(self, fromq, toq):
         super().__init__()
         #self.build('cstates', ['scan', 'wait_start', 'wait_move'])
-        self.build('cstates', ['wait_start', 'scan', 'wait_move'])
+        self.build('ts', ['wait_start', 'scan', 'wait_move'])
         
         self.fromq = fromq
         self.toq = toq
@@ -243,19 +229,7 @@ class TrackerSM(StateMachine):
                 }
             except Exception as e:
                 print(f"recognizer failed: {e}")
-                 
-        
-    def wait_move(self):
-        now = time.time()
-        if self.moving == True:
-            if (now - self.start_time > 5):
-                print("Timeout waiting for robot to move, kicking")
-                self.state = self.states.scan
-        elif self.moving == False:
-            self.end_time = now
-            self.state = self.states.scan
-            print(f"got movement, took {self.end_time-self.start_time:3.3f}s")
-            
+                             
     def loop(self):
         while 1:
             self.rec.system_state = str(self.state)
@@ -267,7 +241,7 @@ class TrackerSM(StateMachine):
                 print(f"got token {token}")
                 if token == "<awake/>":
                     self.woke = True
-                elif token == "<taskdone/>": # FIXME this doesn't really work anymore
+                elif token == "<taskdone/>": #  used by wait_move, if used
                     self.moving = False
                 elif token == "<goodbye/>":
                     print("robot requested exit")
@@ -294,9 +268,90 @@ class TrackerSM(StateMachine):
         return        
 
 def tracker(fromq, toq):
-    tsm = TrackerSM(fromq, toq)
+    #tsm = TrackerSM(fromq, toq)
+    tsm = StepTestStateMachine(fromq, toq)
     tsm.loop()
 
+"""
+step test state machine
+* put machine state in HUD *
+
+Wait for alive
+
+Scan: Wait for ball
+
+Sleep 2 seconds
+Start logging
+Command 5° Step test
+
+Wait for completion
+Log data
+
+wait for ball gone
+Go to scan
+
+"""     
+
+class StepTestStateMachine(TrackerSM):
+    def __init__(self, fromq, toq):
+        super().__init__(fromq, toq) # wait_start is in TrackerSM
+        self.build('st', ['wait_start', 'scan', 'delay_2', 'wait_move', 'wait_noball'])
+    
+
+    def scan(self):
+        if self.rec.have_ball:
+            self.state = self.states.delay_2
+            self.start_time = time.time()
+    
+    def delay_2(self):
+        if time.time() - self.start_time > 2:
+            self.rec.start_logging()
+            self.state = self.states.wait_move
+            self.start_time = time.time()
+            # in precision mode, 
+            # z: coll
+            # x: LS
+            # y: RS
+            # yaw: S1
+            cdict = {
+                'roll': one28(0), 
+                'pitch': one28(1),
+                'S1': one28(0), 
+                'coll': one28(0), # middle
+                'LS': one28(0),
+                'RS': one28(0),
+                'glyph': StewartPlatform.cSC # select 6-DOF absolute / precision mode
+            }
+            self.toq.put_nowait(cdict)
+            self.moving = True
+            
+    def wait_move(self):
+        now = time.time()
+        if self.moving == True:
+            if (now - self.start_time > 5):
+                print("Timeout waiting for robot to move, kicking")
+                self.state = self.states.delay_2
+        elif self.moving == False:
+            self.end_time = now
+            self.state = self.states.wait_noball
+            print(f"got movement, took {self.end_time-self.start_time:3.3f}s")
+            self.rec.stop_logging()
+            
+    def wait_noball(self):
+        if not self.rec.have_ball:
+            self.state = self.states.scan
+            cdict = {
+                'roll': one28(0), 
+                'pitch': one28(0),
+                'S1': one28(0), 
+                'coll': one28(0), # middle
+                'LS': one28(0),
+                'RS': one28(0),
+                'glyph': StewartPlatform.cSC # select 6-DOF absolute / precision mode
+            }
+            self.toq.put_nowait(cdict)
+
+        
 class  LoggingQueuedBricksHub(PybricksHub):
     """
         A PybricksHub that can act on things received by _line_handler.

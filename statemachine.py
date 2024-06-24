@@ -15,6 +15,7 @@ class StateMachine(object):
         self.state = None
         self.stateDict = {}
     def build(self, smtag, statetags):
+        self.stateDict = {} # we can change it cleanly
         self.states = Enum(smtag, statetags)
         self.state = getattr(self.states, statetags[0])
         for tag in statetags:
