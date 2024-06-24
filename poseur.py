@@ -50,7 +50,22 @@ class ClogRecognizer(Recognizer): # control-logged recognizer
             
 #"maps -1.0..1.0 to 0..255"
 one28 = lambda x: int(((x+1)/2)*255)
-     
+
+"""
+step test state machine
+* put machine state in HUD *
+
+Wait for alive
+Scan: Wait for ball
+Sleep 2 seconds
+Start logging
+Command 5° Step test
+Wait for completion
+Log data
+wait for ball gone
+Go to scan
+
+"""     
 class TrackerSM(StateMachine):
     def __init__(self, fromq, toq):
         super().__init__()
@@ -120,8 +135,29 @@ class TrackerSM(StateMachine):
         if self.woke:
             self.state = self.states.scan
             print("scanning")
- 
+    
     def scan(self):
+        self.scancore()
+        if self.rec.have_estimate:
+            #self.state = self.states.wait_move
+            self.toq.put_nowait(self.cdict)
+            self.moving = True
+            self.start_time = time.time()
+            
+            key = cv2.waitKey(1)
+            if key == 27:
+                # FIXME make this send other thread / robot termination message
+                self.toq.put_nowait({'glyph':StewartPlatform.cSB}) # kill packet
+                time.sleep(1)
+                sys.exit(0)
+            elif key == ord('l'):
+                self.rec.start_logging()
+            elif key == ord('s'):
+                self.rec.stop_logging()
+                
+            print("sent command")
+            
+    def scancore(self):
         ret, img = self.cam.read()
         if ret:
             try:
@@ -206,7 +242,7 @@ class TrackerSM(StateMachine):
                 # x: LS
                 # y: RS
                 # yaw: S1
-                cdict = {
+                self.cdict = {
                     #'roll': one28(0), 
                     #'roll': one28(roll),
                     'roll': one28(self.roll_pid.myOutput),
@@ -222,23 +258,6 @@ class TrackerSM(StateMachine):
                     #'RS': one28(0),
                     'glyph': modeglyph
                 }
-                #self.state = self.states.wait_move
-                self.toq.put_nowait(cdict)
-                self.moving = True
-                self.start_time = time.time()
-                
-                key = cv2.waitKey(1)
-                if key == 27:
-                    # FIXME make this send other thread / robot termination message
-                    self.toq.put_nowait({'glyph':StewartPlatform.cSB}) # kill packet
-                    time.sleep(1)
-                    sys.exit(0)
-                elif key == ord('l'):
-                    self.rec.start_logging()
-                elif key == ord('s'):
-                    self.rec.stop_logging()
-                    
-                print("sent command")
             except Exception as e:
                 print(f"recognizer failed: {e}")
                  
