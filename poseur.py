@@ -137,23 +137,11 @@ class TrackerSM(StateMachine):
             print("scanning")
     
     def scan(self):
-        self.scancore()
-        if self.rec.have_estimate:
+        if (self.woke and self.rec.have_estimate):
             #self.state = self.states.wait_move
             self.toq.put_nowait(self.cdict)
             self.moving = True
             self.start_time = time.time()
-            
-            key = cv2.waitKey(1)
-            if key == 27:
-                # FIXME make this send other thread / robot termination message
-                self.toq.put_nowait({'glyph':StewartPlatform.cSB}) # kill packet
-                time.sleep(1)
-                sys.exit(0)
-            elif key == ord('l'):
-                self.rec.start_logging()
-            elif key == ord('s'):
-                self.rec.stop_logging()
                 
             print("sent command")
             
@@ -275,7 +263,9 @@ class TrackerSM(StateMachine):
             
     def loop(self):
         while 1:
+            self.scancore()
             self.tick()
+            
             try:
                 token = self.fromq.get_nowait()
                 print(f"got token {token}")
@@ -292,6 +282,18 @@ class TrackerSM(StateMachine):
                 pass
                 #print(f"Tracker tick exception: {e}")
                 #raise
+                
+            key = cv2.waitKey(1)
+            if key == 27:
+                # FIXME make this send other thread / robot termination message
+                self.toq.put_nowait({'glyph':StewartPlatform.cSB}) # kill packet
+                time.sleep(1)
+                sys.exit(0)
+            elif key == ord('l'):
+                self.rec.start_logging()
+            elif key == ord('s'):
+                self.rec.stop_logging()
+
         cv2.destroyAllWindows()
         return        
 
