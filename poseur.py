@@ -108,9 +108,19 @@ class TrackerSM(StateMachine):
         tKd = 0
         
         # roll and pitch, input pixel offset, controls limited degrees
-        bKp = 0.0005
-        bKi = 0.01
-        bKd = 0.00025
+        # WAG
+        #bKp = 0.0005
+        #bKi = 0.01
+        #bKd = 0.00025 
+        # z-n initial tuning       
+        #bKp = 0.0025
+        #bKi = 0.0
+        #bKd = 0.0
+        #PID.ziegler_nichols("no", 0.0025, 2)
+        #bKp = 0.0005
+        #bKi = 0.0005
+        #bKd = 0.00033
+        bKp, bKi, bKd = PID.ziegler_nichols("pir", 0.0025, 2)
         
         self.x_pid = PID.PID(0, tKp, tKi, tKd, PID.PID.P_ON_E, PID.PID.DIRECT)
         self.y_pid = PID.PID(0, tKp, tKi, tKd, PID.PID.P_ON_E, PID.PID.DIRECT)
