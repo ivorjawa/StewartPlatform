@@ -123,9 +123,9 @@ class TrackerSM(StateMachine):
         #bKi = 0.0013
         #bKd = 0.0005
         
-        bKp = 0.0050
-        bKi = 0.0017
-        bKd = 0.0015
+        bKp = 0.0032
+        bKi = 0.0014
+        bKd = 0.0016
                 
         self.x_pid = PID.PID(0, tKp, tKi, tKd, PID.PID.P_ON_E, PID.PID.DIRECT)
         self.y_pid = PID.PID(0, tKp, tKi, tKd, PID.PID.P_ON_E, PID.PID.DIRECT)
