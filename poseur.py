@@ -113,15 +113,20 @@ class TrackerSM(StateMachine):
         #bKi = 0.01
         #bKd = 0.00025 
         # z-n initial tuning       
-        #bKp = 0.0025
+        #bKp = 0.0017
         #bKi = 0.0
         #bKd = 0.0
-        #PID.ziegler_nichols("no", 0.0025, 2)
-        #bKp = 0.0005
-        #bKi = 0.0005
-        #bKd = 0.00033
-        bKp, bKi, bKd = PID.ziegler_nichols("pir", 0.0025, 2)
+        #bKp, bKi, bKd, = PID.ziegler_nichols("pir", 0.0017, 2.3)
         
+        # these values very close to working, converges slowly but has balanced
+        #bKp = 0.0017
+        #bKi = 0.0013
+        #bKd = 0.0005
+        
+        bKp = 0.0050
+        bKi = 0.0017
+        bKd = 0.0015
+                
         self.x_pid = PID.PID(0, tKp, tKi, tKd, PID.PID.P_ON_E, PID.PID.DIRECT)
         self.y_pid = PID.PID(0, tKp, tKi, tKd, PID.PID.P_ON_E, PID.PID.DIRECT)
         self.heading_pid = PID.PID(0, rKp, rKi, rKd, PID.PID.P_ON_E, PID.PID.DIRECT)
@@ -213,18 +218,24 @@ class TrackerSM(StateMachine):
                     print(f"ball found rad: {ballrad:5.2f} angle: {ballangd:5.2f} output: {ballradscale:5.2f}")
                     #pitch = m.sin(ballang)*ballradscale
                     #roll = m.cos(ballang)*ballradscale
+                    
+                    # these are equivalent
                     ppe = pitcherr = m.sin(ballang)*ballradscale
                     rpe = rollerr = -m.cos(ballang)*ballradscale
+                    ppeg = self.rec.ball_dyp
+                    rpeg = -self.rec.ball_dxp
                 else:
                     # flatten out
                     ballang = 0
                     ballradscale = 0
                     ppe = pitcherr = self.rec.pose_info.pitch
                     rpe = rollerr = -self.rec.pose_info.roll
+                    ppeg = 0
+                    rpeg = 0
                     #rpe = rollerr = 0
                 self.pitch_pid.Compute(pitcherr)
                 self.roll_pid.Compute(rollerr)
-                rprint(f"[white on blue]pid results: {np.array([rpe, ppe])}")
+                rprint(f"[white on blue]pid results: {np.array([rpe, ppe])} -> {np.array([rpeg, ppeg])}")
                     
                 print(f"insert PID magic here xerr: {xerr}=>{self.x_pid.myOutput:5.3f} yerr: {yerr}=>{self.y_pid.myOutput:5.3f} headerr: {headerr:5.1f}=>{self.heading_pid.myOutput:5.3f}")
                 if self.rec.have_estimate:
