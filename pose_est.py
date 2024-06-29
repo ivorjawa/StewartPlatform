@@ -98,17 +98,18 @@ class PoseInfo(object):
 
 #bi = BallInfo([c1, c2, c3], [dt1, dt2], [ds1, ds1], [v1, v2], a)       
 class BallInfo(object):
-    def __init__(self, centers, timedeltas, spacedeltas, velocities, acceleration):
+    def __init__(self, centers, timedeltas, spacedeltas, velocities, acceleration, ball_rad):
         self.time = time.time()
         self.centers = centers
         self.dts = timedeltas
         self.dss = spacedeltas
         self.vs = velocities
         self.accel = acceleration
+        self.ball_rad = ball_rad
     def header(self):
-        return("time,c1x,c1y,c1z,c2x,c2y,c2z,c3x,c3y,c3z,dt1,dt2,ds1x,ds1y,ds2x,ds2y,v1x,v1y,v2x,v2y,ax,ay")
+        return("time,c1x,c1y,c1z,c2x,c2y,c2z,c3x,c3y,c3z,dt1,dt2,ds1x,ds1y,ds2x,ds2y,v1x,v1y,v2x,v2y,ax,ay,br")
     def __str__(self):
-        return f"{self.time},{fs(self.centers)},{fs(self.dts)},{fs(self.dss)},{fs(self.vs)},{fs(self.accel)}"
+        return f"{self.time},{fs(self.centers)},{fs(self.dts)},{fs(self.dss)},{fs(self.vs)},{fs(self.accel)},{self.ball_rad:2.4f}"
 
     
 """
@@ -396,6 +397,7 @@ class Recognizer(object):
                  self.ball_pos = (x, y)
                  self.ball_dxp = -int(self.width/2 - self.ball_pos[0])              
                  self.ball_dyp = int(self.height/2 - self.ball_pos[1])
+                 self.ball_rad = r
         if sum(self.cb_valid) == 3:
             #print("possible solution found!")
             try:
@@ -408,7 +410,7 @@ class Recognizer(object):
                 v2 = ds2/dt2
                 dv = v2-v1
                 a = dv/dt2
-                self.ball_info = BallInfo([c1, c2, c3], [dt1, dt2], [ds1, ds1], [v1, v2], a)
+                self.ball_info = BallInfo([c1, c2, c3], [dt1, dt2], [ds1, ds1], [v1, v2], a, self.ball_rad)
                 #print(f"c1: {np.intp(c1)}, c2: {np.intp(c2)}, c3: {np.intp(c3)}")
                 #print(f"v1: {v1}, v2: {v2}, dv: {dv}")
                 #print(f"dt1: {dt1:3.3f}, dt2: {dt2:3.3f}, ds1: {ds1}, ds2: {ds2}")
