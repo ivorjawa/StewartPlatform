@@ -90,7 +90,7 @@ class BallMPC(object):
         return y
     
 if __name__ == "__main__":
-    x0 = np.array([25/1000, 100/1000])
+    x0 = np.array([25/1000, 100/1000]) # initial position 25mm, initial velocity 100mm/s
     bmpc = BallMPC(x0)
-    u = 50/1000
-    print(f"bmpc.compute(u): {bmpc.compute(u)}")
+    u = 50/1000 # requested distance mm -> m
+    print(f"bmpc.compute(u): {[m.degrees(bmpc.compute(u)) for x in range(5)]}")
