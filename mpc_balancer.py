@@ -81,6 +81,28 @@ class BallMPC(object):
         self.sysd = control.c2d(syst, ts) # converting allows us to assume constant step time
         self.x = x0
     
+    # https://github.com/scipy/scipy/blob/main/scipy/signal/_ltisys.py
+    # line 1932 shows continuous computation methods
+    # Zero-order hold
+            # Algorithm: to integrate from time 0 to time dt, we solve
+            #   xdot = A x + B u,  x(0) = x0
+            #   udot = 0,          u(0) = u0.
+            #
+            # Solution is
+            #   [ x(dt) ]       [ A*dt   B*dt ] [ x0 ]
+            #   [ u(dt) ] = exp [  0     0    ] [ u0 ]
+            
+    # Linear interpolation between steps
+            # Algorithm: to integrate from time 0 to time dt, with linear
+            # interpolation between inputs u(0) = u0 and u(dt) = u1, we solve
+            #   xdot = A x + B u,        x(0) = x0
+            #   udot = (u1 - u0) / dt,   u(0) = u0.
+            #
+            # Solution is
+            #   [ x(dt) ]       [ A*dt  B*dt  0 ] [  x0   ]
+            #   [ u(dt) ] = exp [  0     0    I ] [  u0   ]
+            #   [u1 - u0]       [  0     0    0 ] [u1 - u0]
+            
     def compute(self, u):
         x = self.sysd.A@self.x +(self.sysd.B*u).reshape(2)
         y = self.sysd.C@x
