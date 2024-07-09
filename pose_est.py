@@ -275,7 +275,7 @@ class Recognizer(object):
         if self.have_ball == True:
             #ballstring1 = "BALL FOUND"
             #ballstring2 = f"{self.ball_pos}"
-            ballstring1 = "BALL FOUND"
+            ballstring1 = f"BALL FOUND r={self.ball_rad}px"
             ballstring2 = f"BDP: {(self.ball_dxp, self.ball_dyp)}"
         else:
             ballstring1 = "NO BALL"

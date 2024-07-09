@@ -53,7 +53,7 @@ def rscale(a_, b_, c_, d_, k_):
 
 
 class BallMPC(object):    
-    def __init__(self, x0 = np.array([25/1000, 100/1000])):
+    def __init__(self, ts = 66/1000, x0 = np.array([25/1000, 100/1000])):
         print(f"sic.g: {sic.g}")
         #g = -9.807 #m/s^2
         J, H = get_j()
@@ -76,7 +76,7 @@ class BallMPC(object):
         Nbar = rscale(A, B, C, D, K)
         print(f"Nbar: {Nbar}")
     
-        ts = 60/1000
+        #ts = 60/1000
         syst = control.ss(A-B*K, B*Nbar, C, D)
         self.sysd = control.c2d(syst, ts) # converting allows us to assume constant step time
         self.x = x0
@@ -110,9 +110,14 @@ class BallMPC(object):
         #yout.append(y)
         self.x = x
         return y
+    def computeux(self, u, x): # apparently I'm French now
+        xout = self.sysd.A@x +(self.sysd.B*u).reshape(2)
+        yout = self.sysd.C@xout
+        return yout, xout
     
 if __name__ == "__main__":
-    x0 = np.array([25/1000, 100/1000]) # initial position 25mm, initial velocity 100mm/s
-    bmpc = BallMPC(x0)
+    #x0 = np.array([25/1000, 100/1000]) # initial position 25mm, initial velocity 100mm/s
+    #bmpc = BallMPC(x0)
+    bmpc = BallMPC()
     u = 50/1000 # requested distance mm -> m
     print(f"bmpc.compute(u): {[m.degrees(bmpc.compute(u)) for x in range(5)]}")

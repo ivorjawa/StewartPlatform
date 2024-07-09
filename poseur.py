@@ -29,6 +29,7 @@ from joycode import JoyProtocol
 from statemachine import StateMachine
 import StewartPlatform
 from pose_est import Recognizer
+from mpc_balancer import BallMPC
 
 class ControlInfo(object):
     def __init__(self, datadict):
@@ -145,6 +146,13 @@ class TrackerSM(StateMachine):
             pid.SetSampleTime(33.3) # ms, 30 FPS
             pid.SetMode(pid.AUTOMATIC)
         
+        # model predictive control stuff    
+        self.ballmpc = BallMPC()
+        self.bm_roll_xout = np.array([0, 0]) # system state, r(mm), rdot(mm/s)
+        self.bm_roll_yout = 0                # output, radians -> +- 5deg
+        self.bm_pitch_xout = np.array([0, 0])
+        self.bm_pitch_yout = 0
+        
     def wait_start(self):
         #print("asleep")
         if self.woke:
@@ -152,14 +160,19 @@ class TrackerSM(StateMachine):
             print("scanning")
     
     def scan(self):
+        # timstart() # FIXME bonehead optimization tooling
+        # timestamp()
         self.scancore()
+        # timestamp()
         if self.rec.have_estimate:
             #self.state = self.states.wait_move
             self.toq.put_nowait(self.cdict)
+            # timestamp()
             self.moving = True
             self.start_time = time.time()
             
             key = cv2.waitKey(1)
+            # timestamp()
             if key == 27:
                 # FIXME make this send other thread / robot termination message
                 self.toq.put_nowait({'glyph':StewartPlatform.cSB}) # kill packet
@@ -171,7 +184,9 @@ class TrackerSM(StateMachine):
                 self.rec.stop_logging()
                 
             print("sent command")
-            
+        # timestamp()
+        # timestop_log()
+        
     def scancore(self):
         ret, img = self.cam.read()
         if ret:
@@ -204,21 +219,45 @@ class TrackerSM(StateMachine):
                 roll = 0
                 
                 if self.rec.have_ball:
-                    
-                    ballrad = m.sqrt(self.rec.ball_dxp**2 + self.rec.ball_dyp**2);
+                    # ballrad is not ball radius, but distance of ball from center in pixels
+                    ballrad = m.sqrt(self.rec.ball_dxp**2 + self.rec.ball_dyp**2); # in pixels
                     ballang = m.atan2(self.rec.ball_dyp, self.rec.ball_dxp)
                     ballangd = m.degrees(ballang)
-                    #ballradscale = (ballrad/130)*.65 # used without PI
-                    ballradscale = ballrad
-                    print(f"ball found rad: {ballrad:5.2f} angle: {ballangd:5.2f} output: {ballradscale:5.2f}")
+                    #ballradscale = (ballrad/130)*.65 # used without PI # 1/200
+                    ballradscale = ballrad # FIXME use mmpx as below
+                    rprint(f"[red on white]ball found rad: {ballrad:5.2f} angle: {ballangd:5.2f} output: {ballradscale:5.2f}")
                     #pitch = m.sin(ballang)*ballradscale
                     #roll = m.cos(ballang)*ballradscale
                     
-                    # these are equivalent
+                    # these are equivalent FIXME cleanup
                     ppe = pitcherr = m.sin(ballang)*ballradscale
                     rpe = rollerr = -m.cos(ballang)*ballradscale
                     ppeg = self.rec.ball_dyp
                     rpeg = -self.rec.ball_dxp
+                    #print(f"ppe: {ppe:3.3f} ppeg: {ppeg:3.3f} rpe: {rpe:3.3f} rpeg: {rpeg:3.3f}")
+                    
+                    # MPC stuff
+                    #self.ballmpc = BallMPC()
+                    #self.bm_roll_xout = np.array([0, 0]) # system state, r(mm), rdot(mm/s)
+                    #self.bm_roll_yout = 0                # output, radians -> +- 5deg
+                    #self.bm_pitch_xout = np.array([0, 0])
+                    #self.bm_pitch_yout = 0
+                    mmpx = 26 / self.rec.ball_rad # FIXME parameterize this
+                    bxerrmm = self.rec.ball_dxp * mmpx
+                    byerrmm = self.rec.ball_dyp * mmpx
+                    vel = self.rec.ball_info.vs[1]
+                    #print(f"vel: {vel} len: {len(vel)}")
+                    #vel = [0,0]
+                    vx = vel[0] * mmpx
+                    vy = vel[1] * mmpx
+                    rprint(f"[bold white on purple] mmpx: {mmpx:3.3f} |r: bxerrmm: {bxerrmm:3.3f} rpe:{int(rpe)} vx: {vx:3.3f}mm/s |p: byerrmm: {byerrmm:3.3f} ppe: {int(ppe)} vy: {vy:3.3f}mm/s")
+
+                    # bm_roll_out =self.ballmpc.computeux(bm_roll_out, (mp_re, mp_redot))
+                    # ...
+                    # put mpc outputs and errors in log file FIXME
+                    bm_roll_out = self.ballmpc.computeux(0, np.array([bxerrmm, vx]))
+                    bm_pitch_out = self.ballmpc.computeux(0, np.array([byerrmm, vy]))
+                    rprint(f"[black on rgb(255,255,255)] bm_roll_out: {bm_roll_out},  bm_pitch_out: {bm_pitch_out}")
                 else:
                     # flatten out
                     ballang = 0
@@ -232,7 +271,7 @@ class TrackerSM(StateMachine):
                 self.roll_pid.Compute(rollerr)
                 rprint(f"[white on blue]pid results: {np.array([rpe, ppe])} -> {np.array([rpeg, ppeg])}")
                     
-                print(f"insert PID magic here xerr: {xerr}=>{self.x_pid.myOutput:5.3f} yerr: {yerr}=>{self.y_pid.myOutput:5.3f} headerr: {headerr:5.1f}=>{self.heading_pid.myOutput:5.3f}")
+                rprint(f"[black on green]insert PID magic here xerr: {xerr}=>{self.x_pid.myOutput:5.3f} yerr: {yerr}=>{self.y_pid.myOutput:5.3f} headerr: {headerr:5.1f}=>{self.heading_pid.myOutput:5.3f} rollerr: {self.roll_pid.myOutput:5.3f} pitcherr: {self.pitch_pid.myOutput:5.3f}")
                 if self.rec.have_estimate:
                     print("have estimate")
                     cid = {
