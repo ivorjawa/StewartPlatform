@@ -225,7 +225,7 @@ class TrackerSM(StateMachine):
                     ballangd = m.degrees(ballang)
                     #ballradscale = (ballrad/130)*.65 # used without PI # 1/200
                     ballradscale = ballrad # FIXME use mmpx as below
-                    rprint(f"[red on white]ball found rad: {ballrad:5.2f} angle: {ballangd:5.2f} output: {ballradscale:5.2f}")
+                    rprint(f"[#FF0000 on #FFFFFF]ball found rad: {ballrad:5.2f} angle: {ballangd:5.2f} output: {ballradscale:5.2f}")
                     #pitch = m.sin(ballang)*ballradscale
                     #roll = m.cos(ballang)*ballradscale
                     
@@ -250,14 +250,27 @@ class TrackerSM(StateMachine):
                     #vel = [0,0]
                     vx = vel[0] * mmpx
                     vy = vel[1] * mmpx
-                    rprint(f"[bold white on purple] mmpx: {mmpx:3.3f} |r: bxerrmm: {bxerrmm:3.3f} rpe:{int(rpe)} vx: {vx:3.3f}mm/s |p: byerrmm: {byerrmm:3.3f} ppe: {int(ppe)} vy: {vy:3.3f}mm/s")
+                    rprint(f"[#FFFFFF on purple]ROLL: bxerrmm: {bxerrmm:3.2f} rpe:{int(rpe)} vx: {vx:3.2f}mm/s |PITCH: byerrmm: {byerrmm:3.2f} ppe: {int(ppe)} vy: {vy:3.2f}mm/s")
 
                     # bm_roll_out =self.ballmpc.computeux(bm_roll_out, (mp_re, mp_redot))
                     # ...
                     # put mpc outputs and errors in log file FIXME
-                    bm_roll_out = self.ballmpc.computeux(0, np.array([bxerrmm, vx]))
-                    bm_pitch_out = self.ballmpc.computeux(0, np.array([byerrmm, vy]))
-                    rprint(f"[black on rgb(255,255,255)] bm_roll_out: {bm_roll_out},  bm_pitch_out: {bm_pitch_out}")
+                    # the linearization hack here treats sin alpha = alpha
+                    # near where it converges
+                    # in radians, sin(theta) ~= theta approximately +- 17 degrees
+                    # control input is in meters, but we treat it like it's radians
+                    # This works up to around .3 radians ~ 17 degrees, so we're good for
+                    # anywere under about 30cm.
+                    # 
+                    # https://ctms.engin.umich.edu/CTMS/index.php?example=BallBeam&section=SystemModeling
+                    # equation # 1
+                    pr = m.radians(self.rec.pose_info.pitch)
+                    rr = m.radians(self.rec.pose_info.roll)
+                    # all inputs must be in meters, 'u' input is wanted offset in meters
+                    # but yout is the treated as both ball distance and new plate angle
+                    bm_roll_out = self.ballmpc.computeux(0, np.array([bxerrmm/1000, vx/1000]))
+                    bm_pitch_out = self.ballmpc.computeux(0, np.array([byerrmm/1000, vy/1000]))
+                    rprint(f"[black on rgb(255,255,255)]rr: {m.degrees(rr):3.2f} bm_roll_out: {m.degrees(bm_roll_out[0][0]):3.3f},  pr: {m.degrees(pr):3.2f} bm_pitch_out: {m.degrees(bm_pitch_out[0][0]):3.3f}")
                 else:
                     # flatten out
                     ballang = 0
@@ -269,7 +282,7 @@ class TrackerSM(StateMachine):
                     #rpe = rollerr = 0
                 self.pitch_pid.Compute(pitcherr)
                 self.roll_pid.Compute(rollerr)
-                rprint(f"[white on blue]pid results: {np.array([rpe, ppe])} -> {np.array([rpeg, ppeg])}")
+                rprint(f"[#FFFFFF on blue]pid results: {np.array([rpe, ppe])} -> {np.array([rpeg, ppeg])}")
                     
                 rprint(f"[black on green]insert PID magic here xerr: {xerr}=>{self.x_pid.myOutput:5.3f} yerr: {yerr}=>{self.y_pid.myOutput:5.3f} headerr: {headerr:5.1f}=>{self.heading_pid.myOutput:5.3f} rollerr: {self.roll_pid.myOutput:5.3f} pitcherr: {self.pitch_pid.myOutput:5.3f}")
                 if self.rec.have_estimate:
