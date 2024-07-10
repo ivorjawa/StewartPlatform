@@ -389,7 +389,7 @@ def run_remote():
                                 zrange = 66 # mm
                                 diskrad = 70 # mm
                                 # above determined in StewartPlatform jupyter notebook
-                                disk_small = 2 # +- degrees
+                                disk_small = 5 # +- degrees
                                 
                                 # robot coordinate is js/camera coordinate rotated +90 ccw on z
                                 pitch = -1*wirep.vals['roll']*disk_small

@@ -331,13 +331,18 @@ class TrackerSM(StateMachine):
                 # x: LS
                 # y: RS
                 # yaw: S1
+                mpcfactor = np.radians(7)
                 self.cdict = {
                     #'roll': one28(0), 
                     #'roll': one28(roll),
-                    'roll': one28(self.roll_pid.myOutput),
+                    #'roll': one28(self.roll_pid.myOutput), # PID values work with stuart.py disk_small = 2
+                    'roll': one28(self.bm_roll_angle/mpcfactor), 
+                    
                     #'pitch': one28(0),  
                     #'pitch': one28(pitch),
-                    'pitch': one28(self.pitch_pid.myOutput),
+                    #'pitch': one28(self.pitch_pid.myOutput), # PID values work with stuart.py disk_small = 2
+                    'pitch': one28(self.bm_pitch_angle/mpcfactor), 
+                    
                     'S1': one28(self.heading_pid.myOutput), 
                     #'S1': one28(0), 
                     'coll': one28(0), # middle
