@@ -163,6 +163,9 @@ class Recognizer(object):
         self.have_ball = False
         self.have_estimate = False
         
+        self.ball_target_x = 0 # mm from center
+        self.ball_target_y = 0 # mm from center
+        
         self.log_data = []
         self.logging = False
         self.csv_stemname = "Pose_est"
@@ -310,17 +313,24 @@ class Recognizer(object):
         # Terminator up this shit
         # Also make version in Terminator Red
         # Draw grid on checkerboard
+        btcs = 13 # mm
         if not (pose_info.trans_vec is None):
             testpts = np.float32([
-                [183, 0, 0], 
-                [0,183,0], 
-                [0,0,0], 
-                [183,183,0], 
-                [91.5, 91.5, 0],
-                [0, 91.5, 0],
-                [183, 91.5, 0],
-                [91.5, 0, 0],
-                [91.5, 183, 0],
+                [183, 0, 0], # + x axis 0 # FIXME make this a dictionary or something
+                [0,183,0],  # + y axis 1 
+                [0,0,0],  # origin 2
+                [183,183,0], # max x, max y 3
+                [91.5, 91.5, 0], # plate center 4
+                [0, 91.5, 0], # # left mid y axis 5
+                [183, 91.5, 0], #  right mid y axis 6
+                [91.5, 0, 0], # bottom mid x axis 7
+                [91.5, 183, 0], # top mid x axis 8
+                [91.5+self.ball_target_x+btcs, 91.5+self.ball_target_y+btcs, 0], # target crosshair 9
+                [91.5+self.ball_target_x-btcs, 91.5+self.ball_target_y-btcs, 0], # target crosshair 10
+                
+                [91.5+self.ball_target_x-btcs, 91.5+self.ball_target_y+btcs, 0], # target crosshair 11
+                [91.5+self.ball_target_x+btcs, 91.5+self.ball_target_y-btcs, 0], # target crosshair 12
+                
             ]).reshape(-1,3)
             imgpts, jac = cv2.projectPoints(
                 testpts, 
@@ -328,10 +338,16 @@ class Recognizer(object):
                 pose_info.trans_vec, self.cam_mtx, self.distortion)
             
             try:
+                # draw a bunch of little circles on perimeter
                 for i, pt in enumerate(imgpts):
                     cv2.circle(frame, np.intp(pt[0]), 3, (255, 255, 255), 2)
+                # draw green crosshairs through center of plate
                 cv2.line(frame, np.intp(imgpts[5][0]), np.intp(imgpts[6][0]), (0, 255, 0), 1)
-                cv2.line(frame, np.intp(imgpts[7][0]), np.intp(imgpts[8][0]), (0, 255, 0), 1)
+                cv2.line(frame, np.intp(imgpts[7][0]), np.intp(imgpts[8][0]), (0, 255, 0), 1)      
+                # draw bluegreen crosshairs through center of plate
+                cv2.line(frame, np.intp(imgpts[9][0]), np.intp(imgpts[10][0]), (128, 128, 0), 2)
+                cv2.line(frame, np.intp(imgpts[11][0]), np.intp(imgpts[12][0]), (128, 128, 0), 2)
+                # draw yellow circle around perimeter of gear
                 cv2.polylines(frame, self.playfield_circle, True, (0, 255, 255), 2)
                 self.hudtext(frame)
 

@@ -38,7 +38,7 @@ class ControlInfo(object):
     def header(self):
         return(','.join(self.headerkeys))
     def __str__(self):
-        return(','.join([f"{self.data[key]:0.5f}" for key in self.headerkeys]))
+        return(','.join([f"{float(self.data[key]):0.5f}" for key in self.headerkeys]))
         
         
 class ClogRecognizer(Recognizer): # control-logged recognizer
@@ -148,10 +148,17 @@ class TrackerSM(StateMachine):
         
         # model predictive control stuff    
         self.ballmpc = BallMPC()
-        self.bm_roll_xout = np.array([0, 0]) # system state, r(mm), rdot(mm/s)
-        self.bm_roll_yout = 0                # output, radians -> +- 5deg
-        self.bm_pitch_xout = np.array([0, 0])
-        self.bm_pitch_yout = 0
+        
+        self.bm_roll_angle = 0. # radians
+        self.bm_roll_r = 0. # m
+        self.bm_roll_v = 0. # m/s
+        
+        self.bm_pitch_angle = 0. # radians
+        self.bm_pitch_r = 0. # m
+        self.bm_pitch_v = 0. # m/s
+        
+        self.ball_target_x = 0. # mm from plate center
+        self.ball_target_y = 0.
         
     def wait_start(self):
         #print("asleep")
@@ -238,13 +245,12 @@ class TrackerSM(StateMachine):
                     
                     # MPC stuff
                     #self.ballmpc = BallMPC()
-                    #self.bm_roll_xout = np.array([0, 0]) # system state, r(mm), rdot(mm/s)
-                    #self.bm_roll_yout = 0                # output, radians -> +- 5deg
-                    #self.bm_pitch_xout = np.array([0, 0])
-                    #self.bm_pitch_yout = 0
+                    #self.ball_target_x = 0 # mm from plate center
+                    #self.ball_target_y = 0 
+                    # ball_rad usually hovers around 66 pixels, so about 0.4
                     mmpx = 26 / self.rec.ball_rad # FIXME parameterize this
-                    bxerrmm = self.rec.ball_dxp * mmpx
-                    byerrmm = self.rec.ball_dyp * mmpx
+                    bxerrmm = (self.rec.ball_dxp * mmpx) + self.ball_target_x
+                    byerrmm = (self.rec.ball_dyp * mmpx) + self.ball_target_y
                     vel = self.rec.ball_info.vs[1]
                     #print(f"vel: {vel} len: {len(vel)}")
                     #vel = [0,0]
@@ -264,13 +270,20 @@ class TrackerSM(StateMachine):
                     # 
                     # https://ctms.engin.umich.edu/CTMS/index.php?example=BallBeam&section=SystemModeling
                     # equation # 1
+                    # this will only converge at alpha and v = zero, so when we want to move ball to
+                    # x, y, we will need to make that the new zero
                     pr = m.radians(self.rec.pose_info.pitch)
                     rr = m.radians(self.rec.pose_info.roll)
                     # all inputs must be in meters, 'u' input is wanted offset in meters
                     # but yout is the treated as both ball distance and new plate angle
+                    # control input must be zero for both velocity and plate angle to 
+                    # converge to zero, so tthe control input to path is self.ball_target_x, y
                     bm_roll_out = self.ballmpc.computeux(0, np.array([bxerrmm/1000, vx/1000]))
                     bm_pitch_out = self.ballmpc.computeux(0, np.array([byerrmm/1000, vy/1000]))
-                    rprint(f"[black on rgb(255,255,255)]rr: {m.degrees(rr):3.2f} bm_roll_out: {m.degrees(bm_roll_out[0][0]):3.3f},  pr: {m.degrees(pr):3.2f} bm_pitch_out: {m.degrees(bm_pitch_out[0][0]):3.3f}")
+                    (self.bm_roll_angle, (self.bm_roll_r, self.bm_roll_v)) = bm_roll_out
+                    (self.bm_pitch_angle, (self.bm_pitch_r, self.bm_pitch_v)) = bm_pitch_out
+                    
+                    rprint(f"[black on rgb(255,255,255)]roll in: {m.degrees(rr):3.2f} roll out: {m.degrees(self.bm_roll_angle):3.3f},  pitch in: {m.degrees(pr):3.2f} pitch out: {m.degrees(self.bm_pitch_angle):3.3f}")
                 else:
                     # flatten out
                     ballang = 0
@@ -300,6 +313,14 @@ class TrackerSM(StateMachine):
                         'heading_pid_out': self.heading_pid.myOutput,
                         'x_pid_out': self.x_pid.myOutput,
                         'x_pid_out': self.x_pid.myOutput,
+                        'bm_roll_angle': self.bm_roll_angle, # radians
+                        'bm_roll_r': self.bm_roll_r, # m
+                        'bm_roll_v': self.bm_roll_v, # m/s
+                        'bm_pitch_angle': self.bm_pitch_angle, # radians
+                        'bm_pitch_r': self.bm_pitch_r, # m
+                        'bm_pitch_v': self.bm_pitch_v, # m/s
+                        'ball_target_x': self.ball_target_x, # mm from plate center
+                        'ball_target_y': self.ball_target_y,
                     }
                     self.control_info = ControlInfo(cid)
                     self.rec.log()
