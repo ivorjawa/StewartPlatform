@@ -398,8 +398,18 @@ class Recognizer(object):
                 gsharp = cv2.GaussianBlur(sharp, (0, 0), 3)
                 print(f"gsharp shape: {gsharp.shape}")
                 sharpsharp = cv2.addWeighted(sharp, 1.5, gsharp, -0.5, 0)
-                print(f"sharpsharp shape: {sharpsharp.shape}")
+                print(f"sharpsharp shape: {sharpsharp.shape} max: {np.max(np.squeeze(sharpsharp))}")
+                alpha = 10
+                beta = -175
+                gamma = -0
+                #rblur[y1:y2, x1:x2] = sharp
                 rblur[y1:y2, x1:x2] = sharpsharp
+                #rblur[y1:y2, x1:x2] = np.clip(sharp*alpha+beta, 0, 255)
+                # cv2.medianBlur(rin,5)
+                ssc = np.clip((sharpsharp+beta)*alpha+gamma, 0, 255)
+                #ssc = cv2.medianBlur(ssc, 5)
+                #rblur[y1:y2, x1:x2] = ssc
+                
                 # try radically increasing the contrast here, then
                 # blurring
                 #https://docs.opencv.org/4.x/d3/dc1/tutorial_basic_linear_transform.html
