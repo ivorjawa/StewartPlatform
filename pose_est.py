@@ -13,6 +13,7 @@ from scipy.spatial.transform import Rotation
 import linear as lin
 
 from rich import print as rp
+rprint = rp
 from rich.pretty import pprint as rpp # yeah you know me
 
 np.set_printoptions(suppress=True, 
@@ -371,6 +372,61 @@ class Recognizer(object):
                 frame)
         #return mask
 
+    def detect_level(self, frame, rblur, rin):
+        # self.canvas[y_offset:y_offset+rotated.shape[0], x_offset:x_offset+rotated.shape[1]] |= rotated
+        # rin = rin * self.playfield_mask
+        # rblur = cv2.medianBlur(rin,5)
+        circles = cv2.HoughCircles(
+            rblur,cv2.HOUGH_GRADIENT,1,10,
+            param1=130,param2=30,minRadius=35,maxRadius=70
+            )
+        if np.any(circles):
+            rprint(f"[#ff0000 on #ffffff]detect_level found {len(circles)} circles.")
+            for i in circles[0,:]:
+                i = np.intp(i)
+                print(f"circle: {i}")
+                # draw the outer circle
+                x = i[0]
+                y = i[1]
+                r = i[2]
+                x1 = x-r
+                x2 = x+r
+                y1 = y-r
+                y2 = y+r
+                sharp = rin[y1:y2, x1:x2].copy()
+                print(f"sharp shape: {sharp.shape}")
+                gsharp = cv2.GaussianBlur(sharp, (0, 0), 3)
+                print(f"gsharp shape: {gsharp.shape}")
+                sharpsharp = cv2.addWeighted(sharp, 1.5, gsharp, -0.5, 0)
+                print(f"sharpsharp shape: {sharpsharp.shape}")
+                rblur[y1:y2, x1:x2] = sharpsharp
+                # try radically increasing the contrast here, then
+                # blurring
+                #https://docs.opencv.org/4.x/d3/dc1/tutorial_basic_linear_transform.html
+                inner_circles = cv2.HoughCircles(
+                    sharpsharp,cv2.HOUGH_GRADIENT,1,0.1,
+                    param1=130,param2=30,minRadius=5,maxRadius=20
+                    )
+                if np.any(inner_circles):
+                    rprint(f"[#00FF00 on #ffffff]detect_level found {len(inner_circles)} innercircles.")
+                    for j in inner_circles[0,:]:
+                        j = np.intp(j)
+                        print(j)
+                        cv2.circle(frame,(j[0]+x1, j[1]+y1),j[2],(255,0,255),1)
+                        
+                else:
+                    print("found no inner circles")
+                    
+                #rblur[y1:y2, x1:x2] = rin[y1:y2, x1:x2]
+                cv2.rectangle(rblur, (x1, y1), (x2, y2), 255, 1)
+                #print(f"found circle with radius: {r}")
+                # draw circle
+                cv2.circle(frame,(x, y),r,(0,255,0),2)
+                # draw the center of the circle
+                cv2.circle(frame,(x,y),2,(255,255,255),3)
+        else:
+            rprint(f"detect level HAS NO CIRCLES.")
+            
     def detect_ball(self, frame, rblur):
         #global circle_buf, cb_valid, cb_times
     
@@ -465,6 +521,7 @@ class Recognizer(object):
             rin = rin * self.playfield_mask
             rblur = cv2.medianBlur(rin,5)
             
+            self.detect_level(frame, rblur, rin)
             self.output, rblur = self.detect_ball(frame, rblur)
             self.red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
             cv2.line(frame, np.intp((0,self.height/2)), np.intp((self.width, self.height/2)), (0, 0, 255), 1)

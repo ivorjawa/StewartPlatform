@@ -335,6 +335,8 @@ class TrackerSM(StateMachine):
                 self.cdict = {
                     #'roll': one28(0), 
                     #'roll': one28(roll),
+                    
+                    # maybe try to get close with PID then switch over to MPC
                     #'roll': one28(self.roll_pid.myOutput), # PID values work with stuart.py disk_small = 2
                     'roll': one28(self.bm_roll_angle/mpcfactor), 
                     
