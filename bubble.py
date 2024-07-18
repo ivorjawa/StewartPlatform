@@ -8,6 +8,8 @@ from pybricks.pupdevices import Motor
 from pybricks.parameters import Port
 from pybricks.tools import wait, StopWatch
 from pybricks.tools import Matrix, vector, cross
+from pybricks.parameters import Axis
+
 
 hub = TechnicHub()
 
@@ -107,6 +109,24 @@ def identify():
     print(f"Implementation: {usys.implementation}")      
     print(f"Version Info: {usys.version_info}")
     print(f"Battery Voltage: {hub.battery.voltage()}mv") 
+    #pitch, roll = hub.imu.tilt()
+    # are we getting raw IMU values here? FIXME
+    #ax, ay, az = hub.imu.acceleration() / 9810
+    #pitch = m.degrees(m.atan2(ay, m.sqrt(ax**2 + ay**2)))
+    #roll = m.degrees(m.atan2(ax, m.sqrt(ay**2 + ay**2)))
+    #print(hub.imu.acceleration() / 9810)
+    #print(f"pitch: {pitch:0.3f} roll: {roll:0.3f} ax: {ax:0.3f} ay: {ay:0.3f} az: {az:0.3f}")
+    while 1:
+        #print(f"imu: {dir(hub.imu)}")
+        ax, ay, az = hub.imu.acceleration() / 9810
+        pitch = m.degrees(m.atan2(az, ax))
+        roll = m.degrees(m.atan2(az, ay))
+        yaw = m.degrees(m.atan2(ay, ax))
+        print(f"ax, ay, az: {ax:6.2f} {ay:6.2f} {az:6.2f} PR: {90-pitch:6.2f} {90-roll:6.2f}")
+        #print(f"(x, y, z) {hub.imu.rotation(Axis.X):6.2f}, {hub.imu.rotation(Axis.Y):6.2f}, {hub.imu.rotation(Axis.Z):6.2f} (ax, ay, az): {ax:6.2f} {ay:6.2f} {az:6.2f}")
+        #print(hub.imu.tilt())
+        #print(f"y: )
+        #print(f"z: {hub.imu.rotation(Axis.Z):6.2f}")
         
 if __name__ == "__main__":
     # pybricksdev run ble -n bubble bubble.py
@@ -114,8 +134,8 @@ if __name__ == "__main__":
     #testwritestore()
     #run_remote()
     try:
-        #pass # when running above tests
-        run_remote() # full talks to remote run under ./rotorbase.py
+        pass # when running above tests
+        #run_remote() # full talks to remote run under ./rotorbase.py
         #full_calibrate() # should be done with rotors and scissor link detached
     except Exception as e:
         print("General failure: ", e)

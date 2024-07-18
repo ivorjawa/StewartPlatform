@@ -141,6 +141,14 @@ def identify():
     print(f"Implementation: {usys.implementation}")      
     print(f"Version Info: {usys.version_info}")
     print(f"Battery Voltage: {hub.battery.voltage()}mv") 
+    #pitch, roll = hub.imu.tilt()
+    # are we getting raw IMU values here? FIXME
+    ax, ay, az = hub.imu.acceleration() / 9810
+    pitch = m.degrees(m.atan2(ay, m.sqrt(ax**2 + ay**2)))
+    roll = m.degrees(m.atan2(ax, m.sqrt(ay**2 + ay**2)))
+    
+    #print(hub.imu.acceleration() / 9810)
+    print(f"pitch: {pitch:0.3f} roll: {roll:0.3f} ax: {ax:0.3f} ay: {ay:0.3f} az: {az:0.3f}")
 
 
 class SlerpSM(StateMachine):
