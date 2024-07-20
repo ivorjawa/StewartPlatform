@@ -24,7 +24,7 @@ from rich import print as rprint
 import PID
 PID.setmillis(lambda: time.time()*1000) # must be set before creating any PID objects
             
-
+import controllers as ctrl
 from joycode import JoyProtocol
 from statemachine import StateMachine
 import StewartPlatform
@@ -131,8 +131,14 @@ class TrackerSM(StateMachine):
         self.x_pid = PID.PID(0, tKp, tKi, tKd, PID.PID.P_ON_E, PID.PID.DIRECT)
         self.y_pid = PID.PID(0, tKp, tKi, tKd, PID.PID.P_ON_E, PID.PID.DIRECT)
         self.heading_pid = PID.PID(0, rKp, rKi, rKd, PID.PID.P_ON_E, PID.PID.DIRECT)
-        self.roll_pid = PID.PID(0, bKp, bKi, bKd, PID.PID.P_ON_E, PID.PID.DIRECT)
-        self.pitch_pid = PID.PID(0, bKp, bKi, bKd, PID.PID.P_ON_E, PID.PID.DIRECT)
+        # tuned for ball centering
+        #self.roll_pid = PID.PID(0, bKp, bKi, bKd, PID.PID.P_ON_E, PID.PID.DIRECT)
+        #self.pitch_pid = PID.PID(0, bKp, bKi, bKd, PID.PID.P_ON_E, PID.PID.DIRECT)
+        
+        #tuned for platform center
+        self.roll_pid = PID.PID(0, rKp, rKi, rKd, PID.PID.P_ON_E, PID.PID.DIRECT)
+        self.pitch_pid = PID.PID(0, rKp, rKi, rKd, PID.PID.P_ON_E, PID.PID.DIRECT)
+        
         self.pids = [
             self.x_pid, 
             self.y_pid, 
@@ -439,17 +445,59 @@ def robotlink(fromq, toq):
     robotbase.engage('stewbase', 'jawaspike', 'stuart.py') # make it so
     #robotbase.engage("bubble", "bubble", "bubble.py") # make it so on a dummy machine
       
-               
+class JSReader(object):
+    def __init__(self, fromq, toq):
+        self.fromq = fromq
+        self.toq = toq
+    async def go(self):
+        gamepad = ctrl.TaranisX9d()
+        #wvars = ['coll', 'roll', 'pitch', 'yaw', 'glyph']
+        #from stewart_wvars import wvars
+        #wirep = JoyProtocol(wvars, 2, None, sys.stdin)
+        logging.info("starting controller input loop")
+        dec8 = lambda n: ((n-128)/256)*2
+        
+        while 1:
+            report = gamepad.report()
+            gflg = lambda flag: (report['glyph'] & flag) == flag
+            if report:  
+                sa = gflg(ctrl.cSA)
+                sb = gflg(ctrl.cSB)
+                roll = dec8(report['roll']) * 5
+                pitch = dec8(report['pitch']) * 5
+                coll = (report['coll']/255)
+
+                rprint(f"[#FFFF00 on #222222]js sa: {sa} sb: {sb} roll: {roll:6.2f} pitch: {pitch: 6.2f} coll: {coll:6.2f}")    
+                
+                if(sb):
+                    rprint("[#FF0000 on #00FFFF] JOYSTICK EXITING")
+                    self.toq.put_nowait("<goodbye/>")
+                    #time.sleep(1)
+                    await asyncio.sleep(1) 
+                    return   
+                #output = wirep.encode(report)
+            await asyncio.sleep(30/1000)
+    def engage(self):
+        asyncio.run(self.go())
+
+def jslink(fromq, toq):
+    jsr = JSReader(fromq, toq)
+    jsr.engage()
+                      
 if __name__ == '__main__':
     mp.set_start_method('spawn')
     
     cvq = mp.Queue()
     brickq = mp.Queue()
+    jsq = mp.Queue() # not used yet, to control jslink task, should be another arg to tracker  and brick task so either can kill it
     
-    p = mp.Process(target=tracker, args=(brickq, cvq))
+    p = mp.Process(target=tracker, args=(brickq, cvq)) # add jsq
     p.start()
-    p2 = mp.Process(target=robotlink, args=(cvq, brickq))
+    p2 = mp.Process(target=robotlink, args=(cvq, brickq)) # add jsk
     p2.start()
+    p3 = mp.Process(target=jslink, args=(jsq, brickq)) # jslink is another input to tracker
+    p3.start()
     
     p.join()
     p2.join()
+    p3.join()
