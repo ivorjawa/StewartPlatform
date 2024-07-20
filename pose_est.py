@@ -82,13 +82,15 @@ class PoseError(Exception): pass
 fs = lambda a: ','.join([f"{x:6.3f}" for x in np.array(a).ravel()])
 
 class PoseInfo(object):
-    def __init__(self, tvec, rvec, heading, roll, pitch, acorners, aids, rejected, centerpos):
+    def __init__(self, tvec, rvec, heading, roll, last_roll, pitch, last_pitch, acorners, aids, rejected, centerpos):
         self.position = centerpos
         self.trans_vec = tvec
         self.rot_vec = rvec
         self.heading = heading
         self.roll = roll
+        self.last_roll = last_roll
         self.pitch = pitch
+        self.last_pitch = last_pitch
         self.aruco_corners = acorners
         self.aruco_ids = aids
         self.rejected_points = rejected
@@ -231,7 +233,13 @@ class Recognizer(object):
                 rod, jack = cv2.Rodrigues(rvecs)
                 rodmat =  Rotation.from_matrix(rod)
                 heading, roll, pitch  = rodmat.as_euler("zyx",degrees=True)
-            
+                if self.pose_info is None:
+                    last_roll = 0
+                    last_pitch = 0
+                else:
+                    last_roll = self.pose_info.roll
+                    last_pitch = self.pose_info.pitch
+                
                 pitch = 180 - (pitch % 360)
                 heading = 90 - (heading % 360)
                 #roll = 360-(roll%360)
@@ -240,7 +248,7 @@ class Recognizer(object):
                 imgpts, jac = cv2.projectPoints(testpts,rvecs, tvecs, self.cam_mtx, self.distortion)
                 center = imgpts[0][0]
                 #print(f"center: {center}, angles: (heading, pitch, roll): ({heading:5.2f}, {pitch:5.2f}, {roll:5.2f})")
-                self.pose_info =  PoseInfo(tvecs, rvecs, heading, roll, pitch, corners, ids, rejected_img_points, center)
+                self.pose_info =  PoseInfo(tvecs, rvecs, heading, roll, last_roll, pitch, last_pitch, corners, ids, rejected_img_points, center)
                 self.dxp = -int(self.width/2 - self.pose_info.position[0])              
                 self.dyp = int(self.height/2 - self.pose_info.position[1])
                 self.find_playfield_mask(frame)
@@ -531,7 +539,7 @@ class Recognizer(object):
             rin = rin * self.playfield_mask
             rblur = cv2.medianBlur(rin,5)
             
-            self.detect_level(frame, rblur, rin)
+            #self.detect_level(frame, rblur, rin)
             self.output, rblur = self.detect_ball(frame, rblur)
             self.red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
             cv2.line(frame, np.intp((0,self.height/2)), np.intp((self.width, self.height/2)), (0, 0, 255), 1)
@@ -542,7 +550,7 @@ class Recognizer(object):
             return pose_info
         except Exception as e:
             print(f"recognizer error: {e}")
-            #raise
+            raise
 
 def go():    
     cap = cv2.VideoCapture(0)
