@@ -150,10 +150,12 @@ class TrackerSM(StateMachine):
         self.ballmpc = BallMPC()
         
         self.bm_roll_angle = 0. # radians
+        self.bm_roll_alpha = 0. # radians/s
         self.bm_roll_r = 0. # m
         self.bm_roll_v = 0. # m/s
         
         self.bm_pitch_angle = 0. # radians
+        self.bm_pitch_alpha = 0. # radians/s
         self.bm_pitch_r = 0. # m
         self.bm_pitch_v = 0. # m/s
         
@@ -252,6 +254,13 @@ class TrackerSM(StateMachine):
                     bxerrmm = (self.rec.ball_dxp * mmpx) + self.ball_target_x
                     byerrmm = (self.rec.ball_dyp * mmpx) + self.ball_target_y
                     vel = self.rec.ball_info.vs[1]
+                    
+                    #ball_alpha = self.rec.ball_info.accel #FIXME convert to alpha
+                    pdt = self.ball_info.dts[1]
+                    self.bm_roll_alpha = np.radians(self.rec.pose_info.roll-self.rec.pose_info.last_roll)/pdt
+                    self.bm_pitch_alpha = rnp.radians(self.rec.pose_info.pitch-self.rec.pose_info.last_pitch)/pdt
+                    # need to calculate velocity
+                    
                     #print(f"vel: {vel} len: {len(vel)}")
                     #vel = [0,0]
                     vx = vel[0] * mmpx
@@ -278,10 +287,20 @@ class TrackerSM(StateMachine):
                     # but yout is the treated as both ball distance and new plate angle
                     # control input must be zero for both velocity and plate angle to 
                     # converge to zero, so tthe control input to path is self.ball_target_x, y
-                    bm_roll_out = self.ballmpc.computeux(0, np.array([bxerrmm/1000, vx/1000]))
-                    bm_pitch_out = self.ballmpc.computeux(0, np.array([byerrmm/1000, vy/1000]))
-                    (self.bm_roll_angle, (self.bm_roll_r, self.bm_roll_v)) = bm_roll_out
-                    (self.bm_pitch_angle, (self.bm_pitch_r, self.bm_pitch_v)) = bm_pitch_out
+                    bm_roll_out = self.ballmpc.computeux(0, np.array([
+                        bxerrmm/1000, 
+                        vx/1000,
+                        pr,
+                        self.bm_pitch_alpha
+                    ]))
+                    bm_pitch_out = self.ballmpc.computeux(0, np.array([
+                        byerrmm/1000, 
+                        vy/1000,
+                        rr,
+                        self.bm_roll_alpha,
+                    ]))
+                    (_, (self.bm_roll_r, self.bm_roll_v, self.bm_roll_angle, self.bm_roll_alpha)) = bm_roll_out
+                    (_, (self.bm_pitch_r, self.bm_pitch_v, self.bm_pitch_angle, self.bm_pitch_alpha)) = bm_pitch_out
                     
                     rprint(f"[black on rgb(255,255,255)]roll in: {m.degrees(rr):3.2f} roll out: {m.degrees(self.bm_roll_angle):3.3f},  pitch in: {m.degrees(pr):3.2f} pitch out: {m.degrees(self.bm_pitch_angle):3.3f}")
                 else:
@@ -314,9 +333,11 @@ class TrackerSM(StateMachine):
                         'x_pid_out': self.x_pid.myOutput,
                         'x_pid_out': self.x_pid.myOutput,
                         'bm_roll_angle': self.bm_roll_angle, # radians
+                        'bm_roll_alpha': self.bm_roll_alpha, # radians
                         'bm_roll_r': self.bm_roll_r, # m
                         'bm_roll_v': self.bm_roll_v, # m/s
                         'bm_pitch_angle': self.bm_pitch_angle, # radians
+                        'bm_pitch_alpha': self.bm_pitch_alpha, # radians/s
                         'bm_pitch_r': self.bm_pitch_r, # m
                         'bm_pitch_v': self.bm_pitch_v, # m/s
                         'ball_target_x': self.ball_target_x, # mm from plate center

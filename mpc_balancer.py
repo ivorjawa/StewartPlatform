@@ -53,24 +53,31 @@ def rscale(a_, b_, c_, d_, k_):
 
 
 class BallMPC(object):    
-    def __init__(self, ts = 66/1000, x0 = np.array([25/1000, 100/1000])):
+    def __init__(self, ts = 66/1000, x0 = np.array([25/1000, 100/1000, np.radians(2), 0])): 
+        # 25 mm, 100 mm/s, 2 degrees
         print(f"sic.g: {sic.g}")
         #g = -9.807 #m/s^2
         J, H = get_j()
     
         print(f"J: {J}, H: {H}")
     
-        A = np.array([ [0, 1],
-                    [0, 0]] )
-        B = np.array([[0], [H]])
-        C = np.array([1,  0,  ])
+        A = np.array([ 
+            [0, 1, 0, 0],
+            [0, 0, H, 0],
+            [0, 0, 0, 1],
+            [0, 0, 0, 0]
+        ] )
+        B = np.array([[0], [0], [0], [1]])
+        C = np.array([1,  0,  0, 0])
         D = np.array([0])
         ball_ss = signal.StateSpace(A, B, C, D)
         print(f"ball_ss: {ball_ss}")
         p1 = -2+2j
         p2 = -2-2j
+        p3 = -20;
+        p4 = -80;
 
-        K = control.place(A, B, [p1, p2])
+        K = control.place(A, B, [p1, p2, p3, p4])
         print(f"K: {K}")
     
         Nbar = rscale(A, B, C, D, K)
@@ -80,6 +87,10 @@ class BallMPC(object):
         syst = control.ss(A-B*K, B*Nbar, C, D)
         self.sysd = control.c2d(syst, ts) # converting allows us to assume constant step time
         self.x = x0
+    
+        # for debugging only
+        #self.xout = []
+        #self.yout = []
     
     # https://github.com/scipy/scipy/blob/main/scipy/signal/_ltisys.py
     # line 1932 shows continuous computation methods
@@ -104,14 +115,14 @@ class BallMPC(object):
             #   [u1 - u0]       [  0     0    0 ] [u1 - u0]
             
     def compute(self, u):
-        x = self.sysd.A@self.x +(self.sysd.B*u).reshape(2)
+        x = self.sysd.A@self.x +(self.sysd.B*u).reshape(4)
         y = self.sysd.C@x
-        #xout.append(x)
-        #yout.append(y)
+        #self.xout.append(x)
+        #self.yout.append(y)
         self.x = x
         return y
     def computeux(self, u, x): # apparently I'm French now
-        xout = self.sysd.A@x +(self.sysd.B*u).reshape(2)
+        xout = self.sysd.A@x +(self.sysd.B*u).reshape(4)
         yout = self.sysd.C@xout
         return yout, xout
     
@@ -120,4 +131,6 @@ if __name__ == "__main__":
     #bmpc = BallMPC(x0)
     bmpc = BallMPC()
     u = 50/1000 # requested distance mm -> m
-    print(f"bmpc.compute(u): {[m.degrees(bmpc.compute(u)) for x in range(5)]}")
+    print(f"bmpc.compute(u): {[bmpc.compute(u) for x in range(80)]}")
+    #print(np.array(bmpc.xout))
+    #print(np.array(bmpc.yout))

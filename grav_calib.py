@@ -52,21 +52,19 @@ class ClogRecognizer(Recognizer): # control-logged recognizer
 #"maps -1.0..1.0 to 0..255"
 one28 = lambda x: int(((x+1)/2)*255)
 
-"""
-step test state machine
-* put machine state in HUD *
-
-Wait for alive
-Scan: Wait for ball
-Sleep 2 seconds
-Start logging
-Command 5° Step test
-Wait for completion
-Log data
-wait for ball gone
-Go to scan
-
-"""     
+mooserial = 0
+class JSMoo(object):
+    def __init__(self, roll, pitch, coll, sa):
+        global mooserial
+        self.roll = roll
+        self.pitch = pitch
+        self.coll = coll
+        self.sa = sa
+        mooserial += 1
+        self.sn = mooserial
+    def __str__(self):
+        return f"Roll: {self.roll:6.2f}  Pitch: {self.pitch:6.2f}  Coll: {self.coll} SA: {self.sa} sn: {self.sn}"
+        
 class TrackerSM(StateMachine):
     def __init__(self, fromq, toq):
         super().__init__()
@@ -151,6 +149,9 @@ class TrackerSM(StateMachine):
             pid.SetOutputLimits(-1.0, 1.0)
             pid.SetSampleTime(33.3) # ms, 30 FPS
             pid.SetMode(pid.AUTOMATIC)
+            
+        self.pitch_setpoint = 0
+        self.roll_setpoint = 0
         
         
     def wait_start(self):
@@ -222,14 +223,14 @@ class TrackerSM(StateMachine):
                 # flatten out
                 ballang = 0
                 ballradscale = 0
-                ppe = pitcherr = self.rec.pose_info.pitch
-                rpe = rollerr = -self.rec.pose_info.roll
-                ppeg = 0
-                rpeg = 0
+                #ppe = pitcherr = self.rec.pose_info.pitch
+                #rpe = rollerr = -self.rec.pose_info.roll
+                rprint(f"[#FFFF00 on #00aa00] Pitch: {self.rec.pose_info.pitch:6.2f} Pitch SP: {self.pitch_setpoint:6.2f} Roll: {self.rec.pose_info.roll:6.2f} Roll SP: {self.roll_setpoint:6.2f}")
+                ppe = pitcherr = self.rec.pose_info.pitch-self.pitch_setpoint
+                rpe = rollerr = -(self.rec.pose_info.roll-self.roll_setpoint)
                 #rpe = rollerr = 0
                 self.pitch_pid.Compute(pitcherr)
                 self.roll_pid.Compute(rollerr)
-                rprint(f"[#FFFFFF on blue]pid results: {np.array([rpe, ppe])} -> {np.array([rpeg, ppeg])}")
                     
                 rprint(f"[black on green]insert PID magic here xerr: {xerr}=>{self.x_pid.myOutput:5.3f} yerr: {yerr}=>{self.y_pid.myOutput:5.3f} headerr: {headerr:5.1f}=>{self.heading_pid.myOutput:5.3f} rollerr: {self.roll_pid.myOutput:5.3f} pitcherr: {self.pitch_pid.myOutput:5.3f}")
                 
@@ -279,26 +280,38 @@ class TrackerSM(StateMachine):
             print(f"got movement, took {self.end_time-self.start_time:3.3f}s")
             
     def loop(self):
-        while 1:
-            self.tick()
+        lastserial = 0
+        while 1: # run forever
             try:
-                token = self.fromq.get_nowait()
-                print(f"got token {token}")
-                if token == "<awake/>":
-                    self.woke = True
-                elif token == "<taskdone/>":
-                    self.moving = False
-                elif token == "<goodbye/>":
-                    print("robot requested exit")
-                    return
-                else:
-                    print(f"got unknown token: {token}")
+                while 1: # empty the queue
+                    token = self.fromq.get_nowait()
+                    print(f"got token {token}")
+                    if type(token) == JSMoo:
+                        rprint(f"[#FFFFFF on #550055]got command token {token}")
+                        self.pitch_setpoint = token.pitch
+                        self.roll_setpoint = token.roll
+                        self.lastserial = token.sn
+                    elif token == "<awake/>":
+                        self.woke = True
+                        self.tick() # process immediately
+                    elif token == "<taskdone/>":
+                        self.moving = False
+                        self.tick()
+                    elif token == "<goodbye/>":
+                        print("robot requested exit")
+                        cv2.destroyAllWindows()
+                        return
+                    else:
+                        print(f"got unknown token: {token}")
             except queue.Empty as e:
-                pass
-                #print(f"Tracker tick exception: {e}")
+                pass # queue is literally empty, why not just an error code or None?
+            try:
+                rprint(f"[#FFFFFF on #0000FF]acting on sn {lastserial}")
+                self.tick() # normally only act on most recent data / queue empty
+            except Exception as e:
+                print(f"Tracker tick exception: {e}")
                 #raise
-        cv2.destroyAllWindows()
-        return        
+        return
 
 def tracker(fromq, toq):
     tsm = TrackerSM(fromq, toq)
@@ -465,16 +478,19 @@ class JSReader(object):
                 sb = gflg(ctrl.cSB)
                 roll = dec8(report['roll']) * 5
                 pitch = dec8(report['pitch']) * 5
-                coll = (report['coll']/255)
+                coll = report['coll']
 
-                rprint(f"[#FFFF00 on #222222]js sa: {sa} sb: {sb} roll: {roll:6.2f} pitch: {pitch: 6.2f} coll: {coll:6.2f}")    
-                
+                #rprint(f"[#FFFF00 on #222222]js sa: {sa} sb: {sb} roll: {roll:6.2f} pitch: {pitch: 6.2f} coll: {coll:6.2f}")    
                 if(sb):
                     rprint("[#FF0000 on #00FFFF] JOYSTICK EXITING")
                     self.toq.put_nowait("<goodbye/>")
                     #time.sleep(1)
                     await asyncio.sleep(1) 
                     return   
+                else:
+                    moo = JSMoo(roll, pitch, coll, sa)
+                    rprint(f"[#FFFF00 on #222222]Sending command {moo}")
+                    self.toq.put_nowait(moo)
                 #output = wirep.encode(report)
             await asyncio.sleep(30/1000)
     def engage(self):
@@ -487,8 +503,8 @@ def jslink(fromq, toq):
 if __name__ == '__main__':
     mp.set_start_method('spawn')
     
-    cvq = mp.Queue()
-    brickq = mp.Queue()
+    cvq = mp.Queue() # input from tracker task to brick ... this could be less confusing
+    brickq = mp.Queue() # input from brick (and js) to tracker task
     jsq = mp.Queue() # not used yet, to control jslink task, should be another arg to tracker  and brick task so either can kill it
     
     p = mp.Process(target=tracker, args=(brickq, cvq)) # add jsq
