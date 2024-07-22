@@ -122,9 +122,10 @@ class TrackerSM(StateMachine):
         #bKi = 0.0013
         #bKd = 0.0005
         
-        bKp = 0.0032
-        bKi = 0.0014
-        bKd = 0.0016
+        # also possibly good
+        #bKp = 0.0032
+        #bKi = 0.0014
+        #bKd = 0.0016
                 
         self.x_pid = PID.PID(0, tKp, tKi, tKd, PID.PID.P_ON_E, PID.PID.DIRECT)
         self.y_pid = PID.PID(0, tKp, tKi, tKd, PID.PID.P_ON_E, PID.PID.DIRECT)
@@ -134,8 +135,11 @@ class TrackerSM(StateMachine):
         #self.pitch_pid = PID.PID(0, bKp, bKi, bKd, PID.PID.P_ON_E, PID.PID.DIRECT)
         
         #tuned for platform center
-        self.roll_pid = PID.PID(0, rKp, rKi, rKd, PID.PID.P_ON_E, PID.PID.DIRECT)
-        self.pitch_pid = PID.PID(0, rKp, rKi, rKd, PID.PID.P_ON_E, PID.PID.DIRECT)
+        rrKp = 0.015
+        rrKi = 0.025
+        rrKd = 0
+        self.roll_pid = PID.PID(0, rrKp, rrKi, rrKd, PID.PID.P_ON_E, PID.PID.DIRECT)
+        self.pitch_pid = PID.PID(0, rrKp, rrKi, rrKd, PID.PID.P_ON_E, PID.PID.DIRECT)
         
         self.pids = [
             self.x_pid, 
@@ -287,7 +291,7 @@ class TrackerSM(StateMachine):
                 token = self.fromq.get_nowait()
                 #print(f"got token {token}")
                 if type(token) == JSMoo:
-                    rprint(f"[#FFFFFF on #550055]got command token {token}")
+                    #rprint(f"[#FFFFFF on #550055]got command token {token}")
                     self.pitch_setpoint = token.pitch
                     self.roll_setpoint = token.roll
                     lastserial = token.sn
@@ -310,7 +314,7 @@ class TrackerSM(StateMachine):
                 pass # queue is literally empty, why not just an error code or None?
             try:
                 if (now - lasttime) > 30/1000:
-                    print(f"processing {lastserial} {token} dt: {now-lasttime:8.5f}")
+                    #print(f"processing {lastserial} {token} dt: {now-lasttime:8.5f}")
                     self.tick()
                     lasttime = time.time()
             except Exception as e:
@@ -481,8 +485,8 @@ class JSReader(object):
             if report:  
                 sa = gflg(ctrl.cSA)
                 sb = gflg(ctrl.cSB)
-                roll = dec8(report['roll']) * 5
-                pitch = dec8(report['pitch']) * 5
+                roll = dec8(report['roll']) * 10
+                pitch = dec8(report['pitch']) * 10
                 coll = report['coll']
 
                 #rprint(f"[#FFFF00 on #222222]js sa: {sa} sb: {sb} roll: {roll:6.2f} pitch: {pitch: 6.2f} coll: {coll:6.2f}")    
@@ -494,7 +498,7 @@ class JSReader(object):
                     return   
                 else:
                     moo = JSMoo(roll, pitch, coll, sa)
-                    rprint(f"[#FFFF00 on #222222]Sending command {moo}")
+                    #rprint(f"[#FFFF00 on #222222]Sending command {moo}")
                     self.toq.put_nowait(moo)
                 #output = wirep.encode(report)
             await asyncio.sleep(30/1000)
@@ -505,7 +509,7 @@ def jslink(fromq, toq):
     jsr = JSReader(fromq, toq)
     jsr.engage()
                       
-if __name__ == '__main__':
+def gorsh():
     mp.set_start_method('spawn')
     
     cvq = mp.Queue() # input from tracker task to brick ... this could be less confusing
@@ -522,3 +526,6 @@ if __name__ == '__main__':
     p.join()
     p2.join()
     p3.join()
+
+if __name__ == '__main__':
+    gorsh()
