@@ -185,7 +185,7 @@ class TrackerSM(StateMachine):
         elif key == ord('s'):
             self.rec.stop_logging()
             
-        print("sent command")
+        #print("sent command")
         # timestamp()
         # timestop_log()
         
@@ -232,7 +232,7 @@ class TrackerSM(StateMachine):
                 self.pitch_pid.Compute(pitcherr)
                 self.roll_pid.Compute(rollerr)
                     
-                rprint(f"[black on green]insert PID magic here xerr: {xerr}=>{self.x_pid.myOutput:5.3f} yerr: {yerr}=>{self.y_pid.myOutput:5.3f} headerr: {headerr:5.1f}=>{self.heading_pid.myOutput:5.3f} rollerr: {self.roll_pid.myOutput:5.3f} pitcherr: {self.pitch_pid.myOutput:5.3f}")
+                rprint(f"[black on green]insert PID magic here xerr: {xerr}=>{self.x_pid.myOutput:5.3f} yerr: {yerr}=>{self.y_pid.myOutput:5.3f} headerr: {headerr:5.1f}=>{self.heading_pid.myOutput:5.3f} rollpidout: {self.roll_pid.myOutput:5.3f} pitchpidout: {self.pitch_pid.myOutput:5.3f}")
                 
                 # initial strategy: want to make dxp and dyp and heading 0 with z at 50%
                 modeglyph = StewartPlatform.cSC # select 6-DOF absolute / precision mode
@@ -281,33 +281,38 @@ class TrackerSM(StateMachine):
             
     def loop(self):
         lastserial = 0
+        lasttime = time.time()
         while 1: # run forever
             try:
-                while 1: # empty the queue
-                    token = self.fromq.get_nowait()
-                    print(f"got token {token}")
-                    if type(token) == JSMoo:
-                        rprint(f"[#FFFFFF on #550055]got command token {token}")
-                        self.pitch_setpoint = token.pitch
-                        self.roll_setpoint = token.roll
-                        self.lastserial = token.sn
-                    elif token == "<awake/>":
-                        self.woke = True
-                        self.tick() # process immediately
-                    elif token == "<taskdone/>":
-                        self.moving = False
-                        self.tick()
-                    elif token == "<goodbye/>":
-                        print("robot requested exit")
-                        cv2.destroyAllWindows()
-                        return
-                    else:
-                        print(f"got unknown token: {token}")
+                token = self.fromq.get_nowait()
+                #print(f"got token {token}")
+                if type(token) == JSMoo:
+                    rprint(f"[#FFFFFF on #550055]got command token {token}")
+                    self.pitch_setpoint = token.pitch
+                    self.roll_setpoint = token.roll
+                    lastserial = token.sn
+                elif token == "<awake/>":
+                    print("got woke token")
+                    self.woke = True
+                    #self.tick() # process immediately
+                elif token == "<taskdone/>":
+                    #print("got taskdone token")
+                    self.moving = False
+                    #self.tick()
+                elif token == "<goodbye/>":
+                    print("robot requested exit")
+                    cv2.destroyAllWindows()
+                    return
+                else:
+                    print(f"got unknown token: {token}")
+                now = time.time()
             except queue.Empty as e:
                 pass # queue is literally empty, why not just an error code or None?
             try:
-                rprint(f"[#FFFFFF on #0000FF]acting on sn {lastserial}")
-                self.tick() # normally only act on most recent data / queue empty
+                if (now - lasttime) > 30/1000:
+                    print(f"processing {lastserial} {token} dt: {now-lasttime:8.5f}")
+                    self.tick()
+                    lasttime = time.time()
             except Exception as e:
                 print(f"Tracker tick exception: {e}")
                 #raise
@@ -333,7 +338,7 @@ class  LoggingQueuedBricksHub(PybricksHub):
     def _line_handler(self, line: bytes) -> None:
         try:
             l = line.decode()
-            logging.warning(f"Hub Sent:  {l}")
+            logging.info(f"Hub Sent:  {l}")
             
             if l == "<report>":
                 fn = "%s_%s.csv" % (self.csv_stemname,
@@ -354,7 +359,7 @@ class  LoggingQueuedBricksHub(PybricksHub):
                 self.toq.put_nowait(l)
             elif l == "<taskdone/>":
                 self.toq.put_nowait(l) 
-                print("queued taskdone")           
+                #print("queued taskdone")           
             if(self.csvfile):
                 print(l, file=self.csvfile)
         except Exception as e:
