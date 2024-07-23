@@ -3,8 +3,10 @@
 import time, random
 import numpy as np
 import cv2
-from drawplate import SquareBoard, black, yellow, cyan, red, green
 
+from PIL import ImageFont, ImageDraw, Image
+
+from drawplate import SquareBoard, black, yellow, cyan, red, green
 from statemachine import StateMachine
 
 class MoveSM(StateMachine):
@@ -32,6 +34,10 @@ class astartes(object):
     def __init__(self):
         self.movesm = MoveSM()
         print("created astartus")
+        
+        self.earth_font = ImageFont.truetype("fonts/future-earth.ttf", 32)
+        self.chic_font = ImageFont.truetype("fonts/chicago.ttf", 32)
+
     def go(self):
         while(1):
             self.movesm.tick()
@@ -92,6 +98,15 @@ class astartes(object):
         as_end = ((self.movesm.x2 * cs) + cbxo, (self.movesm.y2 * cs) + cbyo)
         grid.circle(as_start, ccr, red, -1, layer=grid.print_layer)
         grid.circle(as_end, ccr, green, -1, layer=grid.print_layer)
+        
+        
+        img_pil = Image.fromarray(grid.canvas)
+        draw = ImageDraw.Draw(img_pil)
+        b,g,r,a = 0,0,255,0
+        draw.text((150, 100),  "Hasta la Vista, Baby!", font = self.earth_font, fill = (b, g, r, a))
+        draw.text((150, 300),  "38911 BASIC BYTES FREE", font = self.chic_font, fill = (b, g, r, a))
+        
+        grid.canvas = np.array(img_pil)
         
         grid.crosshairs() 
         grid.show()
