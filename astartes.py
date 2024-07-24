@@ -22,9 +22,9 @@ from statemachine import StateMachine
 #GRIDY = 6
 #GRIDPIX = 15
 
-GRIDX = 24
-GRIDY = 18
-GRIDPIX = 5
+GRIDX = 12
+GRIDY = 9
+GRIDPIX = 10
 
 class PriorityQueue:
     def __init__(self):
@@ -36,18 +36,18 @@ class PriorityQueue:
     def get(self):
         return heapq.heappop(self.elements)[1]
         
-def reconstruct_path(came_from, start, goal, visited, currentpoint):
+def reconstruct_path(came_from, start, goal):
     current = goal # : Location 
     path = [] # : list[Location]
     if goal not in came_from: # no path was found
         print(f"goal {goal} not in came_from")
-        return [], {}, (0,0)
+        return []
     while current != start:
         path.append(current)
         current = came_from[current]
     path.append(start) # optional
     path.reverse() # optional
-    return path, visited, currentpoint
+    return path
     
 def cbcost(p1, p2):
     # just straight line distance
@@ -105,51 +105,60 @@ def cbneighbors(x,y,xsize=GRIDX,ysize=GRIDY):
         
     return xparts+yparts
 
-def astar_gen(start = (0, 0), goal = (4, 4)):
-    frontier = PriorityQueue()
-    frontier.put(start, 0)
-    came_from = {} # : dict[Location, Optional[Location]] 
-    cost_so_far = {} # : dict[Location, float]
-    came_from[start] = None
-    cost_so_far[start] = 0
-    visited = {}
+class aster(object):
+    def __init__(self):
+        self.frontier = None
+        self.current = None
+        
+    def astar_gen(self, start = (0, 0), goal = (4, 4)):
+        frontier = PriorityQueue()
+        self.frontier = frontier
+        frontier.put(start, 0)
+        came_from = {} # : dict[Location, Optional[Location]] 
+        cost_so_far = {} # : dict[Location, float]
+        came_from[start] = None
+        cost_so_far[start] = 0
+        visited = {}
     
-    while not frontier.empty():
-        current = frontier.get() # : Location
+        while not frontier.empty():
+            current = frontier.get() # : Location
+            self.current = current
+            #print(f"current: {current} frontier: {dir(frontier)}")
+            # put frontier instead of "visited" here?
+            yield reconstruct_path(came_from, start, goal)
+            if current == goal:
+                print(f"found goal {goal} after {len(came_from.keys())} steps")
+                return
+                #break
         
-        yield reconstruct_path(came_from, start, goal, visited, current)
-        if current == goal:
-            print(f"found goal {goal} after {len(came_from.keys())} steps")
-            return
-            #break
-        
-        for next in cbneighbors(*current):
-            visited[current] = True
-            new_cost = cost_so_far[current] + cbcost(current, next)
-            if next not in cost_so_far or new_cost < cost_so_far[next]:
-                cost_so_far[next] = new_cost
-                priority = new_cost + cbcost(next, goal)
-                frontier.put(next, priority)
-                came_from[next] = current
+            for next in cbneighbors(*current):
+                visited[current] = True
+                new_cost = cost_so_far[current] + cbcost(current, next)
+                if next not in cost_so_far or new_cost < cost_so_far[next]:
+                    cost_so_far[next] = new_cost
+                    priority = new_cost + cbcost(next, goal)
+                    frontier.put(next, priority)
+                    came_from[next] = current
                     
     
 class MoveSM(StateMachine):
     def __init__(self):
         super().__init__()
         self.build("movestates", ['select', 'path', 'sleep', 'freeze'])
-        self.starttime = time.time()
+        self.pausetime = time.time()
         self.x1 = 0
         self.y1 = 0
         self.x2 = 0
         self.y2 = 0
-        self.interval = .01 # second
+        self.interval = 0 # second
     def select(self):
         self.x1 = random.randrange(0, GRIDX)
         self.y1 = random.randrange(0, GRIDY)
         self.x2 = random.randrange(0, GRIDX)
         self.y2 = random.randrange(0, GRIDY)
-        self.starttime = time.time()
-        self.pather = astar_gen((self.x1, self.y1), (self.x2, self.y2))
+        self.pausetime = time.time() + self.interval
+        self.aster = aster()
+        self.pather = self.aster.astar_gen((self.x1, self.y1), (self.x2, self.y2))
         self.visited = set()
         self.iternum = 0
         self.pathlen = 0
@@ -160,19 +169,22 @@ class MoveSM(StateMachine):
         self.state = self.states.path
     def path(self):
         try:
-            self.newpath, self.camefrom , self.currentpoint = next(self.pather)
+            self.newpath = next(self.pather)
+            self.camefrom = {}
+            self.currentpoint = self.aster.current
             self.pathlen = len(self.newpath)
             self.iternum += 1
-            for point in self.newpath:
-                self.visited.add(point)
-            #self.starttime = time.time()
+            self.visited.add(self.currentpoint)
+            #for point in self.newpath:
+            #    self.visited.add(point)
+            self.pausetime = time.time()+self.interval
             self.state = self.states.sleep
         except StopIteration:
             self.foundpath = True
             self.state = self.states.freeze
             self.restarttime = time.time() + 3
     def sleep(self):
-        if time.time() > (self.starttime + self.interval):
+        if time.time() > self.pausetime:
             self.state = self.states.path
     def freeze(self):
         if time.time() > self.restarttime:
@@ -183,8 +195,11 @@ class astartes(object):
         self.movesm = MoveSM()
         print("created astartus")
         
+        self.grid_mm = 183
+        self.grid = SquareBoard(800, 700, self.grid_mm)
+        
         self.earth_font = ImageFont.truetype("fonts/future-earth.ttf", 20)
-        self.chic_font = ImageFont.truetype("fonts/chicago.ttf", 32)
+        self.chic_font = ImageFont.truetype("fonts/chicago.ttf", 20)
 
     def go(self):
         while(1):
@@ -195,8 +210,8 @@ class astartes(object):
                 return
                 
     def draw(self):
-        grid_mm = 183
-        grid = SquareBoard(800, 700, grid_mm)
+        grid = self.grid
+        grid_mm = self.grid_mm
         
         center = np.array((grid_mm/2, grid_mm/2))
         
@@ -249,13 +264,13 @@ class astartes(object):
                 distdot = gridpix(x, y)
                 grid.circle(distdot, ccr, c, -1, layer=grid.print_layer)
         
-        for point in self.movesm.camefrom.keys():
+        for point in self.movesm.visited:
             grid.circle(gridpix(*point), ccr, yellow, -1, layer=grid.print_layer) 
             
         if(self.movesm.foundpath):
             pathcolor = green
         else:
-            pathcolor = white
+            pathcolor = (255, 0, 255)
             
         for point in self.movesm.newpath:
             grid.circle(gridpix(*point), ccr, pathcolor, -1, layer=grid.print_layer)
@@ -273,18 +288,18 @@ class astartes(object):
         draw = ImageDraw.Draw(img_pil)
         b,g,r,a = 0,0,255,128
         draw.text(
-            (150, 100),  
+            (200, 60),  
             f"Iteration: {self.movesm.iternum}, Path Length: {self.movesm.pathlen}", 
             font = self.earth_font, fill = (b, g, r, a))
         draw.text(
-            (75, 600),  
+            (200, 725),  
             f"Examining {self.movesm.currentpoint} Found: {self.movesm.foundpath}", 
             font = self.chic_font, fill = (b, g, r, a))
         
         grid.canvas = np.array(img_pil)
         
         grid.crosshairs() 
-        grid.show()
+        grid.show(pdf=False)
         
                 
                 

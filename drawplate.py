@@ -259,10 +259,11 @@ class SquareBoard(object):
         self.fillPoly(points, color, layer)
         
             
-    def show(self):
-        self.dwg.save(pretty=True)
-        drawing = svg2rlg(self.dwgfilename)
-        renderPDF.drawToFile(drawing, self.dwgfilename.replace("svg", "pdf"))
+    def show(self, pdf=True):
+        if(pdf):
+            self.dwg.save(pretty=True)
+            drawing = svg2rlg(self.dwgfilename)
+            renderPDF.drawToFile(drawing, self.dwgfilename.replace("svg", "pdf"))
         #with open('plate.svg', 'w', encoding='utf-8') as f:
         #    self.dwg.write(f, pretty=True)
         cv2.imshow('output', self.canvas)
