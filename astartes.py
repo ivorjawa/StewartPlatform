@@ -1,33 +1,181 @@
 #!/usr/bin/env python
 
 import time, random
+import math as m
+import heapq
+
 import numpy as np
 import cv2
-
 from PIL import ImageFont, ImageDraw, Image
 
-from drawplate import SquareBoard, black, yellow, cyan, red, green
+from drawplate import SquareBoard, black, yellow, cyan, red, green, white, blue
 from statemachine import StateMachine
 
+# A*, Dijkstra
+# https://www.redblobgames.com/pathfinding/a-star/introduction.html
+# https://www.redblobgames.com/pathfinding/a-star/implementation.html
+# https://youtu.be/CgW0HPHqFE8
+# https://youtu.be/A60q6dcoCjw
+# https://youtu.be/pVfj6mxhdMw
+
+#GRIDX = 8
+#GRIDY = 6
+#GRIDPIX = 15
+
+GRIDX = 24
+GRIDY = 18
+GRIDPIX = 5
+
+class PriorityQueue:
+    def __init__(self):
+        self.elements = []
+    def empty(self):
+        return not self.elements
+    def put(self, item, priority):
+        heapq.heappush(self.elements, (priority, item))
+    def get(self):
+        return heapq.heappop(self.elements)[1]
+        
+def reconstruct_path(came_from, start, goal, visited, currentpoint):
+    current = goal # : Location 
+    path = [] # : list[Location]
+    if goal not in came_from: # no path was found
+        print(f"goal {goal} not in came_from")
+        return [], {}, (0,0)
+    while current != start:
+        path.append(current)
+        current = came_from[current]
+    path.append(start) # optional
+    path.reverse() # optional
+    return path, visited, currentpoint
+    
+def cbcost(p1, p2):
+    # just straight line distance
+    return m.sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2)
+
+def cbneighbors(x,y,xsize=GRIDX,ysize=GRIDY):
+    # returns a list of valid neighbors in a checkerboard of size xsize by ysize
+    even = lambda n: n % 2 == 0
+    
+    maxx = xsize-1
+    maxy = ysize-1
+    
+    if sum([(x > maxx), (x < 0), (y > maxy), (y < 0)]) > 0:
+        raise IndexError(f"x: {x} maxx: {maxx} y: {y} maxy: {maxy}")
+        
+    up = (x, y + 1)
+    down = (x, y - 1)
+    left = (x - 1, y)
+    right = (x + 1, y)
+    
+    #print(f"x: {x} y: {y} up: {up} down: {down} left: {left} right: {right}")
+    xparts = []
+    yparts = []
+    
+    # general, easy case, not on any edge
+    if sum([(x < maxx), (x > 0), (y < maxy), (y > 0)]) == 4:
+        return [up, down, left, right]
+    
+    # all edge.  don't you hate edgelords?
+    if x == 0:
+        xparts = [right]
+        if even(y):
+            yparts = [up]
+        else:
+            yparts = [down]
+    else: # x == maxx:
+        xparts = [left]
+        if even(y):
+            yparts = [up]
+        else:
+            yparts = [down]
+    
+    if y == 0:
+        yparts = [up]
+        if even(x):
+            xparts = [right]
+        else:
+            xparts = [left]
+    else: # y == maxy: 
+        yparts = [down]
+        if even(x):
+            xparts = [right]
+        else:
+            xparts = [left]
+        
+    return xparts+yparts
+
+def astar_gen(start = (0, 0), goal = (4, 4)):
+    frontier = PriorityQueue()
+    frontier.put(start, 0)
+    came_from = {} # : dict[Location, Optional[Location]] 
+    cost_so_far = {} # : dict[Location, float]
+    came_from[start] = None
+    cost_so_far[start] = 0
+    visited = {}
+    
+    while not frontier.empty():
+        current = frontier.get() # : Location
+        
+        yield reconstruct_path(came_from, start, goal, visited, current)
+        if current == goal:
+            print(f"found goal {goal} after {len(came_from.keys())} steps")
+            return
+            #break
+        
+        for next in cbneighbors(*current):
+            visited[current] = True
+            new_cost = cost_so_far[current] + cbcost(current, next)
+            if next not in cost_so_far or new_cost < cost_so_far[next]:
+                cost_so_far[next] = new_cost
+                priority = new_cost + cbcost(next, goal)
+                frontier.put(next, priority)
+                came_from[next] = current
+                    
+    
 class MoveSM(StateMachine):
     def __init__(self):
         super().__init__()
-        self.build("movestates", ['select', 'sleep'])
+        self.build("movestates", ['select', 'path', 'sleep', 'freeze'])
         self.starttime = time.time()
         self.x1 = 0
         self.y1 = 0
         self.x2 = 0
         self.y2 = 0
-        self.interval = 1 # second
+        self.interval = .01 # second
     def select(self):
-        self.x1 = random.randrange(0, 8)
-        self.y1 = random.randrange(0, 6)
-        self.x2 = random.randrange(0, 8)
-        self.y2 = random.randrange(0, 6)
+        self.x1 = random.randrange(0, GRIDX)
+        self.y1 = random.randrange(0, GRIDY)
+        self.x2 = random.randrange(0, GRIDX)
+        self.y2 = random.randrange(0, GRIDY)
         self.starttime = time.time()
-        self.state = self.states.sleep
+        self.pather = astar_gen((self.x1, self.y1), (self.x2, self.y2))
+        self.visited = set()
+        self.iternum = 0
+        self.pathlen = 0
+        self.newpath = []
+        self.camefrom = {}
+        self.foundpath = False
+        self.currentpoint = (0, 0)
+        self.state = self.states.path
+    def path(self):
+        try:
+            self.newpath, self.camefrom , self.currentpoint = next(self.pather)
+            self.pathlen = len(self.newpath)
+            self.iternum += 1
+            for point in self.newpath:
+                self.visited.add(point)
+            #self.starttime = time.time()
+            self.state = self.states.sleep
+        except StopIteration:
+            self.foundpath = True
+            self.state = self.states.freeze
+            self.restarttime = time.time() + 3
     def sleep(self):
         if time.time() > (self.starttime + self.interval):
+            self.state = self.states.path
+    def freeze(self):
+        if time.time() > self.restarttime:
             self.state = self.states.select
             
 class astartes(object):
@@ -35,14 +183,14 @@ class astartes(object):
         self.movesm = MoveSM()
         print("created astartus")
         
-        self.earth_font = ImageFont.truetype("fonts/future-earth.ttf", 32)
+        self.earth_font = ImageFont.truetype("fonts/future-earth.ttf", 20)
         self.chic_font = ImageFont.truetype("fonts/chicago.ttf", 32)
 
     def go(self):
         while(1):
             self.movesm.tick()
             self.draw()
-            if cv2.waitKey(30) == 27:
+            if cv2.waitKey(1) == 27:
                 print("bye")
                 return
                 
@@ -55,37 +203,29 @@ class astartes(object):
         grid.rectangle((0,0), (grid_mm, grid_mm), black, -1, layer=grid.print_layer)
         ocr = 166/2 # outer circle
         grid.circle(center, ocr, cyan, -1, layer=grid.print_layer) # outer circle
-        #grid.circle(center, ocr+2, yellow, 1, layer=grid.ring_cut_layer) # outer circle
-        #grid.rectangle((0,0), (grid_mm, grid_mm), yellow, layer=grid.cut_layer)
+
         
         # checker board 
         xc = grid_mm/2 # center
         yc = grid_mm/2
         cbw = (105/2) # width
         cbh = (75/2) # height
-        cs = (15) # square side in pixels
+        cs = (GRIDPIX) # square side in pixels
         cbxo = xc-cbw # x origin
         cbyo = yc-cbh # y originm
         cbxm = xc+cbw # x max
         cbym = yc+cbh # y max
-        
-        #cv2.rectangle(canvas, np.intp((cbxo, cbyo)), np.intp((cbxm, cbym)), green)
-    
-        #for i in range(8):
-        #    grid.line(np.intp((cbxo+(i*cs), cbyo)), np.intp((cbxo+i*cs, cbym)), black)
-        #for i in range(6):
-        #    grid.line(np.intp((cbxo, cbyo+(i*cs))), np.intp((cbxm, cbyo+i*cs)), black)
 
-        for x in range(0, 8, 2):
-            for y in range(0, 6, 2):
+        for x in range(0, GRIDX, 2):
+            for y in range(0, GRIDY, 2):
                 x1 = cbxo+x*cs
                 y1 = cbyo+y*cs
                 x2 = cbxo+(x+1)*cs
                 y2 = cbyo+(y+1)*cs
                 #print(f"x: {x}, y: {y}, x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}")
                 grid.rectangle((x1, y1), (x2, y2), black, -1, layer=grid.print_layer)    
-        for x in range(1, 7, 2):
-            for y in range(1, 5, 2):
+        for x in range(1, GRIDX-1, 2):
+            for y in range(1, GRIDY-1, 2):
                 x1 = cbxo+x*cs
                 y1 = cbyo+y*cs
                 x2 = cbxo+(x+1)*cs
@@ -93,18 +233,53 @@ class astartes(object):
                 #print(f"x: {x}, y: {y}, x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}")
                 grid.rectangle((x1, y1), (x2, y2), black, -1, layer=grid.print_layer)
         
-        ccr = 2 # center of lego pin holes
-        as_start = ((self.movesm.x1 * cs) + cbxo, (self.movesm.y1 * cs) + cbyo)
-        as_end = ((self.movesm.x2 * cs) + cbxo, (self.movesm.y2 * cs) + cbyo)
-        grid.circle(as_start, ccr, red, -1, layer=grid.print_layer)
-        grid.circle(as_end, ccr, green, -1, layer=grid.print_layer)
+        maxdist = m.sqrt(GRIDX**2 + GRIDY**2)
+        cmult = 255/maxdist
+        ccr = 2 # dot radius
+        gridpix = lambda x, y: ((x * cs) + cbxo, (y * cs) + cbyo)
+        for x in range(GRIDX):
+            for y in range(GRIDY):
+                # calculating A* potential.  We eventually want to make
+                # this so we can only move on black.
+                
+                # sqrt(8*8 + 6*6) = 10
+                dist = m.sqrt((self.movesm.x2-x)**2 + (self.movesm.y2-y)**2)
+                gv = int(cmult * (maxdist-dist))
+                c = (gv, gv, gv)
+                distdot = gridpix(x, y)
+                grid.circle(distdot, ccr, c, -1, layer=grid.print_layer)
         
+        for point in self.movesm.camefrom.keys():
+            grid.circle(gridpix(*point), ccr, yellow, -1, layer=grid.print_layer) 
+            
+        if(self.movesm.foundpath):
+            pathcolor = green
+        else:
+            pathcolor = white
+            
+        for point in self.movesm.newpath:
+            grid.circle(gridpix(*point), ccr, pathcolor, -1, layer=grid.print_layer)
+            
+        #as_start = ((self.movesm.x1 * cs) + cbxo, (self.movesm.y1 * cs) + cbyo)
+        #as_end = ((self.movesm.x2 * cs) + cbxo, (self.movesm.y2 * cs) + cbyo)
+        as_start = gridpix(self.movesm.x1, self.movesm.y1)
+        as_end = gridpix(self.movesm.x2, self.movesm.y2)
+        grid.circle(as_start, ccr, red, -1, layer=grid.print_layer)
+        grid.circle(as_end, ccr, blue, -1, layer=grid.print_layer)
+        
+        #https://stackoverflow.com/questions/37191008/load-truetype-font-to-opencv
         
         img_pil = Image.fromarray(grid.canvas)
         draw = ImageDraw.Draw(img_pil)
-        b,g,r,a = 0,0,255,0
-        draw.text((150, 100),  "Hasta la Vista, Baby!", font = self.earth_font, fill = (b, g, r, a))
-        draw.text((150, 300),  "38911 BASIC BYTES FREE", font = self.chic_font, fill = (b, g, r, a))
+        b,g,r,a = 0,0,255,128
+        draw.text(
+            (150, 100),  
+            f"Iteration: {self.movesm.iternum}, Path Length: {self.movesm.pathlen}", 
+            font = self.earth_font, fill = (b, g, r, a))
+        draw.text(
+            (75, 600),  
+            f"Examining {self.movesm.currentpoint} Found: {self.movesm.foundpath}", 
+            font = self.chic_font, fill = (b, g, r, a))
         
         grid.canvas = np.array(img_pil)
         

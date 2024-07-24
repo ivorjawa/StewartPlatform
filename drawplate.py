@@ -195,7 +195,7 @@ class SquareBoard(object):
         if layer is None:
             layer=self.print_layer
         #print(f"circle c:{center}, self.center: {self.center}")
-        cv2.circle(self.canvas, self.tp(center), int(radius*self.scale), color, width)
+        cv2.circle(self.canvas, self.tp(center), int(radius*self.scale), color, width, lineType = cv2.LINE_AA)
         
         centered = self.tpsvg(center) 
         #print(f"centered: {centered}")
@@ -213,7 +213,7 @@ class SquareBoard(object):
     
     def polylines(self, points, isClosed, color, thickness=1):
         tpoints = np.array([self.tp(p) for p in points])
-        cv2.polylines(self.canvas, [tpoints], isClosed, color, thickness) 
+        cv2.polylines(self.canvas, [tpoints], isClosed, color, thickness, lineType = cv2.LINE_AA) 
         
     def fillPoly(self, points, color, layer=None):
         if layer is None:
