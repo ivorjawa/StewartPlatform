@@ -353,9 +353,9 @@ class Recognizer(object):
                 # draw green crosshairs through center of plate
                 cv2.line(frame, np.intp(imgpts[5][0]), np.intp(imgpts[6][0]), (0, 255, 0), 1)
                 cv2.line(frame, np.intp(imgpts[7][0]), np.intp(imgpts[8][0]), (0, 255, 0), 1)      
-                # draw bluegreen crosshairs through center of plate
-                cv2.line(frame, np.intp(imgpts[9][0]), np.intp(imgpts[10][0]), (128, 128, 0), 2)
-                cv2.line(frame, np.intp(imgpts[11][0]), np.intp(imgpts[12][0]), (128, 128, 0), 2)
+                # draw bluegreen crosshairs through cursor
+                cv2.line(frame, np.intp(imgpts[9][0]), np.intp(imgpts[10][0]), (128, 128, 0), 1)
+                cv2.line(frame, np.intp(imgpts[11][0]), np.intp(imgpts[12][0]), (128, 128, 0), )
                 # draw yellow circle around perimeter of gear
                 cv2.polylines(frame, self.playfield_circle, True, (0, 255, 255), 2)
                 self.hudtext(frame)

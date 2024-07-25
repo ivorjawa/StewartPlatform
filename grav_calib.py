@@ -231,6 +231,9 @@ class TrackerSM(StateMachine):
                 #rpe = rollerr = -self.rec.pose_info.roll
                 
                 # FIXME this needs to be parameterized and also reflect in HUD
+                # push it into pose_est so we only need to change it low-level
+                # then make measurement state machine here that can step 
+                # test and make micro-adjustments with ball physics
                 sys_pitch_err = 1.9
                 sys_roll_err = -2.0
                 #sys_pitch_err = 0

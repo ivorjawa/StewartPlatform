@@ -222,7 +222,7 @@ class astartes(object):
         
         grid.rectangle((0,0), (grid_mm, grid_mm), black, -1, layer=grid.print_layer)
         ocr = 166/2 # outer circle
-        grid.circle(center, ocr, cyan, -1, layer=grid.print_layer) # outer circle
+        grid.circle(center, ocr, (100,180,180), -1, layer=grid.print_layer) # outer circle
 
         
         # checker board 
@@ -281,7 +281,7 @@ class astartes(object):
             )   
         print(self.movesm.camefrom) 
         for point in history:
-            grid.circle(gridpix(*point), ccr, (0, 128, 255), -1, layer=grid.print_layer)  
+            grid.circle(gridpix(*point), ccr, (255, 0, 255), -1, layer=grid.print_layer)  
             
         if(self.movesm.foundpath):
             pathcolor = green
