@@ -135,9 +135,9 @@ class TrackerSM(StateMachine):
         #self.pitch_pid = PID.PID(0, bKp, bKi, bKd, PID.PID.P_ON_E, PID.PID.DIRECT)
         
         #tuned for platform center
-        rrKp = 0.015
-        rrKi = 0.025
-        rrKd = 0
+        rrKp = 0.01
+        rrKi = 0#.05
+        rrKd = 0#.0002
         self.roll_pid = PID.PID(0, rrKp, rrKi, rrKd, PID.PID.P_ON_E, PID.PID.DIRECT)
         self.pitch_pid = PID.PID(0, rrKp, rrKi, rrKd, PID.PID.P_ON_E, PID.PID.DIRECT)
         
@@ -471,8 +471,10 @@ class JSReader(object):
     def __init__(self, fromq, toq):
         self.fromq = fromq
         self.toq = toq
-    async def go(self):
-        gamepad = ctrl.TaranisX9d()
+    #async def go(self):
+    def go(self):
+        #gamepad = ctrl.TaranisX9d()
+        gamepad = ctrl.TaranisX9dPyg()
         #wvars = ['coll', 'roll', 'pitch', 'yaw', 'glyph']
         #from stewart_wvars import wvars
         #wirep = JoyProtocol(wvars, 2, None, sys.stdin)
@@ -481,6 +483,7 @@ class JSReader(object):
         
         while 1:
             report = gamepad.report()
+            #print(report)
             gflg = lambda flag: (report['glyph'] & flag) == flag
             if report:  
                 sa = gflg(ctrl.cSA)
@@ -493,17 +496,19 @@ class JSReader(object):
                 if(sb):
                     rprint("[#FF0000 on #00FFFF] JOYSTICK EXITING")
                     self.toq.put_nowait("<goodbye/>")
-                    #time.sleep(1)
-                    await asyncio.sleep(1) 
+                    time.sleep(1)
+                    #await asyncio.sleep(1) 
                     return   
                 else:
                     moo = JSMoo(roll, pitch, coll, sa)
                     #rprint(f"[#FFFF00 on #222222]Sending command {moo}")
                     self.toq.put_nowait(moo)
                 #output = wirep.encode(report)
-            await asyncio.sleep(30/1000)
+            #await asyncio.sleep(70/1000)
+            time.sleep(30/1000)
     def engage(self):
-        asyncio.run(self.go())
+        self.go()
+        #asyncio.run(self.go())
 
 def jslink(fromq, toq):
     jsr = JSReader(fromq, toq)
@@ -520,8 +525,9 @@ def gorsh():
     p.start()
     p2 = mp.Process(target=robotlink, args=(cvq, brickq)) # add jsk
     p2.start()
-    p3 = mp.Process(target=jslink, args=(jsq, brickq)) # jslink is another input to tracker
-    p3.start()
+    #p3 = mp.Process(target=jslink, args=(jsq, brickq)) # jslink is another input to tracker
+    #p3.start()
+    jslink(jsq, brickq)
     
     p.join()
     p2.join()

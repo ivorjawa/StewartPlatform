@@ -22,6 +22,10 @@ from statemachine import StateMachine
 #GRIDY = 6
 #GRIDPIX = 15
 
+#GRIDX = 12
+#GRIDY = 10
+#GRIDPIX = 10
+
 GRIDX = 24
 GRIDY = 18
 GRIDPIX = 5
@@ -277,7 +281,7 @@ class astartes(object):
             )   
         print(self.movesm.camefrom) 
         for point in history:
-            grid.circle(gridpix(*point), ccr, (128, 128, 0), -1, layer=grid.print_layer)  
+            grid.circle(gridpix(*point), ccr, (0, 128, 255), -1, layer=grid.print_layer)  
             
         if(self.movesm.foundpath):
             pathcolor = green

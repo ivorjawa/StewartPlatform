@@ -24,11 +24,15 @@ class TaranisX9dPyg(Controller):
         self.joystick = joysticks[0]
         self.joystick.open()  
     def report(self):
+        # the following two lines force it to update
+        pyglet.clock.tick()
+        self.joystick.device._set_initial_control_values() 
+        
         conts = self.joystick.device.get_controls()
         axes = conts[24:]
         #output = '|'.join([f"[{i:02X}]:{x.value:02X}" for (i, x) in enumerate(axes)])
         output = '|'.join([f"{x.value:02X}" for (i, x) in enumerate(conts)])
-        print(f"report: {output}")
+        #print(f"report: {output}")
         # scaled from 11 to 8 bits by default, set rescale to 1 to get 11 bit values
         roll = int(axes[0].value/self.rescale) 
         yaw = int(axes[3].value/self.rescale)    
