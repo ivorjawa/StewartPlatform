@@ -100,11 +100,11 @@ class TrackerSM(StateMachine):
         # rotational, controlling degrees
         rKp = 0.01
         rKi = 0.015
-        rKd = 0
+        rKd = 0.0001
         # translational, controlling mm
         tKp = 0.005
         tKi = 0.02
-        tKd = 0
+        tKd = 0.0001
         
         # roll and pitch, input pixel offset, controls limited degrees
         # WAG
@@ -136,8 +136,8 @@ class TrackerSM(StateMachine):
         
         #tuned for platform center
         rrKp = 0.01
-        rrKi = 0#.05
-        rrKd = 0#.0002
+        rrKi = 0.06
+        rrKd = 0.00005
         self.roll_pid = PID.PID(0, rrKp, rrKi, rrKd, PID.PID.P_ON_E, PID.PID.DIRECT)
         self.pitch_pid = PID.PID(0, rrKp, rrKi, rrKd, PID.PID.P_ON_E, PID.PID.DIRECT)
         
@@ -229,9 +229,16 @@ class TrackerSM(StateMachine):
                 ballradscale = 0
                 #ppe = pitcherr = self.rec.pose_info.pitch
                 #rpe = rollerr = -self.rec.pose_info.roll
+                
+                # FIXME this needs to be parameterized and also reflect in HUD
+                sys_pitch_err = 1.9
+                sys_roll_err = -2.0
+                #sys_pitch_err = 0
+                #sys_roll_err = 0
+                
                 rprint(f"[#FFFF00 on #00aa00] Pitch: {self.rec.pose_info.pitch:6.2f} Pitch SP: {self.pitch_setpoint:6.2f} Roll: {self.rec.pose_info.roll:6.2f} Roll SP: {self.roll_setpoint:6.2f}")
-                ppe = pitcherr = self.rec.pose_info.pitch-self.pitch_setpoint
-                rpe = rollerr = -(self.rec.pose_info.roll-self.roll_setpoint)
+                ppe = pitcherr = self.rec.pose_info.pitch+sys_pitch_err-self.pitch_setpoint
+                rpe = rollerr = -(self.rec.pose_info.roll+sys_roll_err-self.roll_setpoint)
                 #rpe = rollerr = 0
                 self.pitch_pid.Compute(pitcherr)
                 self.roll_pid.Compute(rollerr)
@@ -488,8 +495,8 @@ class JSReader(object):
             if report:  
                 sa = gflg(ctrl.cSA)
                 sb = gflg(ctrl.cSB)
-                roll = dec8(report['roll']) * 10
-                pitch = dec8(report['pitch']) * 10
+                roll = dec8(report['roll']) * 9
+                pitch = dec8(report['pitch']) * 9
                 coll = report['coll']
 
                 #rprint(f"[#FFFF00 on #222222]js sa: {sa} sb: {sb} roll: {roll:6.2f} pitch: {pitch: 6.2f} coll: {coll:6.2f}")    
@@ -531,7 +538,7 @@ def gorsh():
     
     p.join()
     p2.join()
-    p3.join()
+    #p3.join()
 
 if __name__ == '__main__':
     gorsh()

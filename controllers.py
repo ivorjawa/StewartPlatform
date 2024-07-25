@@ -24,6 +24,7 @@ class TaranisX9dPyg(Controller):
         self.joystick = joysticks[0]
         self.joystick.open()  
     def report(self):
+        # pyglet/pyglet/input/macos/darwin_hid.py
         # the following two lines force it to update
         pyglet.clock.tick()
         self.joystick.device._set_initial_control_values() 
