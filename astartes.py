@@ -22,9 +22,9 @@ from statemachine import StateMachine
 #GRIDY = 6
 #GRIDPIX = 15
 
-GRIDX = 12
-GRIDY = 9
-GRIDPIX = 10
+GRIDX = 24
+GRIDY = 18
+GRIDPIX = 5
 
 class PriorityQueue:
     def __init__(self):
@@ -51,7 +51,8 @@ def reconstruct_path(came_from, start, goal):
     
 def cbcost(p1, p2):
     # just straight line distance
-    return m.sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2)
+    #return m.sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2)
+    return abs(p2[0]-p1[0])+ abs(p2[1]-p1[1])
 
 def cbneighbors(x,y,xsize=GRIDX,ysize=GRIDY):
     # returns a list of valid neighbors in a checkerboard of size xsize by ysize
@@ -109,14 +110,14 @@ class aster(object):
     def __init__(self):
         self.frontier = None
         self.current = None
-        
+        self.came_from = {}
     def astar_gen(self, start = (0, 0), goal = (4, 4)):
         frontier = PriorityQueue()
         self.frontier = frontier
         frontier.put(start, 0)
-        came_from = {} # : dict[Location, Optional[Location]] 
+        #came_from = {} # : dict[Location, Optional[Location]] 
         cost_so_far = {} # : dict[Location, float]
-        came_from[start] = None
+        self.came_from[start] = None
         cost_so_far[start] = 0
         visited = {}
     
@@ -125,9 +126,9 @@ class aster(object):
             self.current = current
             #print(f"current: {current} frontier: {dir(frontier)}")
             # put frontier instead of "visited" here?
-            yield reconstruct_path(came_from, start, goal)
+            yield reconstruct_path(self.came_from, start, goal)
             if current == goal:
-                print(f"found goal {goal} after {len(came_from.keys())} steps")
+                print(f"found goal {goal} after {len(self.came_from.keys())} steps")
                 return
                 #break
         
@@ -138,7 +139,7 @@ class aster(object):
                     cost_so_far[next] = new_cost
                     priority = new_cost + cbcost(next, goal)
                     frontier.put(next, priority)
-                    came_from[next] = current
+                    self.came_from[next] = current
                     
     
 class MoveSM(StateMachine):
@@ -250,7 +251,7 @@ class astartes(object):
         
         maxdist = m.sqrt(GRIDX**2 + GRIDY**2)
         cmult = 255/maxdist
-        ccr = 2 # dot radius
+        ccr = 1.5 # dot radius
         gridpix = lambda x, y: ((x * cs) + cbxo, (y * cs) + cbyo)
         for x in range(GRIDX):
             for y in range(GRIDY):
@@ -266,6 +267,17 @@ class astartes(object):
         
         for point in self.movesm.visited:
             grid.circle(gridpix(*point), ccr, yellow, -1, layer=grid.print_layer) 
+        
+        # the path we just tried
+        # reconstruct_path(came_from, start, goal)
+        history = reconstruct_path(
+            self.movesm.aster.came_from, 
+            (self.movesm.x1, self.movesm.y1), 
+            self.movesm.currentpoint
+            )   
+        print(self.movesm.camefrom) 
+        for point in history:
+            grid.circle(gridpix(*point), ccr, (128, 128, 0), -1, layer=grid.print_layer)  
             
         if(self.movesm.foundpath):
             pathcolor = green
@@ -274,12 +286,15 @@ class astartes(object):
             
         for point in self.movesm.newpath:
             grid.circle(gridpix(*point), ccr, pathcolor, -1, layer=grid.print_layer)
-            
+        
+           
         #as_start = ((self.movesm.x1 * cs) + cbxo, (self.movesm.y1 * cs) + cbyo)
         #as_end = ((self.movesm.x2 * cs) + cbxo, (self.movesm.y2 * cs) + cbyo)
         as_start = gridpix(self.movesm.x1, self.movesm.y1)
         as_end = gridpix(self.movesm.x2, self.movesm.y2)
+        grid.circle(as_start, ccr+.5, green, 2, layer=grid.print_layer)
         grid.circle(as_start, ccr, red, -1, layer=grid.print_layer)
+        grid.circle(as_end, ccr+.5, green, 2, layer=grid.print_layer)
         grid.circle(as_end, ccr, blue, -1, layer=grid.print_layer)
         
         #https://stackoverflow.com/questions/37191008/load-truetype-font-to-opencv
@@ -293,7 +308,7 @@ class astartes(object):
             font = self.earth_font, fill = (b, g, r, a))
         draw.text(
             (200, 725),  
-            f"Examining {self.movesm.currentpoint} Found: {self.movesm.foundpath}", 
+            f"Examining {self.movesm.currentpoint} Found: {self.movesm.foundpath} History: {len(history)}", 
             font = self.chic_font, fill = (b, g, r, a))
         
         grid.canvas = np.array(img_pil)
