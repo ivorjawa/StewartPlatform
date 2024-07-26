@@ -567,7 +567,7 @@ class Wobbler(StateMachine):
         self.waketime = time.time()
         self.pausetime = 5
         self.itercount = 0
-        self.iterlim = 4
+        self.iterlim = 10
         self.logging = False
     def startlogging(self):
         #self.rec.start_logging()
