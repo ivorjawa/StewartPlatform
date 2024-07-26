@@ -539,6 +539,8 @@ def gorsh():
     #p3.start()
     jslink(jsq, brickq)
     
+    p.terminate()
+    p2.terminate()
     p.join()
     p2.join()
     #p3.join()

@@ -32,7 +32,7 @@ class TaranisX9dPyg(Controller):
         conts = self.joystick.device.get_controls()
         axes = conts[24:]
         #output = '|'.join([f"[{i:02X}]:{x.value:02X}" for (i, x) in enumerate(axes)])
-        output = '|'.join([f"{x.value:02X}" for (i, x) in enumerate(conts)])
+        #output = '|'.join([f"{x.value:02X}" for (i, x) in enumerate(conts)])
         #print(f"report: {output}")
         # scaled from 11 to 8 bits by default, set rescale to 1 to get 11 bit values
         roll = int(axes[0].value/self.rescale) 
@@ -40,13 +40,16 @@ class TaranisX9dPyg(Controller):
         pitch = int(axes[1].value/self.rescale) 
         coll = int(axes[2].value/self.rescale)
         
+        #print(f"My conts: {conts[0].value}, {conts[1].value}, {conts[2].value}, {conts[3].value}")
         glyph = 0
-        if (axes[4].value == 1024): glyph |= cSA
-        if (axes[5].value == 1024): glyph |= cSB
-        if (axes[6].value == 1024): glyph |= cSC
-        if (axes[7].value == 1024): glyph |= cSD
+        if (conts[0].value == False): glyph |= cSA
+        if (conts[1].value == False): glyph |= cSB
+        if (conts[2].value == False): glyph |= cSC
+        if (conts[3].value == False): glyph |= cSD
         
-        return {'yaw': yaw, 'pitch': pitch, 'roll': roll, 'coll': coll, 'glyph': glyph}
+        retval = {'yaw': yaw, 'pitch': pitch, 'roll': roll, 'coll': coll, 'glyph': glyph}
+        #print(f"pygpacket: {retval}")
+        return retval
         
          
 class TaranisX9d(Controller):
