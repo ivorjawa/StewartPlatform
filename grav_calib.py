@@ -336,6 +336,8 @@ def tracker(fromq, toq):
     tsm = TrackerSM(fromq, toq)
     tsm.loop()
 
+class LQBHExit(Exception): pass
+
 class  LoggingQueuedBricksHub(PybricksHub):
     """
         A PybricksHub that can act on things received by _line_handler.
@@ -368,7 +370,8 @@ class  LoggingQueuedBricksHub(PybricksHub):
             elif l == "<goodbye/>":
                 self.toq.put_nowait(l)
                 time.sleep(1)
-                sys.exit(1)
+                raise LQBHExit("done with engines")
+                #sys.exit(1)
             elif l == "<awake/>":
                 self.toq.put_nowait(l)
             elif l == "<taskdone/>":
@@ -478,9 +481,10 @@ def robotlink(fromq, toq):
     #robotbase.engage("bubble", "bubble", "bubble.py") # make it so on a dummy machine
       
 class JSReader(object):
-    def __init__(self, fromq, toq):
+    def __init__(self, fromq, toq, robotq):
         self.fromq = fromq
         self.toq = toq
+        self.robotq = robotq
     #async def go(self):
     def go(self):
         #gamepad = ctrl.TaranisX9d()
@@ -506,6 +510,8 @@ class JSReader(object):
                 if(sb):
                     rprint("[#FF0000 on #00FFFF] JOYSTICK EXITING")
                     self.toq.put_nowait("<goodbye/>")
+                    #cdict = {'roll': 0, 'pitch': 0, 'yaw': 0, 'coll': 0, 'glyph': ctrl.cSB}
+                    self.robotq.put_nowait({'glyph':StewartPlatform.cSB}) # kill packet
                     time.sleep(1)
                     #await asyncio.sleep(1) 
                     return   
@@ -520,14 +526,14 @@ class JSReader(object):
         self.go()
         #asyncio.run(self.go())
 
-def jslink(fromq, toq):
-    jsr = JSReader(fromq, toq)
+def jslink(fromq, toq, robotq):
+    jsr = JSReader(fromq, toq, robotq)
     jsr.engage()
                       
 def gorsh():
     mp.set_start_method('spawn')
     
-    cvq = mp.Queue() # input from tracker task to brick ... this could be less confusing
+    cvq = mp.Queue() # input from tracker task to robotlink task ... this could be less confusing
     brickq = mp.Queue() # input from brick (and js) to tracker task
     jsq = mp.Queue() # not used yet, to control jslink task, should be another arg to tracker  and brick task so either can kill it
     
@@ -537,12 +543,16 @@ def gorsh():
     p2.start()
     #p3 = mp.Process(target=jslink, args=(jsq, brickq)) # jslink is another input to tracker
     #p3.start()
-    jslink(jsq, brickq)
+    jslink(jsq, brickq, cvq)
     
+    time.sleep(1)
     p.terminate()
     p2.terminate()
-    p.join()
-    p2.join()
+    try:
+        p.join()
+        p2.join()
+    except Exception as e:
+        print(f"Join unhappy: {e}")
     #p3.join()
 
 if __name__ == '__main__':

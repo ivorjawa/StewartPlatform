@@ -25,8 +25,8 @@ class TaranisX9dPyg(Controller):
         self.joystick.open()  
     def report(self):
         # pyglet/pyglet/input/macos/darwin_hid.py
-        # the following two lines force it to update
-        pyglet.clock.tick()
+        # the following line forces it to update 
+        #pyglet.clock.tick() # don't need this but might come in handy later
         self.joystick.device._set_initial_control_values() 
         
         conts = self.joystick.device.get_controls()
@@ -46,6 +46,12 @@ class TaranisX9dPyg(Controller):
         if (conts[1].value == False): glyph |= cSB
         if (conts[2].value == False): glyph |= cSC
         if (conts[3].value == False): glyph |= cSD
+        
+        # FIXME pick up these axes
+        #S1 = dword(report, 11) # S1
+        #S2 = dword(report, 13) # S2
+        #LS = dword(report, 15) # LS
+        #RS = dword(report, 17) # RS
         
         retval = {'yaw': yaw, 'pitch': pitch, 'roll': roll, 'coll': coll, 'glyph': glyph}
         #print(f"pygpacket: {retval}")
