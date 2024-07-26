@@ -291,10 +291,11 @@ class TrackerSM(StateMachine):
         lasttime = time.time()
         while 1: # run forever
             try:
+                now = time.time()
                 token = self.fromq.get_nowait()
                 #print(f"got token {token}")
                 if type(token) == JSMoo:
-                    #rprint(f"[#FFFFFF on #550055]got command token {token}")
+                    rprint(f"[#FFFFFF on #550055]got command token {token}")
                     self.pitch_setpoint = token.pitch
                     self.roll_setpoint = token.roll
                     lastserial = token.sn
@@ -312,7 +313,6 @@ class TrackerSM(StateMachine):
                     return
                 else:
                     print(f"got unknown token: {token}")
-                now = time.time()
             except queue.Empty as e:
                 pass # queue is literally empty, why not just an error code or None?
             try:
@@ -529,7 +529,82 @@ class JSReader(object):
 def jslink(fromq, toq, robotq):
     jsr = JSReader(fromq, toq, robotq)
     jsr.engage()
-                      
+
+class Wobbler(StateMachine):
+    def __init__(self, fromq, toq, robotq):
+        super().__init__()
+        self.build(
+            "wstates", 
+            ['start', 'center', 'cpause', 'left', 'lpause', 'right', 'rpause', 'done'])
+        self.fromq = fromq
+        self.toq = toq
+        self.robotq = robotq
+        self.waketime = time.time()
+        self.pausetime = 5
+        self.itercount = 0
+        self.iterlim = 10
+        self.logging = False
+    def startlogging(self):
+        #self.rec.start_logging()
+        print("start logging")
+        self.logging = True
+    def stoplogging(self):
+        print("stop logging")
+        self.logging = False
+    def setdelay(self, ptime=5):
+        self.waketime = time.time() + ptime
+    def start(self):
+        print("start wobbler")
+        self.itercount = 0
+        self.state = self.states.center
+    def center(self):
+        print("center")
+        roll = 0
+        pitch = 0
+        self.toq.put_nowait(JSMoo(roll, pitch, 88, False))
+        self.setdelay(self.pausetime*2)
+        self.state = self.state.cpause
+    def cpause(self):
+        if time.time() > self.waketime:
+            self.state = self.states.left
+    def left(self):
+        print("left")
+        roll = -5
+        pitch = 0
+        self.toq.put_nowait(JSMoo(roll, pitch, 88, False))
+        self.setdelay(self.pausetime*2)
+        self.state = self.state.lpause
+    def lpause(self):
+        if time.time() > self.waketime:
+            self.state = self.states.right
+    def right(self):
+        self.itercount += 1
+        if self.itercount == 2:
+            self.startlogging()
+        print(f"right itercount: {self.itercount} logging: {self.logging}")
+        roll = 5
+        pitch = 0
+        self.toq.put_nowait(JSMoo(roll, pitch, 88, False))
+        self.setdelay(self.pausetime*2)
+        self.state = self.state.rpause
+    def rpause(self):
+        if time.time() > self.waketime:
+            if self.itercount == self.iterlim:
+                self.state = self.states.done
+            else:
+                self.state = self.states.center
+    def done(self):
+        pass
+    def loop(self):
+        while self.state != self.states.done:
+            self.tick()
+            time.sleep(30/1000)
+        print("done wobbling")
+        self.stoplogging()
+        self.toq.put_nowait("<goodbye/>")
+        self.robotq.put_nowait({'glyph':StewartPlatform.cSB}) # kill packet
+        time.sleep(1)
+                           
 def gorsh():
     mp.set_start_method('spawn')
     
@@ -543,7 +618,9 @@ def gorsh():
     p2.start()
     #p3 = mp.Process(target=jslink, args=(jsq, brickq)) # jslink is another input to tracker
     #p3.start()
-    jslink(jsq, brickq, cvq)
+    
+    #jslink(jsq, brickq, cvq)
+    Wobbler(jsq, brickq, cvq).loop()
     
     time.sleep(1)
     for p in [p1, p2]:

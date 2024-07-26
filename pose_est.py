@@ -553,7 +553,7 @@ class Recognizer(object):
             rin = rin * self.playfield_mask
             rblur = cv2.medianBlur(rin,5)
             
-            self.detect_level(frame, rblur, rin)
+            #self.detect_level(frame, rblur, rin)
             self.output, rblur = self.detect_ball(frame, rblur)
             self.red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
             cv2.line(frame, np.intp((0,self.height/2)), np.intp((self.width, self.height/2)), (0, 0, 255), 1)
