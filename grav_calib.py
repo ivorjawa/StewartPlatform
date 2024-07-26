@@ -239,7 +239,26 @@ class TrackerSM(StateMachine):
                 self.roll_pid.Compute(rollerr)
                     
                 #rprint(f"[black on green]insert PID magic here xerr: {xerr}=>{self.x_pid.myOutput:5.3f} yerr: {yerr}=>{self.y_pid.myOutput:5.3f} headerr: {headerr:5.1f}=>{self.heading_pid.myOutput:5.3f} rollpidout: {self.roll_pid.myOutput:5.3f} pitchpidout: {self.pitch_pid.myOutput:5.3f}")
-                
+                if self.rec.have_estimate:
+                    #print("have estimate")
+                    cid = {
+                        'xerr': xerr,
+                        'yerr': yerr,
+                        'headerr': headerr,
+                        'ballang': ballang,
+                        'ballradscale': ballradscale,
+                        'rollerr': rollerr,
+                        'pitcherr': pitcherr,
+                        'roll_pid_out': self.roll_pid.myOutput,
+                        'pitch_pid_out': self.pitch_pid.myOutput,
+                        'heading_pid_out': self.heading_pid.myOutput,
+                        'x_pid_out': self.x_pid.myOutput,
+                        'x_pid_out': self.x_pid.myOutput,
+                        'pitch_setpoint': self.pitch_setpoint,
+                        'roll_setpoint': self.roll_setpoint,
+                    }
+                    self.control_info = ControlInfo(cid)
+                    self.rec.log()
                 # initial strategy: want to make dxp and dyp and heading 0 with z at 50%
                 modeglyph = StewartPlatform.cSC # select 6-DOF absolute / precision mode
                 # in precision mode, 
@@ -299,6 +318,12 @@ class TrackerSM(StateMachine):
                     self.pitch_setpoint = token.pitch
                     self.roll_setpoint = token.roll
                     lastserial = token.sn
+                elif token == "<logon/>":
+                    print("tracker start logging")
+                    self.rec.start_logging()
+                elif token == "<logoff/>":
+                    print("tracker stop logging")
+                    self.rec.stop_logging()
                 elif token == "<awake/>":
                     print("got woke token")
                     self.woke = True
@@ -542,15 +567,17 @@ class Wobbler(StateMachine):
         self.waketime = time.time()
         self.pausetime = 5
         self.itercount = 0
-        self.iterlim = 10
+        self.iterlim = 4
         self.logging = False
     def startlogging(self):
         #self.rec.start_logging()
         print("start logging")
         self.logging = True
+        self.toq.put_nowait("<logon/>")
     def stoplogging(self):
         print("stop logging")
         self.logging = False
+        self.toq.put_nowait("<logoff/>")
     def setdelay(self, ptime=5):
         self.waketime = time.time() + ptime
     def start(self):
