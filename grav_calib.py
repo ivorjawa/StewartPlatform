@@ -239,14 +239,14 @@ class TrackerSM(StateMachine):
                 #sys_pitch_err = 0
                 #sys_roll_err = 0
                 
-                rprint(f"[#FFFF00 on #00aa00] Pitch: {self.rec.pose_info.pitch:6.2f} Pitch SP: {self.pitch_setpoint:6.2f} Roll: {self.rec.pose_info.roll:6.2f} Roll SP: {self.roll_setpoint:6.2f}")
+                #rprint(f"[#FFFF00 on #00aa00] Pitch: {self.rec.pose_info.pitch:6.2f} Pitch SP: {self.pitch_setpoint:6.2f} Roll: {self.rec.pose_info.roll:6.2f} Roll SP: {self.roll_setpoint:6.2f}")
                 ppe = pitcherr = self.rec.pose_info.pitch+sys_pitch_err-self.pitch_setpoint
                 rpe = rollerr = -(self.rec.pose_info.roll+sys_roll_err-self.roll_setpoint)
                 #rpe = rollerr = 0
                 self.pitch_pid.Compute(pitcherr)
                 self.roll_pid.Compute(rollerr)
                     
-                rprint(f"[black on green]insert PID magic here xerr: {xerr}=>{self.x_pid.myOutput:5.3f} yerr: {yerr}=>{self.y_pid.myOutput:5.3f} headerr: {headerr:5.1f}=>{self.heading_pid.myOutput:5.3f} rollpidout: {self.roll_pid.myOutput:5.3f} pitchpidout: {self.pitch_pid.myOutput:5.3f}")
+                #rprint(f"[black on green]insert PID magic here xerr: {xerr}=>{self.x_pid.myOutput:5.3f} yerr: {yerr}=>{self.y_pid.myOutput:5.3f} headerr: {headerr:5.1f}=>{self.heading_pid.myOutput:5.3f} rollpidout: {self.roll_pid.myOutput:5.3f} pitchpidout: {self.pitch_pid.myOutput:5.3f}")
                 
                 # initial strategy: want to make dxp and dyp and heading 0 with z at 50%
                 modeglyph = StewartPlatform.cSC # select 6-DOF absolute / precision mode
@@ -370,7 +370,10 @@ class  LoggingQueuedBricksHub(PybricksHub):
             elif l == "<goodbye/>":
                 self.toq.put_nowait(l)
                 time.sleep(1)
-                raise LQBHExit("done with engines")
+                print("about to try to disconnect")
+                self.client.disconnect()
+                print("disconnected")
+                #raise LQBHExit("done with engines")
                 #sys.exit(1)
             elif l == "<awake/>":
                 self.toq.put_nowait(l)
@@ -380,7 +383,11 @@ class  LoggingQueuedBricksHub(PybricksHub):
             if(self.csvfile):
                 print(l, file=self.csvfile)
         except Exception as e:
-            logging.error(f"_line_handler error: {e}")
+            if type(e) is LQBHExit:
+                print("goodbye from line handler.")
+                raise
+            else:
+                logging.error(f"_line_handler error: {e}")
         
  
 class BaseStation(object):
@@ -537,8 +544,8 @@ def gorsh():
     brickq = mp.Queue() # input from brick (and js) to tracker task
     jsq = mp.Queue() # not used yet, to control jslink task, should be another arg to tracker  and brick task so either can kill it
     
-    p = mp.Process(target=tracker, args=(brickq, cvq)) # add jsq
-    p.start()
+    p1 = mp.Process(target=tracker, args=(brickq, cvq)) # add jsq
+    p1.start()
     p2 = mp.Process(target=robotlink, args=(cvq, brickq)) # add jsk
     p2.start()
     #p3 = mp.Process(target=jslink, args=(jsq, brickq)) # jslink is another input to tracker
@@ -546,14 +553,17 @@ def gorsh():
     jslink(jsq, brickq, cvq)
     
     time.sleep(1)
-    p.terminate()
-    p2.terminate()
-    try:
-        p.join()
-        p2.join()
-    except Exception as e:
-        print(f"Join unhappy: {e}")
-    #p3.join()
+    for p in [p1, p2]:
+        try:
+            p.terminate()
+            p.join()
+        except Exception as e:
+            print(f"Join unhappy: {e}")
 
 if __name__ == '__main__':
-    gorsh()
+    try:
+        gorsh()
+    except Exception as e:
+        rprint(f"[#FFFFFF on #00FF00]gorsh: {e}")
+    rprint("[#FFFFFF on #FF0000]hAvE A niCE dAy.")
+    
