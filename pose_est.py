@@ -173,6 +173,17 @@ class Recognizer(object):
         self.logging = False
         self.csv_stemname = "Pose_est"
         
+        # FIXME this needs to be parameterized 
+        # then make measurement state machine that can step 
+        # test and make micro-adjustments with ball physics
+        #sys_pitch_err = 1.9
+        #sys_roll_err = -2.0
+        #self.sys_pitch_err = 2.1
+        #self.sys_roll_err = -1.4
+        self.sys_pitch_err = 4.0
+        self.sys_roll_err = 0.0
+
+        
     def start_logging(self):
         if not self.logging:
             rp("[yellow on red]Begin Logging")
@@ -242,6 +253,9 @@ class Recognizer(object):
                 
                 pitch = 180 - (pitch % 360)
                 heading = 90 - (heading % 360)
+                pitch = pitch + self.sys_pitch_err
+                roll = roll + self.sys_roll_err
+                
                 #roll = 360-(roll%360)
             
                 testpts = np.float32([[91.5, 91.5, 0],])
@@ -539,7 +553,7 @@ class Recognizer(object):
             rin = rin * self.playfield_mask
             rblur = cv2.medianBlur(rin,5)
             
-            #self.detect_level(frame, rblur, rin)
+            self.detect_level(frame, rblur, rin)
             self.output, rblur = self.detect_ball(frame, rblur)
             self.red = cv2.cvtColor(rblur,cv2.COLOR_GRAY2BGR)
             cv2.line(frame, np.intp((0,self.height/2)), np.intp((self.width, self.height/2)), (0, 0, 255), 1)

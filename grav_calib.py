@@ -230,18 +230,10 @@ class TrackerSM(StateMachine):
                 #ppe = pitcherr = self.rec.pose_info.pitch
                 #rpe = rollerr = -self.rec.pose_info.roll
                 
-                # FIXME this needs to be parameterized and also reflect in HUD
-                # push it into pose_est so we only need to change it low-level
-                # then make measurement state machine here that can step 
-                # test and make micro-adjustments with ball physics
-                sys_pitch_err = 1.9
-                sys_roll_err = -2.0
-                #sys_pitch_err = 0
-                #sys_roll_err = 0
                 
                 #rprint(f"[#FFFF00 on #00aa00] Pitch: {self.rec.pose_info.pitch:6.2f} Pitch SP: {self.pitch_setpoint:6.2f} Roll: {self.rec.pose_info.roll:6.2f} Roll SP: {self.roll_setpoint:6.2f}")
-                ppe = pitcherr = self.rec.pose_info.pitch+sys_pitch_err-self.pitch_setpoint
-                rpe = rollerr = -(self.rec.pose_info.roll+sys_roll_err-self.roll_setpoint)
+                ppe = pitcherr = self.rec.pose_info.pitch-self.pitch_setpoint
+                rpe = rollerr = -(self.rec.pose_info.roll-self.roll_setpoint)
                 #rpe = rollerr = 0
                 self.pitch_pid.Compute(pitcherr)
                 self.roll_pid.Compute(rollerr)
@@ -263,6 +255,7 @@ class TrackerSM(StateMachine):
                     # maybe try to get close with PID then switch over to MPC
                     'roll': one28(self.roll_pid.myOutput), # PID values work with stuart.py disk_small = 2
                     #'roll': one28(self.bm_roll_angle/mpcfactor), 
+                    
                     
                     #'pitch': one28(0),  
                     #'pitch': one28(pitch),
@@ -370,10 +363,10 @@ class  LoggingQueuedBricksHub(PybricksHub):
             elif l == "<goodbye/>":
                 self.toq.put_nowait(l)
                 time.sleep(1)
-                print("about to try to disconnect")
-                self.client.disconnect()
-                print("disconnected")
-                #raise LQBHExit("done with engines")
+                #print("about to try to disconnect")
+                #self.client.disconnect()
+                #print("disconnected")
+                raise LQBHExit("done with engines")
                 #sys.exit(1)
             elif l == "<awake/>":
                 self.toq.put_nowait(l)
