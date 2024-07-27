@@ -11,6 +11,7 @@ import time
 import random
 import pickle
 import math as m
+import code, readline
 
 import numpy as np
 import cv2
@@ -631,7 +632,25 @@ class Wobbler(StateMachine):
         self.toq.put_nowait("<goodbye/>")
         self.robotq.put_nowait({'glyph':StewartPlatform.cSB}) # kill packet
         time.sleep(1)
-                           
+
+# https://bernsteinbear.com/blog/simple-python-repl/
+class RoboShell(code.InteractiveConsole):
+    def __init__(self, wobbler):
+        sys_locals = {
+            'wobbler': wobbler,
+            'StewartPlatform': StewartPlatform
+        }
+        super().__init__(locals=sys_locals)
+        #self.wobbler = wobbler
+    def fdsafdrunsource(self, source, filename="<input>", symbol="single"):
+        # TODO: Integrate your compiler/interpreter
+        if not source.endswith(";"):
+            return True
+        #print("source:", source)
+        return super().runsource(source, filename, symbol)
+    def loop(self):
+        self.interact(banner="STU>>>", exitmsg="DAVENO!")
+        
 def gorsh():
     mp.set_start_method('spawn')
     
@@ -647,7 +666,10 @@ def gorsh():
     #p3.start()
     
     #jslink(jsq, brickq, cvq)
-    Wobbler(jsq, brickq, cvq).loop()
+    w = Wobbler(jsq, brickq, cvq)
+    #w.loop()
+    repl = RoboShell(w)
+    repl.loop()
     
     time.sleep(1)
     for p in [p1, p2]:
