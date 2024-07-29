@@ -61,8 +61,16 @@ def run_remote():
     while True:
         # input loop scan, expects 30-60Hz inputs
         if rss.poll():
-            result = rss.readout()
-            print(f"buflen: {len(result)}: {result}")
+            cmd = rss.readout()
+            if len(cmd) == 0:
+                continue
+            try:
+                #print(f"eval({cmd})")
+                r = eval(cmd)
+                #print(f"eval() returned {r}")
+                print(r)
+            except Exception as e:
+                print(f"exec() threw exception {e}")
     
 if __name__ == "__main__":
     # pybricksdev run ble -n jawaspike stuart.py

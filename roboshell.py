@@ -34,13 +34,15 @@ class  LoggingBricksHub(PybricksHub):
         try:
             l = line.decode()
             #logging.info(f"Hub Sent:  {l}")
-            rprint(f"[#000000 on #00FF00]Hub Sent:  {l}")
+            #rprint(f"[#FFFFFF on #FF0000]Hub:  [#000000 on #00FF00]{l}")
+            print(l)
         except Exception as e:
             logging.error(f"_line_handler error: {e}")
             
 class BaseStation(object):
     def __init__(self, fromq):
         self.fromq = fromq
+        self.last_sent = time.time()
             
     async def send_data(self, hub):
         while 1:
@@ -51,6 +53,9 @@ class BaseStation(object):
             except Exception as e:
                 pass
 
+            dtms = (time.time() - self.last_sent) * 1000
+            if (dtms > 16) and (output is None): # only send 60 fps
+                output = ''
             if output is not None:
                 try:
                     #print(f"sending to brick: {output}")
@@ -60,6 +65,7 @@ class BaseStation(object):
                 except Exception as e:
                     logging.error(f"Other error in hub.write(): {e}")
                     #sys.exit(0)
+                self.last_sent = time.time()
     
     async def go(self, logbasename, brickaddress, pyprog):
         hub = LoggingBricksHub(logbasename)
