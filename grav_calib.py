@@ -634,6 +634,8 @@ class Wobbler(StateMachine):
         time.sleep(1)
 
 # https://bernsteinbear.com/blog/simple-python-repl/
+# https://docs.pybricks.com/en/stable/micropython/builtins.html
+# TODO: make shell that can talk to brick by sending source
 class RoboShell(code.InteractiveConsole):
     def __init__(self, wobbler):
         sys_locals = {
