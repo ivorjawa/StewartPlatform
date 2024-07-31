@@ -643,6 +643,14 @@ class Wobbler(StateMachine):
         self.toq.put_nowait(moo)
     def rollpitch(self, roll, pitch):
         self.toq.put_nowait(JSMoo(roll, pitch, 88, False))
+    def wobbit(self, t=15):
+        self.startlogging()
+        time.sleep(1)
+        self.rollpitch(5, 5)
+        time.sleep(t)
+        self.rollpitch(0, 0)
+        time.sleep(t)
+        self.stoplogging()
     def loop(self):
         while self.state != self.states.done:
             self.tick()
@@ -679,12 +687,12 @@ class RoboShell(code.InteractiveConsole):
         }
         super().__init__(locals=sys_locals)
         #self.wobbler = wobbler
-    def fdsafdrunsource(self, source, filename="<input>", symbol="single"):
-        # TODO: Integrate your compiler/interpreter
-        if not source.endswith(";"):
-            return True
-        #print("source:", source)
-        return super().runsource(source, filename, symbol)
+    #def fdsafdrunsource(self, source, filename="<input>", symbol="single"):
+    #    # TODO: Integrate your compiler/interpreter
+    #    if not source.endswith(";"):
+    #        return True
+    #    #print("source:", source)
+    #    return super().runsource(source, filename, symbol)
     def loop(self):
         self.interact(banner="STU>>>", exitmsg="DAVENO!")
         self.wobbler.infanticide()
