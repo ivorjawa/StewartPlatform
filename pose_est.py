@@ -180,7 +180,7 @@ class Recognizer(object):
         #sys_roll_err = -2.0
         #self.sys_pitch_err = 2.1
         #self.sys_roll_err = -1.4
-        self.sys_pitch_err = 4.0
+        self.sys_pitch_err = 5.0
         self.sys_roll_err = 0.0
 
         

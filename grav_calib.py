@@ -66,6 +66,16 @@ class JSMoo(object):
     def __str__(self):
         return f"Roll: {self.roll:6.2f}  Pitch: {self.pitch:6.2f}  Coll: {self.coll} SA: {self.sa} sn: {self.sn}"
         
+class ConfigMoo(object):
+    def __init__(self, rollerr=0, pitcherr=0, kp=0, ki=0, kd=0):
+        self.rollerr = rollerr
+        self.pitcherr = pitcherr
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+    def __repr__(self):
+        return f"Rollerr: {self.rollerr:6.2f}  Pitcherr: {self.pitcherr:6.2f} kp: {self.kp:6.5f} ki: {self.ki:6.5f} kd: {self.kd:6.5f}"
+        
 class TrackerSM(StateMachine):
     def __init__(self, fromq, toq):
         super().__init__()
@@ -319,6 +329,12 @@ class TrackerSM(StateMachine):
                     self.pitch_setpoint = token.pitch
                     self.roll_setpoint = token.roll
                     lastserial = token.sn
+                elif type(token) == ConfigMoo:
+                    rprint(f"[#FFFFFF on #550055]got config token {token}")
+                    self.rec.sys_pitch_err = token.pitcherr
+                    self.rec.sys_roll_err = token.rollerr
+                    self.roll_pid.SetTunings(token.kp, token.ki, token.kd, PID.PID.P_ON_E)
+                    self.pitch_pid.SetTunings(token.kp, token.ki, token.kd, PID.PID.P_ON_E)
                 elif token == "<logon/>":
                     print("tracker start logging")
                     self.rec.start_logging()
@@ -623,24 +639,43 @@ class Wobbler(StateMachine):
                 self.state = self.states.center
     def done(self):
         pass
+    def configmoo(self, moo):
+        self.toq.put_nowait(moo)
+    def rollpitch(self, roll, pitch):
+        self.toq.put_nowait(JSMoo(roll, pitch, 88, False))
     def loop(self):
         while self.state != self.states.done:
             self.tick()
             time.sleep(30/1000)
         print("done wobbling")
         self.stoplogging()
-        self.toq.put_nowait("<goodbye/>")
+        self.infanticide()
+    def infanticide(self):
         self.robotq.put_nowait({'glyph':StewartPlatform.cSB}) # kill packet
         time.sleep(1)
+        self.toq.put_nowait("<goodbye/>")
+        time.sleep(1)
+        print("told children to get lost")
 
 # https://bernsteinbear.com/blog/simple-python-repl/
 # https://docs.pybricks.com/en/stable/micropython/builtins.html
-# TODO: make shell that can talk to brick by sending source
+#        self.sys_pitch_err = 4.0
+#        self.sys_roll_err = 0.0
+#        #tuned for platform center
+#        rrKp = 0.01
+#        rrKi = 0.06
+#        rrKd = 0.00005
+# >>> wobbler.rollpitch(5, 5); time.sleep(2); wobbler.rollpitch(0, 0)
+# >>> cm.kp = 0.01; cm.ki = 0.09; cm.kd = 0.00005; wobbler.configmoo(cm)
+
 class RoboShell(code.InteractiveConsole):
     def __init__(self, wobbler):
+        self.wobbler = wobbler
+        cm = ConfigMoo(rollerr=0.0, pitcherr=5.0, kp=0.01, ki=0.06, kd=0.00005)
         sys_locals = {
             'wobbler': wobbler,
-            'StewartPlatform': StewartPlatform
+            'StewartPlatform': StewartPlatform,
+            'cm': cm
         }
         super().__init__(locals=sys_locals)
         #self.wobbler = wobbler
@@ -652,6 +687,7 @@ class RoboShell(code.InteractiveConsole):
         return super().runsource(source, filename, symbol)
     def loop(self):
         self.interact(banner="STU>>>", exitmsg="DAVENO!")
+        self.wobbler.infanticide()
         
 def gorsh():
     mp.set_start_method('spawn')
